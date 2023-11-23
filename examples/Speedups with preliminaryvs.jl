@@ -35,7 +35,7 @@ using Distributed
 nprocs()<number_workers ? addprocs( number_workers - nprocs()  ) : addprocs(0)
 @everywhere using SMARTboostPrivate
 
-using Random
+using Random,Statistics
 
 # USER'S OPTIONS 
 
