@@ -118,7 +118,7 @@ yf_gbm = LightGBM.predict(estimator,x_test)
 # SMARtboost
 
 param   = SMARTparam(modality=modality,ntrees=ntrees,n_preliminaryvs=n_preliminaryvs,nofullsample=nofullsample,
-                    preliminaryvs=preliminaryvs,priortype=priortype,sparsevs=sparsevs,frequency_update=frequency_update,
+                    preliminaryvs=preliminaryvs,sparsevs=sparsevs,frequency_update=frequency_update,
                     nfold=nfold,verbose=:Off,warnings=:On)
 
 data  = SMARTdata(y,x,param)
