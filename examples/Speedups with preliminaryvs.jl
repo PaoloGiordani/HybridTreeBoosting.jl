@@ -53,7 +53,7 @@ stde      = 1
 modality         = :fast   # :accurate, :compromise (default), :fast, :fastest
 
 preliminaryvs    = :Off     # :On or :Off
-n_preliminarvys  = :Auto   # :Auto or integer, e.g. 20_000
+n_preliminaryvs  = :Auto   # :Auto or integer, e.g. 20_000
 
 sparsevs         = :Off    # preliminaryvs and sparsevs can be used separately or together
 
