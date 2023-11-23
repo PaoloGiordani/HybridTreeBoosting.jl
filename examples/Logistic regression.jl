@@ -127,7 +127,7 @@ function simul_logistic(n,p,nsimul,modality,f)
 end 
 
 
-MSE1,MSE2 = simul_logistic(n,p,nsimul,modality,priortype)
+MSE1,MSE2 = simul_logistic(n,p,nsimul,modality,f)
 
 println("\n n = $n, p = $p, number of simulations = $nsimul, modality = $modality")
 println(" avg out-of-sample RMSE from true natural parameter, SMARTboost    ", sqrt(mean(MSE1)) )
