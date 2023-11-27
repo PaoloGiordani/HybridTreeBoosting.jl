@@ -55,8 +55,8 @@ modality         = :fastest   # :accurate, :compromise (default), :fast, :fastes
 preliminaryvs    = :Off     # :On or :Off
 n_preliminaryvs  = :Auto   # :Auto or integer, e.g. 20_000
 
-n_vs             = :Auto
-sparsevs         = :On    # preliminaryvs and sparsevs can be used separately or together
+sharevs          = 0.5 
+sparsevs         = :On      # preliminaryvs and sparsevs can be used separately or together
 
 verbose          = :Off
 warnings         = :On
@@ -82,8 +82,9 @@ f_true = f_dgp(x_test)
 
 # SMARtboost
 
-param   = SMARTparam(modality=modality,ntrees=ntrees,n_vs=n_vs,n_preliminaryvs=n_preliminaryvs,nofullsample=true,
-                    preliminaryvs=preliminaryvs,sparsevs=sparsevs,verbose=:Off,warnings=:On)
+param   = SMARTparam(modality=modality,ntrees=ntrees,n_preliminaryvs=n_preliminaryvs,nofullsample=true,
+                    preliminaryvs=preliminaryvs,sparsevs=sparsevs,verbose=:Off,warnings=:On,
+                    sharevs=sharevs)
 
 data  = SMARTdata(y,x,param)
 

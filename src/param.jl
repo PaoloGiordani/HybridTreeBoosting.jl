@@ -75,11 +75,9 @@ mutable struct SMARTparam{T<:AbstractFloat, I<:Int}
     p0::Union{Symbol,I}       # :default (then set to p) or p0 
 
     # sub-sampling and pre-selection of features
-    sharevs::T         # if <1, adds noise to vs, in vs phase takes a random subset of n_vs  = minimum([param.n_vs,I(round(n*param.sharevs))])
+    sharevs::Union{Symbol,I}  # if <1, adds noise to vs, in vs phase takes a random subset of observations
     refine_obs_from_vs::Bool  # true to add randomization to (μ,τ), assuming sharevs<1
     finalβ_obs_from_vs::Bool
-    n_vs::Union{Symbol,I}     # MAXIMUM number of observations to use in variable selection. If subsamplevs<n, random draw at each tree
-                            # All observations then used to estimate beta|i,mu,tau, unless the next option is true.
     n_refineOptim::Union{Symbol,I}      # Maximum number of observations for refineOptim, to compute (μ,τ). β is then computed on all obs.
     subsampleshare_columns::T  # if <1.0, only a random share of features is used at each split (re-drawn at each split)
 
@@ -184,7 +182,9 @@ Parameters for SMARTboost
 # Inputs that may sometimes be modified by user (all inputs are keyword with default values)
 
 - `ntrees::Int`             [4000/depth] Maximum number of trees. SMARTfit will automatically stop when cv loss stops decreasing.
-- `subsampleshare_columns`  [1.0] column sub-sampling.
+- `sharevs`                 [:Auto] row subsampling in variable selection phase (only to choose feature on which to split.)
+                            :Auto is 1 if n<250_000, else 0.5.         
+- `subsampleshare_columns`  [1.0] column subsampling.
 - `min_unique`              [:default] sharp splits are imposed on features with less than min_unique values (default is 5 for modality=:compromise or :accurate, else 10)
 - `mixed_dc_sharp`          [false] true to force sharp splits on discrete and mixed discrete-continuous features (defined as having over 20% obs on a single value)
 - `stderulestop::Float`     [0.01] A positive number stops iterations while the loss is still decreasing. This results in faster computations at minimal loss of fit.
@@ -197,9 +197,8 @@ Parameters for SMARTboost
 - `force_smooth_splits`     [] optionally, a p vector of Bool, with j-th value set to true if the j-th feature is forced to enter with a smooth split (high values of τ not allowed).
 - `cat_representation_dimension`  [3] 1 for mean encoding, 2 adds frequency, 3 adds variance.
 - `losscv`                  [:default] loss function for cross-validation (:mse,:mae,:logistic,:sign). 
-- `n_vs::Int`               [10^6] :Auto is max(100_000,0.5*n), or integer, MAXIMUM number of observations to use in variable selection. Can give speed-ups with large n p at no or modest cost in terms of fit.
 - `n_refineOptim::Int`      [10^6] MAXIMUM number of observations to use fit μ and τ (split point and smoothness).
-                            Can provide speed-ups with very large n at modest cost in terms of fit.
+                            Lower numbers can provide speed-ups with very large n at some cost in terms of fit.
 
 # Additional inputs can be set in SMARTfit(), but keeping the defaults is generally encouraged.
 
@@ -263,12 +262,9 @@ function SMARTparam(;
     info_date = (date_column=0,date_first=0,date_last=0),
     sparsity_penalization = 0.3,
     p0       = :default,
-    sharevs  = 1.0,        # if <1, adds noise to vs, in vs phase takes a random subset of n_vs  = minimum([param.n_vs,I(round(n*param.sharevs))])     
+    sharevs  = :Auto,            # if <1, adds noise to vs, in vs phase takes a random subset. :Auto is 0.5 if n>=250k     
     refine_obs_from_vs = false,  # true to add randomization to (μ,τ), assuming sharevs<1
     finalβ_obs_from_vs  = false,  # true to add randomization to final β
-    n_vs = 10_000_000,          # :Auto or Integer, MAXIMUM number of observations to use in variable selection. If subsamplevs<n, random draw at each tree
-                           # If :Auto, n_vs = max(100_000,Int(round(0.5*n))). The idea is that, at high n, should introduce little randomness.        
-                            # All observations then used to estimate beta|i,mu,tau.
     n_refineOptim = 10_000_000,   # Subsample size fore refineOptim. beta is always computed on the full sample.
     subsampleshare_columns = 1.0,  # if <1.0, only a random share of features is used at each split (re-drawn at each split)
     preliminaryvs = :Off,       # :On, :Off. :On is relevant only if n>subsamplepreliminaryvs
@@ -360,7 +356,7 @@ function SMARTparam(;
      
 
     param = SMARTparam(T,I,loss,losscv,Symbol(modality),T.(coeff),coeff_updated,Symbol(verbose),Symbol(warnings),I(num_warnings),randomizecv,I(nfold),nofullsample,T(sharevalidation),indtrain_a,indtest_a,T(stderulestop),T(lambda),I(depth),I(depth1),Symbol(sigmoid),
-        T(meanlntau),T(varlntau),T(doflntau),T(multiplier_stdtau),T(varmu),T(dofmu),Symbol(priortype),T(max_tau_smooth),I(min_unique),mixed_dc_sharp,force_sharp_splits,force_smooth_splits,exclude_features,cat_features,cat_features_extended,cat_dictionary,cat_values,cat_globalstats,I(cat_representation_dimension),T(n0_cat),T(mean_encoding_penalization),Bool(delete_missing),mask_missing,missing_features,info_date,T(sparsity_penalization),p0,T(sharevs),refine_obs_from_vs,finalβ_obs_from_vs,n_vs,
+        T(meanlntau),T(varlntau),T(doflntau),T(multiplier_stdtau),T(varmu),T(dofmu),Symbol(priortype),T(max_tau_smooth),I(min_unique),mixed_dc_sharp,force_sharp_splits,force_smooth_splits,exclude_features,cat_features,cat_features_extended,cat_dictionary,cat_values,cat_globalstats,I(cat_representation_dimension),T(n0_cat),T(mean_encoding_penalization),Bool(delete_missing),mask_missing,missing_features,info_date,T(sparsity_penalization),p0,sharevs,refine_obs_from_vs,finalβ_obs_from_vs,
         I(n_refineOptim),T(subsampleshare_columns),preliminaryvs,n_preliminaryvs,T(fsecondvs),T(target_ratio_preliminaryvs),T(min_fraction_preliminaryvs),Symbol(sparsevs),T(frequency_update),
         I(number_best_features),best_features,I(mugridpoints),I(taugridpoints),T(xtolOptim),Symbol(method_refineOptim),I(ntrees),T(theta),T(loglikdivide),I(overlap),T(multiply_pb),T(varGb),I(ncores),I(seed_datacv),I(seed_subsampling),newton_gaussian_approx,
         I(newton_max_steps),I(newton_max_steps_final),T(newton_tol),T(newton_tol_final),I(newton_max_steps_refineOptim),linesearch)
@@ -375,7 +371,7 @@ end
 # Sets some parameters that require knowledge of data. Notice that data.x may contain NaN. 
 function param_given_data!(param::SMARTparam,data::SMARTdata)
 
-    p = size(data.x,2)
+    n,p = size(data.x)
     I = typeof(param.nfold)
     T = typeof(param.lambda)
         
@@ -387,8 +383,8 @@ function param_given_data!(param::SMARTparam,data::SMARTdata)
         param.sparsity_penalization>0 ? param.sparsevs=:On : param.sparsevs=:Off
     end 
 
-    if param.n_vs==:Auto
-        param.n_vs = max(100_000,Int(round(0.4*n)))   # here n is for training+valiation sample, hence 0.4 instead of 0.5
+    if param.sharevs==:Auto
+        n<250_000 ? param.sharevs=T(1) : param.sharevs=T(0.5)   # n here is train+sample. 
     end 
 
 end         

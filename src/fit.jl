@@ -814,7 +814,7 @@ function speedup_preliminarvys(param,n,ps,psecondvs)
 
     if typeof(param.n_preliminaryvs) <: Int
         p = length(ps)
-        n = min(n,param.n_vs)     
+        n = n*param.sharevs      
         cost_full_sample   = n*p
         cost_preliminaryvs = param.n_preliminaryvs*p + n*psecondvs 
 
@@ -1085,7 +1085,7 @@ function fit_one_tree_inner(y::AbstractVector{T},w,SMARTtrees::SMARTboostTrees,r
     end
 
     loss0,gammafit0, ifit,μfit,τfit,mfit,infeatures,fi2,βfit = T(Inf),zeros(T,n),Int64[],T[],T[],T[],copy(infeatures),T[],T[]
-    n_vs  = minimum([param.n_vs,I(round(n*param.sharevs))])   # number of observations to sub-sample
+    n_vs  = I(round(n*param.sharevs))        # number of observations to sub-sample
 
     if n_vs ≥ n
         ssi         = collect(1:n)
