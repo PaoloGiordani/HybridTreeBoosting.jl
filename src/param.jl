@@ -197,7 +197,7 @@ Parameters for SMARTboost
 - `force_smooth_splits`     [] optionally, a p vector of Bool, with j-th value set to true if the j-th feature is forced to enter with a smooth split (high values of τ not allowed).
 - `cat_representation_dimension`  [3] 1 for mean encoding, 2 adds frequency, 3 adds variance.
 - `losscv`                  [:default] loss function for cross-validation (:mse,:mae,:logistic,:sign). 
-- `n_vs::Int`               [:Auto] :Auto is max(100_000,0.5*n), or integer, MAXIMUM number of observations to use in variable selection. Can give speed-ups with large n p at no or modest cost in terms of fit.
+- `n_vs::Int`               [10^6] :Auto is max(100_000,0.5*n), or integer, MAXIMUM number of observations to use in variable selection. Can give speed-ups with large n p at no or modest cost in terms of fit.
 - `n_refineOptim::Int`      [10^6] MAXIMUM number of observations to use fit μ and τ (split point and smoothness).
                             Can provide speed-ups with very large n at modest cost in terms of fit.
 
@@ -266,9 +266,9 @@ function SMARTparam(;
     sharevs  = 1.0,        # if <1, adds noise to vs, in vs phase takes a random subset of n_vs  = minimum([param.n_vs,I(round(n*param.sharevs))])     
     refine_obs_from_vs = false,  # true to add randomization to (μ,τ), assuming sharevs<1
     finalβ_obs_from_vs  = false,  # true to add randomization to final β
-    n_vs = :Auto,          # :Auto or Integer, MAXIMUM number of observations to use in variable selection. If subsamplevs<n, random draw at each tree
+    n_vs = 10_000_000,          # :Auto or Integer, MAXIMUM number of observations to use in variable selection. If subsamplevs<n, random draw at each tree
                            # If :Auto, n_vs = max(100_000,Int(round(0.5*n))). The idea is that, at high n, should introduce little randomness.        
-                            # All observations then used to estimate beta|i,mu,tau, unless the next option is true. ! Works poorly in my simulations !
+                            # All observations then used to estimate beta|i,mu,tau.
     n_refineOptim = 10_000_000,   # Subsample size fore refineOptim. beta is always computed on the full sample.
     subsampleshare_columns = 1.0,  # if <1.0, only a random share of features is used at each split (re-drawn at each split)
     preliminaryvs = :Off,       # :On, :Off. :On is relevant only if n>subsamplepreliminaryvs
