@@ -75,7 +75,7 @@ mutable struct SMARTparam{T<:AbstractFloat, I<:Int}
     p0::Union{Symbol,I}       # :default (then set to p) or p0 
 
     # sub-sampling and pre-selection of features
-    sharevs::Union{Symbol,I}  # if <1, adds noise to vs, in vs phase takes a random subset of observations
+    sharevs::Union{Symbol,T}  # if <1, adds noise to vs, in vs phase takes a random subset of observations
     refine_obs_from_vs::Bool  # true to add randomization to (μ,τ), assuming sharevs<1
     finalβ_obs_from_vs::Bool
     n_refineOptim::Union{Symbol,I}      # Maximum number of observations for refineOptim, to compute (μ,τ). β is then computed on all obs.
