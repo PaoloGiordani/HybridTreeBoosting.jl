@@ -36,8 +36,8 @@ using LightGBM
 Random.seed!(123)
 
 # Options for data generation 
-n         = 1_000
-p         = 1000        # number of features 
+n         = 100_000
+p         = 2000        # number of features 
 dummies   = false       # true if x, x_test are 0-1 (faster).
 stde      = 1            
 
@@ -45,8 +45,7 @@ stde      = 1
 # :fast and :fastest only fit one model at default parameters, while :compromise and :accurate perform
 # automatic hyperparameter tuning. 
 
-modality         = :fast   # :accurate, :compromise (default), :fast, :fastest
-sparsevs         = :On      
+modality         = :compromise  # :accurate, :compromise (default), :fast, :fastest
 
 frequency_update = 1     # Integer. Default 1. >1 to update less frequently (larger speed gains, less precision)
 nfold            = 1     # 1 for fair comparison with LightGBM
@@ -117,8 +116,7 @@ yf_gbm = LightGBM.predict(estimator,x_test)
 
 # SMARtboost
 
-param   = SMARTparam(modality=modality,ntrees=ntrees,n_preliminaryvs=n_preliminaryvs,nofullsample=nofullsample,
-                    preliminaryvs=preliminaryvs,sparsevs=sparsevs,frequency_update=frequency_update,
+param   = SMARTparam(modality=modality,ntrees=ntrees,sparsevs=sparsevs,frequency_update=frequency_update,
                     nfold=nfold,verbose=:Off,warnings=:On)
 
 data  = SMARTdata(y,x,param)

@@ -80,12 +80,6 @@ mutable struct SMARTparam{T<:AbstractFloat, I<:Int}
     finalβ_obs_from_vs::Bool
     n_refineOptim::Union{Symbol,I}      # Maximum number of observations for refineOptim, to compute (μ,τ). β is then computed on all obs.
     subsampleshare_columns::T  # if <1.0, only a random share of features is used at each split (re-drawn at each split)
-
-    preliminaryvs::Symbol      # :On, :Off, :Auto (not implemented yet)
-    n_preliminaryvs::Union{Symbol,I}       #  MAXIMUM number of observations to use in preliminary variable selection.
-    fsecondvs::T           # fraction of features selected in preliminary phase, e.g. 0.1, and taken to the second phase of variable selection
-    target_ratio_preliminaryvs::T    # Target for ratio Δ/std(Δ) in preliminaryvs 
-    min_fraction_preliminaryvs::T  # minimum fraction of observations to use in preliminary variable selection. Ensures asymptotically consistent.
     sparsevs::Symbol           # :On, :Off, :Auto 
     frequency_update::T 
     number_best_features::I 
@@ -103,7 +97,7 @@ mutable struct SMARTparam{T<:AbstractFloat, I<:Int}
     overlap::I       # used in purged-CV
     multiply_pb::T
     varGb::T
-    ncores::I        # nprocs()-1, number of cores available, used in preliminaryvs 
+    ncores::I        # nprocs()-1, number of cores available
     seed_datacv::I     # sets random seed if randomizecv=true
     seed_subsampling::I   # sets random seed used on subsampling iterations (will be seed=seed_subsampling + iter)
     # Newton optimization
@@ -267,11 +261,6 @@ function SMARTparam(;
     finalβ_obs_from_vs  = false,  # true to add randomization to final β
     n_refineOptim = 10_000_000,   # Subsample size fore refineOptim. beta is always computed on the full sample.
     subsampleshare_columns = 1.0,  # if <1.0, only a random share of features is used at each split (re-drawn at each split)
-    preliminaryvs = :Off,       # :On, :Off. :On is relevant only if n>subsamplepreliminaryvs
-    n_preliminaryvs = 20_000,   # :Auto or Integer. MAXIMUM number of observations to use in preliminary variable selection. :Auto untested
-    fsecondvs = 0.1,            # fraction of features taken to second stage; relevant only if preliminaryvs = :On. 
-    target_ratio_preliminaryvs = 3,    # Target for ratio Δ/std(Δ) in preliminaryvs. FACENDA: calibrate.  
-    min_fraction_preliminaryvs = 0.05,  # minimum fraction of observations to use in preliminary variable selection. Ensures asymptotically consistent.
     sparsevs = :Auto,           # :Auto switches it :On if sparsity_penalization>0, else :Off 
     frequency_update = 1.0,       # when sparsevs, 1 for Fibonacci, 2 to update at 2*Fibonacci etc...               
     number_best_features = 10,    # number of best feature in each node to store into best_features    
@@ -308,11 +297,6 @@ function SMARTparam(;
 
     @assert(doflntau>T(2), " doflntau must be greater than 2.0 (for variance to be defined) ")
     @assert(T(1e-20) < xtolOptim, "xtolOptim must be positive ")
-
-    if warnings==:On && subsampleshare_columns<1.0 && preliminaryvs !== :Off;
-        subsampleshare_columns=1.0
-        @warn "subsampleshare_columns<1.0 and preliminaryvs should not be both active; setting subsampleshare_columns=1.0."
-    end
 
     if depth>=7 && warnings==:On
         @warn "setting param.depth higher than 6 typically results in very high computing costs"
@@ -357,7 +341,7 @@ function SMARTparam(;
 
     param = SMARTparam(T,I,loss,losscv,Symbol(modality),T.(coeff),coeff_updated,Symbol(verbose),Symbol(warnings),I(num_warnings),randomizecv,I(nfold),nofullsample,T(sharevalidation),indtrain_a,indtest_a,T(stderulestop),T(lambda),I(depth),I(depth1),Symbol(sigmoid),
         T(meanlntau),T(varlntau),T(doflntau),T(multiplier_stdtau),T(varmu),T(dofmu),Symbol(priortype),T(max_tau_smooth),I(min_unique),mixed_dc_sharp,force_sharp_splits,force_smooth_splits,exclude_features,cat_features,cat_features_extended,cat_dictionary,cat_values,cat_globalstats,I(cat_representation_dimension),T(n0_cat),T(mean_encoding_penalization),Bool(delete_missing),mask_missing,missing_features,info_date,T(sparsity_penalization),p0,sharevs,refine_obs_from_vs,finalβ_obs_from_vs,
-        I(n_refineOptim),T(subsampleshare_columns),preliminaryvs,n_preliminaryvs,T(fsecondvs),T(target_ratio_preliminaryvs),T(min_fraction_preliminaryvs),Symbol(sparsevs),T(frequency_update),
+        I(n_refineOptim),T(subsampleshare_columns),Symbol(sparsevs),T(frequency_update),
         I(number_best_features),best_features,I(mugridpoints),I(taugridpoints),T(xtolOptim),Symbol(method_refineOptim),I(ntrees),T(theta),T(loglikdivide),I(overlap),T(multiply_pb),T(varGb),I(ncores),I(seed_datacv),I(seed_subsampling),newton_gaussian_approx,
         I(newton_max_steps),I(newton_max_steps_final),T(newton_tol),T(newton_tol_final),I(newton_max_steps_refineOptim),linesearch)
 

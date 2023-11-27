@@ -703,43 +703,17 @@ end
 #       future = Distributed.@sapwn myfunction()
 #       outputarray[i,:] = fetch(future)
 #
-# outputarray is Matrix{T}(undef,p,4) #  [loss, τ, μ, m ]  p, not p_new
+# outputarray is Matrix{T}(undef,p,4) #  [loss, τ, μ, m ]  p, not length(ps)
 function loopfeatures_spawn(outputarray,n,p,ps,y,w,gammafit_ensemble,r,h,G0,x,ifit,infeatures,fi,μgrid,Info_x,τgrid,param,ntree,allow_preliminaryvs)
 
     T = param.T
-    p_new = length(ps)
     outputarray[:,1] = fill(T(Inf),p)   #                   p, not p_new (if p>p_new, some will be Inf)
-    psecondvs = max(2,Int(ceil(p.*param.fsecondvs)))
 
-    speed_up_pvs = speedup_preliminarvys(param,n,ps,psecondvs)
-    
-    # optional first-stage, preliminary variable selection on a row sub-sample. Requires n>=50k and speed-gains>2 and p>3*ncores
-    if allow_preliminaryvs && param.preliminaryvs !== :Off && speed_up_pvs>2 && n>=50_000 && p_new>=3*nprocs()
-
-        ssi         = randperm(Random.MersenneTwister(param.seed_subsampling+2*ntree),n)[1:param.n_preliminaryvs]  # subs-sample, no reimmission
-        ys=y[ssi];ws=w[ssi];gammafit_ensembles=gammafit_ensemble[ssi];rs=r[ssi];G0s=G0[ssi,:];
-        xs = SharedMatrixErrorRobust(x[ssi,:],param)      # NB: could be smarter, taking only columns I need to avoid large copies.
-        length(h)==1 ? hs=h : hs=h[ssi]
-
-        @sync for i in ps
-            @async begin # use @async to create a task that will be scheduled to run on any available worker process
-                if Info_x[i].exclude==false  && Info_x[i].n_unique>1
-                    t   = (y=ys,w=ws,gammafit_ensemble=gammafit_ensembles,r=rs,h=hs,G0=G0s,xi=xs[:,i],infeatures=infeatures,fi=fi,info_i=Info_x[i],μgridi=μgrid[i],τgrid=τgrid,param=param)
-                    future = Distributed.@spawn add_depth(t)
-                    outputarray[i,:] = fetch(future)
-                end
-            end
-        end
-
-        ps = sortperm(outputarray[:,1])[1:psecondvs]    # redefine ps
-        outputarray[:,1] = fill(T(Inf),p)
-
-    elseif param.subsampleshare_columns < 1
+    if param.subsampleshare_columns < 1
         psmall = convert(Int64,round(p*param.subsampleshare_columns))
         ps     = ps[randperm(Random.MersenneTwister(param.seed_subsampling+2*ntree),p)[1:psmall]]                  # subs-sample, no reimmission
     end
 
-    # (second stage) variable selection.
     @sync for i in ps        
         @async begin # use @async to create a task that will be scheduled to run on any available worker process
             if Info_x[i].exclude==false  && Info_x[i].n_unique>1
@@ -750,8 +724,6 @@ function loopfeatures_spawn(outputarray,n,p,ps,y,w,gammafit_ensemble,r,h,G0,x,if
         end
     end
 
-    calibrate_n_preliminaryvs!(param,outputarray,psecondvs,n,y,gammafit_ensemble,w)   # done only in first iteration, if param.preliminaryvs=:On
-
     return outputarray
 end     
 
@@ -761,31 +733,9 @@ end
 function loopfeatures_distributed(outputarray,n,p,ps,y,w,gammafit_ensemble,r,h,G0,x,ifit,infeatures,fi,μgrid,Info_x,τgrid,param,ntree,allow_preliminaryvs)
 
     T = param.T
-    p_new = length(ps)
     outputarray[:,1] = fill(T(Inf),p)   #                   p, not p_new (if p>p_new, some will be Inf)
-    psecondvs = max(2,Int(ceil(p.*param.fsecondvs)))
 
-    speed_up_pvs = speedup_preliminarvys(param,n,ps,psecondvs)
-
-    # optional first-stage, preliminary variable selection on a row sub-sample. Requires n>=50k and speed-gains>2 and p>3*ncores
-    if allow_preliminaryvs && param.preliminaryvs !== :Off && speed_up_pvs>2 && n>=50_000 && p_new>=3*nprocs()
-
-        ssi = randperm(Random.MersenneTwister(param.seed_subsampling+2*ntree),n)[1:param.n_preliminaryvs]  # subs-sample, no reimmission
-        ys=y[ssi];ws=w[ssi];gammafit_ensembles=gammafit_ensemble[ssi];rs=r[ssi];G0s=G0[ssi,:];
-        xs = SharedMatrixErrorRobust(x[ssi,:],param)      # NB: could be smarter, taking only columns I need to avoid large copies.
-        length(h)==1 ? hs=h : hs=h[ssi]
-
-        @sync @distributed for i in ps
-            if Info_x[i].exclude==false  && Info_x[i].n_unique>1
-                t   = (y=ys,w=ws,gammafit_ensemble=gammafit_ensembles,r=rs,h=hs,G0=G0s,xi=xs[:,i],infeatures=infeatures,fi=fi,info_i=Info_x[i],μgridi=μgrid[i],τgrid=τgrid,param=param)
-                outputarray[i,:] = add_depth(t)     # [loss, τ, μ, m ]
-            end
-        end
-
-        ps = sortperm(outputarray[:,1])[1:psecondvs]    # redefine ps
-        outputarray[:,1] = fill(T(Inf),p)
-
-    elseif param.subsampleshare_columns < 1
+    if param.subsampleshare_columns < 1
         psmall = convert(Int64,round(p*param.subsampleshare_columns))
         ps     = ps[randperm(Random.MersenneTwister(param.seed_subsampling+2*ntree),p)[1:psmall]]                  # subs-sample, no reimmission
     end
@@ -800,62 +750,7 @@ function loopfeatures_distributed(outputarray,n,p,ps,y,w,gammafit_ensemble,r,h,G
   
     end
 
-    calibrate_n_preliminaryvs!(param,outputarray,psecondvs,n,y,gammafit_ensemble,w)   # done only in first iteration, if param.preliminaryvs=:On
-
     return Array(outputarray)   # convert SharedArray to Array
-
-end
-
-
-
-# Rough estimate of the speed-up from preliminary variable selection, assuming n and n_preliminaryvs are both fairly large, say > 10k.
-# At lower values, the speed-up will be smaller. Preliminaryvs should probably require n>50k to be worth it.
-function speedup_preliminarvys(param,n,ps,psecondvs)
-
-    if typeof(param.n_preliminaryvs) <: Int
-        p = length(ps)
-        n = n*param.sharevs      
-        cost_full_sample   = n*p
-        cost_preliminaryvs = param.n_preliminaryvs*p + n*psecondvs 
-
-        return cost_full_sample/cost_preliminaryvs
-    
-    else 
-
-        return 0
-
-    end
-
-end      
-
-# rough calibration of n_preliminaryvs on the first split of the first tree. On the full sample, computes the difference in loss between the best feature and 
-# the psecondvs-th feature, and a rough estimate of the variance of this difference. Then computes the sample size that, in expectation, makes the difference
-# (computed on the subsample) K times larger than the stde.  
-function calibrate_n_preliminaryvs!(param,outputarray,psecondvs,n,y,gammafit_ensemble,w)
-
-    if param.preliminaryvs==:Off || typeof(param.n_preliminaryvs) <: Int   # n_preliminaryvs already provided by user of computed in previous iterations
-        return
-    end
-
-    K     = param.target_ratio_preliminaryvs 
-    min_α = param.min_fraction_preliminaryvs
-
-    ps = sortperm(outputarray[:,1]) 
-    loss_best = outputarray[ps[1],1]
-    loss_last = outputarray[ps[psecondvs],1]
- 
-    ll  = loglik_vector(param.loss,param,y,gammafit_ensemble)   
-    
-    Δ  = (loss_best - loss_last)/sum(w)                    # loss = sum(ll.*w)/loglikdivide*mean(w)  + priors
-    wm = w/mean(w) 
-    𝚺  = 2*(var(ll.*wm)/n)/(param.loglikdivide^2)      # 2 because I want var(Δ)
-    
-    α = (K*sqrt(𝚺)/Δ)^2
-
-    α = min(α,10)   # In case of errors causing Inf 
-    α = max(min_α,α) 
-
-    param.n_preliminaryvs = Int(round(α*n))
 
 end
 
@@ -1103,7 +998,7 @@ function fit_one_tree_inner(y::AbstractVector{T},w,SMARTtrees::SMARTboostTrees,r
 
     for depth in 1:maxdepth
 
-        # variable selection, optionally including preliminaryvs, and optionally using a random sub-sample of the sample
+        # variable selection, optionally using a random sub-sample of the sample
         if length(ssi) == n
             outputarray = loopfeatures(y,w,gammafit_ensemble,r,h,G0,x,ifit,infeatures,fi,μgrid,Info_x,τgrid,param,ntree)  # loops over all variables
         else            # Variable selection using a random sub-set of the sample.
