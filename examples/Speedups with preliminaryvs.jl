@@ -42,7 +42,7 @@ using Random,Statistics
 Random.seed!(123)
 
 # Options for data generation 
-n         = 100_000    # sample size 
+n         = 200_000    # sample size 
 p         = 100        # number of features 
 stde      = 1            
 
@@ -50,12 +50,13 @@ stde      = 1
 # :fast and :fastest only fit one model at default parameters, while :compromise and :accurate perform
 # automatic hyperparameter tuning. 
 
-modality         = :fast   # :accurate, :compromise (default), :fast, :fastest
+modality         = :fastest   # :accurate, :compromise (default), :fast, :fastest
 
 preliminaryvs    = :Off     # :On or :Off
 n_preliminaryvs  = :Auto   # :Auto or integer, e.g. 20_000
 
-sparsevs         = :Off    # preliminaryvs and sparsevs can be used separately or together
+n_vs             = :Auto
+sparsevs         = :On    # preliminaryvs and sparsevs can be used separately or together
 
 verbose          = :Off
 warnings         = :On

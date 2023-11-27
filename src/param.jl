@@ -88,7 +88,7 @@ mutable struct SMARTparam{T<:AbstractFloat, I<:Int}
     fsecondvs::T           # fraction of features selected in preliminary phase, e.g. 0.1, and taken to the second phase of variable selection
     target_ratio_preliminaryvs::T    # Target for ratio Δ/std(Δ) in preliminaryvs 
     min_fraction_preliminaryvs::T  # minimum fraction of observations to use in preliminary variable selection. Ensures asymptotically consistent.
-    sparsevs::Symbol           # :On, :Off, :Auto (not implemented yet)
+    sparsevs::Symbol           # :On, :Off, :Auto 
     frequency_update::T 
     number_best_features::I 
     best_features::Vector{I}
@@ -140,6 +140,7 @@ Parameters for SMARTboost
 
 # Inputs that are more likely to be modified by user (all inputs are keywords with default values)
 - `loss:Symbol`             [:L2] :L2, :logistic, :Huber, :t
+
 - `modality:Symbol`         [:compromise] Options are: :accurate, :compromise, :fast, :fastest.
                             :fast runs only one model (only cv number of trees) at values defined in param = SMARTparam(). 
                             :fastest runs only one model, setting nfold=1 and nofullsample=true (does not re-estimate on the full sample after cv).
@@ -147,10 +148,11 @@ Parameters for SMARTboost
                             For loss=:logistic, :fast and :fastest also use the quadratic approximation to the loss for large samples.
                             :accurate cross-validates several models (see SMARTfit() for more info).
                             It is roughly ten times slower than :fast.
-                            :compromise also cross-validates several models. It is roughly 4 times slower than :fast, and 10 time slower than :fastest,
-                            and 30-50% faster than :accurate.                            
+                            :compromise also cross-validates several models. It is roughly 5-6 times slower than :fast, and 10 time slower than :fastest,
+                                        
 - `priortype`               [:hybrid] :hybrid encourages smoothness, but allows both smooth and sharp splits, :smooth forces smooth splits, :sharp forces sharp splits, :agnostic has no prior on smoothness.
                             Set to :smooth if you want to force derivatives to be defined everywhere. 
+
 - `randomizecv::Bool`       [false] default is purged-cv (see paper); a time series or panel structure is automatically detected (see SMARTdata) if
                             if a date column is provided. Set to true for standard cv.
 - `nfold::Int`              [4] n in n-fold cv. Set nfold = 1 for a single validation set (by default the last param.sharevalidation share of the sample).
@@ -165,19 +167,19 @@ Parameters for SMARTboost
 
 - `loglikdivide::Float`     [1.0] with time series panel data, SMARTloglikdivide() can be used to calibrate this parameter, which affects the strength of the priors (penalizations.)
 - `overlap::Int`            [0] number of overlaps in time series and panels. Typically overlap = h-1, where y(t) = Y(t+h)-Y(t). Used for purged-CV.
+
 - `verbose::Symbol`         [:Off] verbosity :On or :Off
 - `warnings::Symbol`        [:On] or :Off
+
 - 'weights`                 NOTE: weights for weighted likelihood are set in SMARTdata, not in SMARTparam.
 - 'cat_features`            [] vector of indices of categorical features, e.g. [2,5], or vector of names in DataFrame,
                             e.g. [:wage,:age] or ["wage","age"]. If empty, categoricals are automatically detected.
                             Set cat_features=[0] to override the automatic detection and force no categorical feature.  
+
 - `lambda::Float`           [0.1 or 0.2] Learning rate. 0.10 for (nearly) best performance. 0.2 is a good compromise. Default is 0.1 of modality=:accruate, and 0.2 otherwise.
 - `depth::Int`              [4] tree depth. Unless modality = :fast or :fastest, this is over-written as depth is cross-validated. See SMARTfit() for more options.
-- `preliminaryvs`           [:On] :On for two-stage feature selection, faster when and/or n p are large, possibly at the cost of some loss of fit.
-- `n_vs::Int`               [250_000]  MAXIMUM number of observations to use in variable selection. Can give speed-ups with large n p at modest cost in terms of fit.
-- `n_refineOptim::Int`      [10^5] MAXIMUM number of observations to use fit μ and τ (split point and smoothness).
-                            Can provide speed-ups with very large n at modest cost in terms of fit.
-
+- `sparsity_penalization`   [0.3] positive numbers encourage sparsity. The range [0.0-1.5] should cover most scenarios. 
+                            Automatically cv in modality=:compromise and :accurate. Increase to obtain a more parsimonious model.
 
 # Inputs that may sometimes be modified by user (all inputs are keyword with default values)
 
@@ -188,26 +190,16 @@ Parameters for SMARTboost
 - `stderulestop::Float`     [0.01] A positive number stops iterations while the loss is still decreasing. This results in faster computations at minimal loss of fit.
 - `delete_missing`          [false] true to delete rows with missing values in any feature, false to handle missing internally (recommended).
 - `theta`                   [1]  numbers larger than 1 imply tighter penalization on β (final leaf values) compared to default.
-- `meanlntau::Float`        [0.0] prior mean of log(τ). Set to higher numbers to suggest less smooth functions.
+- `meanlntau::Float`        [0.0] prior mean of log(τ). Set to higher numbers to suggest less smooth functions.        
 - `mugridpoints::Int`       [10] number of points at which to evaluate μ during variable selection. 5 is sufficient on simulated data with normal or uniform distributions, but actual data may benefit from more (due to with highly non-Gaussian features).
                             For extremely complex and nonlinear features, more than 10 may be needed.        
-- `n_preliminaryvs::Int`    [:Auto]  MAXIMUM number of observations to use in preliminary variable selection. If :Auto and preliminaryvs=:On, it is automatically calibrated.        
 - `force_sharp_splits`      [] optionally, a p vector of Bool, with j-th value set to true if the j-th feature is forced to enter with a sharp split.
 - `force_smooth_splits`     [] optionally, a p vector of Bool, with j-th value set to true if the j-th feature is forced to enter with a smooth split (high values of τ not allowed).
 - `cat_representation_dimension`  [3] 1 for mean encoding, 2 adds frequency, 3 adds variance.
-- `sparsity_penalization`   [0.3] positive numbers encourage sparsity. The range [0.0-1.5] should cover most scenarios. 
-
-
-# Inputs that should not require changing by user except in special cases
 - `losscv`                  [:default] loss function for cross-validation (:mse,:mae,:logistic,:sign). 
-- `sigmoid::Symbol`         [:sigmoidsqrt] :sigmoidlogistic is more familiar but slower than :sigmoidlogistic
-- `taugridpoints::Int`      [3]  number of points at which to evaluate τ during variable selection. 1-5 are supported.
-- `xtolOptim::Float`        [0.02] tolerance in the optimization. 0.02 seems sufficiently low
-- `doflntau::Float`         [5] degrees of freedom for prior student-t distribution of log(τ). Overwritten to 100 if priortype=:smooth
-- `varmu::Float`            [4.0] tighter numbers encourage splits closer to the mean of each feature
-- `dofmu::Float`            [10.0]
-- `fsecondvs`               [0.1] fraction of features taken to second-stage variable selection, if preliminaryvs=:On 
-- `T::Type`                 [Float32] Float32 is faster than Float64. 
+- `n_vs::Int`               [:Auto] :Auto is max(100_000,0.5*n), or integer, MAXIMUM number of observations to use in variable selection. Can give speed-ups with large n p at no or modest cost in terms of fit.
+- `n_refineOptim::Int`      [10^6] MAXIMUM number of observations to use fit μ and τ (split point and smoothness).
+                            Can provide speed-ups with very large n at modest cost in terms of fit.
 
 # Additional inputs can be set in SMARTfit(), but keeping the defaults is generally encouraged.
 
@@ -274,14 +266,15 @@ function SMARTparam(;
     sharevs  = 1.0,        # if <1, adds noise to vs, in vs phase takes a random subset of n_vs  = minimum([param.n_vs,I(round(n*param.sharevs))])     
     refine_obs_from_vs = false,  # true to add randomization to (μ,τ), assuming sharevs<1
     finalβ_obs_from_vs  = false,  # true to add randomization to final β
-    n_vs = 10_000_000,       # Integer, MAXIMUM number of observations to use in variable selection. If subsamplevs<n, random draw at each tree
+    n_vs = :Auto,          # :Auto or Integer, MAXIMUM number of observations to use in variable selection. If subsamplevs<n, random draw at each tree
+                           # If :Auto, n_vs = max(100_000,Int(round(0.5*n))). The idea is that, at high n, should introduce little randomness.        
                             # All observations then used to estimate beta|i,mu,tau, unless the next option is true. ! Works poorly in my simulations !
     n_refineOptim = 10_000_000,   # Subsample size fore refineOptim. beta is always computed on the full sample.
     subsampleshare_columns = 1.0,  # if <1.0, only a random share of features is used at each split (re-drawn at each split)
-    preliminaryvs = :On,         # :On, :Off. :On is relevant only if n>subsamplepreliminaryvs
-    n_preliminaryvs = :Auto,    # MAXIMUM number of observations to use in preliminary variable selection.
+    preliminaryvs = :Off,       # :On, :Off. :On is relevant only if n>subsamplepreliminaryvs
+    n_preliminaryvs = 20_000,   # :Auto or Integer. MAXIMUM number of observations to use in preliminary variable selection. :Auto untested
     fsecondvs = 0.1,            # fraction of features taken to second stage; relevant only if preliminaryvs = :On. 
-    target_ratio_preliminaryvs = 10,    # Target for ratio Δ/std(Δ) in preliminaryvs 
+    target_ratio_preliminaryvs = 3,    # Target for ratio Δ/std(Δ) in preliminaryvs. FACENDA: calibrate.  
     min_fraction_preliminaryvs = 0.05,  # minimum fraction of observations to use in preliminary variable selection. Ensures asymptotically consistent.
     sparsevs = :Auto,           # :Auto switches it :On if sparsity_penalization>0, else :Off 
     frequency_update = 1.0,       # when sparsevs, 1 for Fibonacci, 2 to update at 2*Fibonacci etc...               
@@ -367,7 +360,7 @@ function SMARTparam(;
      
 
     param = SMARTparam(T,I,loss,losscv,Symbol(modality),T.(coeff),coeff_updated,Symbol(verbose),Symbol(warnings),I(num_warnings),randomizecv,I(nfold),nofullsample,T(sharevalidation),indtrain_a,indtest_a,T(stderulestop),T(lambda),I(depth),I(depth1),Symbol(sigmoid),
-        T(meanlntau),T(varlntau),T(doflntau),T(multiplier_stdtau),T(varmu),T(dofmu),Symbol(priortype),T(max_tau_smooth),I(min_unique),mixed_dc_sharp,force_sharp_splits,force_smooth_splits,exclude_features,cat_features,cat_features_extended,cat_dictionary,cat_values,cat_globalstats,I(cat_representation_dimension),T(n0_cat),T(mean_encoding_penalization),Bool(delete_missing),mask_missing,missing_features,info_date,T(sparsity_penalization),p0,T(sharevs),refine_obs_from_vs,finalβ_obs_from_vs,I(n_vs),
+        T(meanlntau),T(varlntau),T(doflntau),T(multiplier_stdtau),T(varmu),T(dofmu),Symbol(priortype),T(max_tau_smooth),I(min_unique),mixed_dc_sharp,force_sharp_splits,force_smooth_splits,exclude_features,cat_features,cat_features_extended,cat_dictionary,cat_values,cat_globalstats,I(cat_representation_dimension),T(n0_cat),T(mean_encoding_penalization),Bool(delete_missing),mask_missing,missing_features,info_date,T(sparsity_penalization),p0,T(sharevs),refine_obs_from_vs,finalβ_obs_from_vs,n_vs,
         I(n_refineOptim),T(subsampleshare_columns),preliminaryvs,n_preliminaryvs,T(fsecondvs),T(target_ratio_preliminaryvs),T(min_fraction_preliminaryvs),Symbol(sparsevs),T(frequency_update),
         I(number_best_features),best_features,I(mugridpoints),I(taugridpoints),T(xtolOptim),Symbol(method_refineOptim),I(ntrees),T(theta),T(loglikdivide),I(overlap),T(multiply_pb),T(varGb),I(ncores),I(seed_datacv),I(seed_subsampling),newton_gaussian_approx,
         I(newton_max_steps),I(newton_max_steps_final),T(newton_tol),T(newton_tol_final),I(newton_max_steps_refineOptim),linesearch)
@@ -392,6 +385,10 @@ function param_given_data!(param::SMARTparam,data::SMARTdata)
 
     if param.sparsevs==:Auto
         param.sparsity_penalization>0 ? param.sparsevs=:On : param.sparsevs=:Off
+    end 
+
+    if param.n_vs==:Auto
+        param.n_vs = max(100_000,Int(round(0.4*n)))   # here n is for training+valiation sample, hence 0.4 instead of 0.5
     end 
 
 end         
