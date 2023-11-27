@@ -177,7 +177,7 @@ Parameters for SMARTboost
 
 - `ntrees::Int`             [4000/depth] Maximum number of trees. SMARTfit will automatically stop when cv loss stops decreasing.
 - `sharevs`                 [:Auto] row subsampling in variable selection phase (only to choose feature on which to split.)
-                            :Auto is 1 if n<250_000, else 0.5.         
+                            :Auto sets sharevs so that the subsample size is proportional to 50k*sqrt(n/50k)         
 - `subsampleshare_columns`  [1.0] column subsampling.
 - `min_unique`              [:default] sharp splits are imposed on features with less than min_unique values (default is 5 for modality=:compromise or :accurate, else 10)
 - `mixed_dc_sharp`          [false] true to force sharp splits on discrete and mixed discrete-continuous features (defined as having over 20% obs on a single value)
@@ -368,7 +368,10 @@ function param_given_data!(param::SMARTparam,data::SMARTdata)
     end 
 
     if param.sharevs==:Auto
-        n<250_000 ? param.sharevs=T(1) : param.sharevs=T(0.5)   # n here is train+sample. 
+        n = 0.75*n        # assuming n i train+sample
+        α = T(min(1,sqrt(50_000/n)))
+        α>0.75 ? α=T(1) : nothing
+        param.sharevs = α
     end 
 
 end         
