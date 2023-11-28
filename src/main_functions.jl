@@ -984,7 +984,7 @@ function SMARTfit( data::SMARTdata, param::SMARTparam; cv_grid=[],
     avglntau,varlntau,mselntau,postprob2 = tau_info(SMARTtrees)
     ratio_actual_max = tight_sparsevs(ntrees,SMARTtrees.param) # ratio of actual vs max number of candidate features
 
-    for (i,SMARTtree) in enumerate(SMARTtrees_a)   # done to trigger warning if sparsevs seems too tight in ANY of the model
+    for (i,SMARTtrees) in enumerate(SMARTtrees_a)   # done to trigger warning if sparsevs seems too tight in ANY of the model
         if lossgrid[i]<Inf
             aux = tight_sparsevs(treesize[i],SMARTtrees.param)
         end 
