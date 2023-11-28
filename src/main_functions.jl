@@ -20,7 +20,7 @@
 #  SMARTpartialplot        partial dependence plots (keeping all other features fixed, not integrating out)
 #  SMARTmarginaleffect     provisional! Numerical computation of marginal effects.
 #  SMARToutput             collects fitted parameters in matrices
-#
+#  tight_sparsevs          warns if sparsevs seems to compromise fit 
 
 "
     SMARTinfo()
@@ -584,6 +584,7 @@ Finally, all the estimated models considered are stacked, with weights chosen to
 - `tau`                           (ntrees,depth) matrix of sigmoid parameters for best model
 - `fi2`                           (ntrees,depth) matrix of feature importance, increase in R2 at each split, for best model
 - `w`                             length(cv_grid) vector of stacked weights
+- `ratio_actual_max`              ratio of actual number of candidate features over potential maximum. Relevant if sparsevs=:On: indicates sparsevs should be switched off if too high (e.g. higher than 0.5).
 - `T`                             type for floating numbers
 - `problems`                      true if there were computational problems in any of the models: NaN loss or loss jumping up
 
@@ -978,11 +979,19 @@ function SMARTfit( data::SMARTdata, param::SMARTparam; cv_grid=[],
         w,lossw = SMARTmodelweights(lossgrid,y_test_a,indtest_a,gammafit_test_a,data,param0)
     end
 
+    # provide some additional output
     i,μ,τ,fi2=SMARToutput(SMARTtrees)  # on the best value
     avglntau,varlntau,mselntau,postprob2 = tau_info(SMARTtrees)
-  
+    ratio_actual_max = tight_sparsevs(ntrees,SMARTtrees.param) # ratio of actual vs max number of candidate features
+
+    for (i,SMARTtree) in enumerate(SMARTtrees_a)   # done to trigger warning if sparsevs seems too tight in ANY of the model
+        if lossgrid[i]<Inf
+            aux = tight_sparsevs(treesize[i],SMARTtrees.param)
+        end 
+    end
+
     return ( indtest=indtest_a,bestvalue=bestvalue,bestparam=SMARTtrees.param,ntrees=ntrees,loss=loss,meanloss=meanloss,stdeloss=stdeloss,lossgrid=lossgrid,SMARTtrees=SMARTtrees,
-    i=i,mu=μ,tau=τ,fi2=fi2,avglntau=avglntau,SMARTtrees_a=SMARTtrees_a,w=w,lossw=lossw,T=T,problems=(problems_somewhere>0))
+    i=i,mu=μ,tau=τ,fi2=fi2,avglntau=avglntau,SMARTtrees_a=SMARTtrees_a,w=w,lossw=lossw,T=T,problems=(problems_somewhere>0),ratio_actual_max=ratio_actual_max)
 
 end
 
@@ -1317,5 +1326,24 @@ function SMARToutput(SMARTtrees::SMARTboostTrees)
 end
 
 
+# compute actual number of elements in param.best_features and compares it with the theoretical max,
+# issuing a warning if the ratio is too high.
+function tight_sparsevs(ntrees,param)       #ntrees is the number of trees in the final model
+
+    fib_sequence = fibonacci(20,param.lambda,param.frequency_update)
+    fib_sequence = fib_sequence[fib_sequence .<= ntrees]
+
+    max_number       = length(fib_sequence)*param.depth*param.number_best_features
+    actual_number    = length(param.best_features)
+    ratio_actual_max = actual_number/max_number
+
+    if param.warnings==:On && param.sparsevs==:On && ratio_actual_max > 0.5
+        @warn "WARNING: with sparsevs=:On, the number of candidate features is $(round(100*ratio_actual_max,digits=1))% of the theoretical max, which suggests that sparsevs may be placing a constraint on feature selection,
+        potentially leading to a loss of accuracy. Consider setting sparsevs=:Off, or increasing number_best_features (default 10) to increase the number of candidate features. "
+    end
+
+    return ratio_actual_max
+
+end
 
 

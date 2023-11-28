@@ -7,17 +7,20 @@ Short description:
 
 Extensive description: 
 
-Sparsevs can be used to speed up SMARTboost with large number of features.
+Sparsevs can be used to speed up SMARTboost with large number of features (p>>100).
 The idea is to to store, at predetermined intervals (a Fibonacci sequence in default), the 
 ten (or other number: param.number_best_features) features that had the lowest loss in each
-split of the treed. For example, for a tree of depth 4, as many as 40 features will be stored
-in this group of best_features. In the next tree, only the features in this group will be
+split of the treed. For example, for a tree of depth 4, between 10 and 40 features will be stored
+in this group of best_features at the first update (10 if the same features have the lowest loss
+at each split). In the next tree, only the features in this group will be
 considered as candidates for splitting, saving time for large p. At the next predetermined
 update, the best features are added to this group.
 Since features never leave the group of best_features, this group can get large if the environment
 is dense, and will stay small if the environment is sparse. Large speed-ups gains are therefore
 not guaranteed, but the forecasting accuracy should not be strongly affected except in extreme
-cases where several hundred features are needed to accurately fit the data. 
+cases where several hundred features are needed to accurately fit the data. To prevent loss of fit,
+an automatic warning is issued if the size of the group of best_features is over 50% the largest
+theoretical size (ratio_actual_max>0.5).
 
 paolo.giordani@bi.no
 """
@@ -33,21 +36,24 @@ using LightGBM
 
 # USER'S OPTIONS 
 
-Random.seed!(123)
+Random.seed!(12345)
 
 # Options for data generation 
-n         = 100_000
-p         = 2000        # number of features 
-dummies   = false       # true if x, x_test are 0-1 (faster).
+n         = 1_000
+p         = 1_000        # number of features 
+dummies   = false        # true if x, x_test are 0-1 (faster).
 stde      = 1            
 
 # Options for SMARTboost: modality is the key parameter guiding hyperparameter tuning and learning rate.
 # :fast and :fastest only fit one model at default parameters, while :compromise and :accurate perform
 # automatic hyperparameter tuning. 
 
-modality         = :compromise  # :accurate, :compromise (default), :fast, :fastest
+sparsevs         = :On
+modality         = :compromise   # :accurate, :compromise (default), :fast, :fastest
 
-frequency_update = 1     # Integer. Default 1. >1 to update less frequently (larger speed gains, less precision)
+number_best_features = 10  # Default 10. <10 to consider fewer features in each split (larger speed gains, less precision)
+frequency_update     = 1       # Default 1. >1 to update less frequently (larger speed gains, less precision)
+
 nfold            = 1     # 1 for fair comparison with LightGBM
 nofullsample     = true  # true for fair comparison with LightGBM
 
@@ -66,8 +72,8 @@ p_star    = 10       # number of relevant features
 β = randn(p_star)
 Linear_function_Gaussian(x)   = x[:,1:length(β)]*β
 
-f_dgp     = Friedman_function     
-#f_dgp    = Linear_function_Gaussian
+#f_dgp     = Friedman_function     
+f_dgp    = Linear_function_Gaussian
 
 # END USER'S INPUTS 
 
@@ -116,7 +122,8 @@ yf_gbm = LightGBM.predict(estimator,x_test)
 
 # SMARtboost
 
-param   = SMARTparam(modality=modality,ntrees=ntrees,sparsevs=sparsevs,frequency_update=frequency_update,
+param   = SMARTparam(modality=modality,ntrees=ntrees,sparsevs=sparsevs,
+                    frequency_update=frequency_update,number_best_features=number_best_features,
                     nfold=nfold,verbose=:Off,warnings=:On)
 
 data  = SMARTdata(y,x,param)
@@ -138,4 +145,3 @@ if param.sparsevs == :On
 else 
     @info " sparsevs is :Off. Repeat with sparsevs=:On to track speed loss and any accuracy gains. Speed gains will be smaller if many features are relevant."
 end     
-

@@ -131,6 +131,7 @@ end
 Parameters for SMARTboost
 
 # Inputs that are more likely to be modified by user (all inputs are keywords with default values)
+
 - `loss:Symbol`             [:L2] :L2, :logistic, :Huber, :t
 
 - `modality:Symbol`         [:compromise] Options are: :accurate, :compromise, :fast, :fastest.
@@ -176,9 +177,10 @@ Parameters for SMARTboost
 # Inputs that may sometimes be modified by user (all inputs are keyword with default values)
 
 - `ntrees::Int`             [4000/depth] Maximum number of trees. SMARTfit will automatically stop when cv loss stops decreasing.
-- `sharevs`                 [:Auto] row subsampling in variable selection phase (only to choose feature on which to split.)
-                            :Auto sets sharevs so that the subsample size is proportional to 50k*sqrt(n/50k)         
-- `subsampleshare_columns`  [1.0] column subsampling.
+- `sharevs`                 [1.0] row subsampling in variable selection phase (only to choose feature on which to split.)
+                            :Auto sets sharevs so that the subsample size is proportional to 50k*sqrt(n/50k).
+                            At high n, sharevs<1 speeds up computations, but can reduce accuracy, particularly in sparse setting with low SNR.         
+- `subsampleshare_columns`  [1.0] column subsampling (not recommended).
 - `min_unique`              [:default] sharp splits are imposed on features with less than min_unique values (default is 5 for modality=:compromise or :accurate, else 10)
 - `mixed_dc_sharp`          [false] true to force sharp splits on discrete and mixed discrete-continuous features (defined as having over 20% obs on a single value)
 - `stderulestop::Float`     [0.01] A positive number stops iterations while the loss is still decreasing. This results in faster computations at minimal loss of fit.
@@ -256,7 +258,7 @@ function SMARTparam(;
     info_date = (date_column=0,date_first=0,date_last=0),
     sparsity_penalization = 0.3,
     p0       = :default,
-    sharevs  = :Auto,            # if <1, adds noise to vs, in vs phase takes a random subset. :Auto is 0.5 if n>=250k     
+    sharevs  = 1.0,             # if <1, adds noise to vs, in vs phase takes a random subset. :Auto is 0.5 if n>=250k     
     refine_obs_from_vs = false,  # true to add randomization to (μ,τ), assuming sharevs<1
     finalβ_obs_from_vs  = false,  # true to add randomization to final β
     n_refineOptim = 10_000_000,   # Subsample size fore refineOptim. beta is always computed on the full sample.
@@ -314,6 +316,8 @@ function SMARTparam(;
     if eltype(cat_features) <: Real 
         cat_features = I.(cat_features)
     end
+
+    sharevs==:Auto ? nothing : sharevs=T(sharevs)
 
     # Functions on indtrain_a and indtest_a, if user provides them 
     if length(indtrain_a)>length(indtest_a)
