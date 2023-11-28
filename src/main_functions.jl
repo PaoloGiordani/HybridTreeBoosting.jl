@@ -984,9 +984,9 @@ function SMARTfit( data::SMARTdata, param::SMARTparam; cv_grid=[],
     avglntau,varlntau,mselntau,postprob2 = tau_info(SMARTtrees)
     ratio_actual_max = tight_sparsevs(ntrees,SMARTtrees.param) # ratio of actual vs max number of candidate features
 
-    for (i,SMARTtrees) in enumerate(SMARTtrees_a)   # done to trigger warning if sparsevs seems too tight in ANY of the model
+    for i in eachindex(lossgrid)   # done to trigger warning if sparsevs seems too tight in ANY of the model
         if lossgrid[i]<Inf
-            aux = tight_sparsevs(treesize[i],SMARTtrees.param)
+            aux = tight_sparsevs(treesize[i],SMARTtrees_a[i].param)
         end 
     end
 
@@ -1337,7 +1337,9 @@ function tight_sparsevs(ntrees,param)       #ntrees is the number of trees in th
     actual_number    = length(param.best_features)
     ratio_actual_max = actual_number/max_number
 
-    if param.warnings==:On && param.sparsevs==:On && ratio_actual_max > 0.5
+    param.depth==1 ? warning_threshold = 0.7 : warning_threshold = 0.5 
+
+    if param.warnings==:On && param.sparsevs==:On && ratio_actual_max > warning_threshold
         @warn "WARNING: with sparsevs=:On, the number of candidate features is $(round(100*ratio_actual_max,digits=1))% of the theoretical max, which suggests that sparsevs may be placing a constraint on feature selection,
         potentially leading to a loss of accuracy. Consider setting sparsevs=:Off, or increasing number_best_features (default 10) to increase the number of candidate features. "
     end
