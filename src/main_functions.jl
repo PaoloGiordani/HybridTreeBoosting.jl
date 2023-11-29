@@ -1249,6 +1249,7 @@ end
 # expects x to be standardized, with categoricals replaced by target encoding values
 function SMARTmarginaleffect(x::AbstractArray,SMARTtrees::SMARTboostTrees,features,predict;other_xs::Vector =[],q1st=0.01,npoints = 50,epsilon=0.01)
 
+    param = SMARTtrees.param
     I = param.I
     T = SMARTtrees.param.T
     features = I.(features)
