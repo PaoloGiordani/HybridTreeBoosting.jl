@@ -20,7 +20,7 @@ is dense, and will stay small if the environment is sparse. Large speed-ups gain
 not guaranteed, but the forecasting accuracy should not be strongly affected except in extreme
 cases where several hundred features are needed to accurately fit the data. To prevent loss of fit,
 an automatic warning is issued if the size of the group of best_features is over 50% the largest
-theoretical size (ratio_actual_max>0.5).
+theoretical size (output.ratio_actual_max>0.5).
 
 paolo.giordani@bi.no
 """
@@ -35,8 +35,7 @@ using Random,Statistics
 using LightGBM
 
 # USER'S OPTIONS 
-
-Random.seed!(12345)
+Random.seed!(123)
 
 # Options for data generation 
 n         = 1_000
