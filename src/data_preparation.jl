@@ -83,8 +83,12 @@ function convert_dates_to_real!(x::AbstractDataFrame,param::SMARTparam;predict=f
 
         i = param.info_date.date_column
 
-        if i>0
-            x[!,i] = (x[!,i] - param.info_date.date_first)/(param.info_date.date_last - param.info_date.date_first)  # now a vector of floats between 0 and 1 
+        if i>0 
+            if eltype(x[:,i])==Date 
+                x[!,i] = (x[!,i] .- param.info_date.date_first)/(param.info_date.date_last - param.info_date.date_first)  # now a vector of floats between 0 and 1
+            elseif minimum(x[!,i]) != 0 || maximum(x[!,i]) != 1
+                @warn "date column is a Float but not in [0,1]"
+            end
         end    
 
     end
