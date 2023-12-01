@@ -558,7 +558,7 @@ function gridmatrixμ(data::SMARTdata,param::SMARTparam,meanx,stdx;maxn::Int = 1
     mugrid = Vector{Vector{T}}(undef,p)
     for i in 1:p
         m = sort(unique(mugrid0[:,i]))
-        if length(m)==1
+        if length(m) < npoints  # can only happens if number(unique)<npoints; then we don't want to interpolate and lose one point
             mugrid[i]=m
         else
             m_int = Vector{T}(undef,length(m)-1)

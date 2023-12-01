@@ -185,9 +185,13 @@ end
 function logpdft(x::T,m::T,s::T,v::T) where T<:AbstractFloat
 
     z       = ( x - m)/s
-    logpdfz = T(-0.5723649429247001)+SpecialFunctions.loggamma((v+T(1))/T(2))-SpecialFunctions.loggamma(v/T(2))-T(0.5)*log(v)-T(0.5)*(T(1)+v)*log(T(1)+(z^2)/v)
+    logpdfz = -0.5*(1+v)*log(1+(z^2)/v)
+ 
+   # In other settings, if I need terms that do not depende on z:  
+   # logpdfz = T(-0.5723649429247001)+SpecialFunctions.loggamma((v+T(1))/T(2))-SpecialFunctions.loggamma(v/T(2))-T(0.5)*log(v)-T(0.5)*(T(1)+v)*log(T(1)+(z^2)/v)
+   # return logpdfz - log(s)
 
-    return logpdfz - log(s)
+     return T(logpdfz) 
 
 end
 
@@ -198,7 +202,7 @@ function lnpμ(μ0::Union{T,Vector{T}},varmu::T,dofmu::T;μmax =T(5)) where T<:A
 
     μ = @. T( (abs(μ0)<=μmax)*μ0 +  (abs(μ0)>μmax)*μmax )
     #s  = sqrt(varmu*(dofmu-T(2))/dofmu)  # to intrepret varmu as an actual variance.
-    s  = sqrt(varmu)                 # to intrepret varmu as a dispersion
+    s  = T(sqrt(varmu))                 # to intrepret varmu as a dispersion
     lnp = sum(logpdft.(μ,T(0),s,dofmu))
 
     return T(lnp)
@@ -228,24 +232,24 @@ function lnpτ(τ0::T,param::SMARTparam,info_i,d;τmax=T(100) )::T where T<:Abst
         return T(0)
     end
 
-    τ = @. T( (abs(τ0)<=τmax)*τ0 +  (τ0>τmax)*τmax )
-    stdlntau   = T(sqrt(param.varlntau))                 # to intrepret varlntau as dispersion
+    τ = @.  (abs(τ0)<=τmax)*τ0 +  (τ0>τmax)*τmax 
+    stdlntau   = sqrt(param.varlntau)                 # to intrepret varlntau as dispersion
     #depth = T( param.depth1+maximum([0.0, 0.5*(param.depth-param.depth1) ]) )  # matters only if prior is modified for d
     #stdlntau  = sqrt( (param.varlntau)*(param.doflntau-T(2))/param.doflntau )  # to intrepret varlntau as an actual variance.
 
     # Adjust prior for Kantorovic distance. This adjustment is smaller when Kantorovic distance between y and xi is not as informative, as for :logistic
     if param.loss==:L2 || param.loss==:Huber || param.loss==:quantile || param.loss==:t
-        α=T(1)
+        α=1
     elseif param.loss==:logistic
-        α=T(0.5)
+        α=0.5
     else
         @error "loss function misspelled or not implemented"
     end
 
-    β        = T(0.3)
+    β        =  0.3
     m        =  param.meanlntau + α*param.multiplier_stdtau*( -β + info_i.kd  )
 
-    lnp = sum(logpdft.(log.(τ),T(m),T(stdlntau),T(param.doflntau) ))
+    lnp = sum(logpdft.(log.(τ),T(m),T(stdlntau),param.doflntau ))
 
     # If mixture of two student-t
     # k2,prob2 = T(3),T(0.2)
@@ -343,25 +347,28 @@ end
 function logpdfpriors(β,μ,τ,m,d,p,pb,param,info_i,infeatures,fi,T)
 
     logpdfβ = -T(0.5)*( p*T(log(2π)) - p*log(pb) + pb*(β'β) )      # NB: assumes Pb is pb*I.
+    #logpdfβ = T(0)                     # leave out unless extending to a fully Bayesian setting 
 
     if info_i.dichotomous
         logpdfμ,logpdfτ,logpdfm = 0,0,0
     elseif param.priortype==:sharp
         logpdfτ = 0
         logpdfμ = lnpμ(μ,param.varmu,param.dofmu)
-        #logpdfm   = lnpμ(m,param.varmu,param.dofmu)     # prior for missing value same as for μ
-        logpdfm = T(0)
+        logpdfm = lnpμ(m,param.varmu,param.dofmu)     # prior for missing value same as for μ
     else
         logpdfμ = lnpμ(μ,param.varmu,param.dofmu)
-        logpdfτ = T(lnpτ(τ,param,info_i,d))
-        #logpdfm   = lnpμ(m,param.varmu,param.dofmu)     # prior for missing value same as for μ
-        logpdfm = T(0)
+        logpdfτ = lnpτ(τ,param,info_i,d)
+        logpdfm = lnpμ(m,param.varmu,param.dofmu)     # prior for missing value same as for μ
     end
 
     logpdfM   = lnpM(param,info_i,infeatures,fi,T)   # sparsity prior
     logpdfMTE = lnpMTE(param,info_i,T)               # penalization for mean target encoding features
 
-    return logpdfβ+logpdfμ+logpdfτ+logpdfm+logpdfM+logpdfMTE
+    if param.priortype == :disperse
+      logpdfτ,logpdfμ,logpdfm = 0,0,0
+    end   
+
+    return T(logpdfβ+logpdfμ+logpdfτ+logpdfm+logpdfM+logpdfMTE)
 
 end
 
@@ -448,7 +455,7 @@ function Δβ(GGh,Gr,d,Pb,param,n,p,T)
            while isa(err,SingularException) || isa(err,PosDefException)
             try
                   err         = "no error"
-                  Pb          = Pb*Float64(3)  # switch to Float64 if there are invertibility problems.
+                  Pb          = Pb*Float64(10)  # switch to Float64 if there are invertibility problems.
                   Δβ = T.((GGh + param.multiply_pb*param.loglikdivide*Pb )\Gr)
                 catch err
               end

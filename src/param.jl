@@ -143,7 +143,7 @@ Parameters for SMARTboost
                             It is roughly ten times slower than :fast.
                             :compromise also cross-validates several models. It is roughly 5-6 times slower than :fast, and 10 time slower than :fastest,
                                         
-- `priortype`               [:hybrid] :hybrid encourages smoothness, but allows both smooth and sharp splits, :smooth forces smooth splits, :sharp forces sharp splits, :agnostic has no prior on smoothness.
+- `priortype`               [:hybrid] :hybrid encourages smoothness, but allows both smooth and sharp splits, :smooth forces smooth splits, :sharp forces sharp splits, :disperse has no prior on smoothness.
                             Set to :smooth if you want to force derivatives to be defined everywhere. 
 
 - `randomizecv::Bool`       [false] default is purged-cv (see paper); a time series or panel structure is automatically detected (see SMARTdata) if
@@ -176,7 +176,7 @@ Parameters for SMARTboost
 
 # Inputs that may sometimes be modified by user (all inputs are keyword with default values)
 
-- `ntrees::Int`             [4000/depth] Maximum number of trees. SMARTfit will automatically stop when cv loss stops decreasing.
+- `ntrees::Int`             [2000/depth] Maximum number of trees. SMARTfit will automatically stop when cv loss stops decreasing.
 - `sharevs`                 [1.0] row subsampling in variable selection phase (only to choose feature on which to split.)
                             :Auto sets sharevs so that the subsample size is proportional to 50k*sqrt(n/50k).
                             At high n, sharevs<1 speeds up computations, but can reduce accuracy, particularly in sparse setting with low SNR.         
@@ -273,7 +273,7 @@ function SMARTparam(;
     xtolOptim = 0.02,  # tolerance in the optimization e.g. 0.02 (measured in dμ). It is automatically reduced if tau is large 
     method_refineOptim = :pmap, #  :pmap, :distributed 
     # miscel
-    ntrees = Int(round(4000/depth)), # number of trees
+    ntrees = Int(round(2000/depth)), # number of trees
     theta = 1.0,   # numbers larger than 1 imply tighter penalization on β compared to default. 
     loglikdivide = 1.0,   # the log-likelhood is divided by this scalar. Used to improve inference when observations are correlated.
     overlap = 0,
@@ -389,8 +389,6 @@ function param_constraints!(param::SMARTparam)
 
     if param.priortype==:smooth
         param.doflntau=100
-    elseif param.priortype==:agnostic
-        param.meanlntau,param.varlntau=-2,100
     end
 
     if param.loss == :logistic 
