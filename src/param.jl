@@ -176,7 +176,7 @@ Parameters for SMARTboost
 
 # Inputs that may sometimes be modified by user (all inputs are keyword with default values)
 
-- `ntrees::Int`             [2000/depth] Maximum number of trees. SMARTfit will automatically stop when cv loss stops decreasing.
+- `ntrees::Int`             [1000] Maximum number of trees. SMARTfit will automatically stop when cv loss stops decreasing.
 - `sharevs`                 [1.0] row subsampling in variable selection phase (only to choose feature on which to split.)
                             :Auto sets sharevs so that the subsample size is proportional to 50k*sqrt(n/50k).
                             At high n, sharevs<1 speeds up computations, but can reduce accuracy, particularly in sparse setting with low SNR.         
@@ -273,7 +273,7 @@ function SMARTparam(;
     xtolOptim = 0.02,  # tolerance in the optimization e.g. 0.02 (measured in dμ). It is automatically reduced if tau is large 
     method_refineOptim = :pmap, #  :pmap, :distributed 
     # miscel
-    ntrees = Int(round(2000/depth)), # number of trees
+    ntrees = 1000, # number of trees. 1000 is CatBoost default. 
     theta = 1.0,   # numbers larger than 1 imply tighter penalization on β compared to default. 
     loglikdivide = 1.0,   # the log-likelhood is divided by this scalar. Used to improve inference when observations are correlated.
     overlap = 0,

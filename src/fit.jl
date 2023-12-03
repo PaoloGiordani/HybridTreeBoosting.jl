@@ -5,6 +5,7 @@
 #  The following 4 functions are the most computationally expensive:
 #
 #  updateG!
+#  buildG 
 #  update_GGh_Gr!
 #  computeGβ
 #  sigmoidf
@@ -55,6 +56,39 @@ function updateG!(G::AbstractMatrix{T},G0::AbstractArray{T},g::AbstractVector{T}
     end
 
 end
+
+
+# builds G from scratch.
+function buildG(x::AbstractMatrix{T},param,ij,μj,τj,mj)::AbstractMatrix{T} where T<:AbstractFloat
+
+    n     = size(x,1)
+    depth = length(ij)
+    sigmoid          = param.sigmoid
+    missing_features = param.missing_features
+
+    G0    = ones(T,n)
+
+    for d in 1:depth
+
+        G       = Matrix{T}(undef,n,2^d)
+        i,μ,τ,m = ij[d],μj[d],τj[d],mj[d]
+
+        if i in missing_features
+            xi = copy(x[:,i])                 #  Redundant? Julia would make a copy with xi = x[:,i] anyway
+            xi[isnan.(xi)] .= m
+        else
+            xi = @view(x[:,i])
+        end
+
+        gL      = sigmoidf(xi,μ,τ,sigmoid)
+        updateG!(G,G0,gL)
+        G0    = copy(G)
+
+    end
+
+    return G0
+end
+
 
 
 
@@ -1162,7 +1196,7 @@ function SMARTtreebuild(x::AbstractMatrix{T},ij,μj::AbstractVector{T},τj::Abst
         G0 = copy(gammafit)
 
         for d in depth1*(round-1)+1:minimum([depth1*round,depth])
-            G   = Matrix{T}(undef,n,2^d)
+
             i,μ,τ,m = ij[d], μj[d], τj[d], mj[d]
 
             if i in missing_features
@@ -1172,7 +1206,8 @@ function SMARTtreebuild(x::AbstractMatrix{T},ij,μj::AbstractVector{T},τj::Abst
                 xi = @view(x[:,i])
             end
 
-            gL      = sigmoidf(xi,μ,τ,sigmoid)
+            G   = Matrix{T}(undef,n,2*size(G0,2))
+            gL  = sigmoidf(xi,μ,τ,sigmoid)
             updateG!(G,G0,gL)
             G0    = copy(G)
         end
