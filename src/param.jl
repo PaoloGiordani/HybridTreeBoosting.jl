@@ -109,8 +109,8 @@ mutable struct SMARTparam{T<:AbstractFloat, I<:Int}
     newton_max_steps_refineOptim::I 
     linesearch::Bool
 
-
 end
+
 
 
 # TO DO: extend cat_ind so it can be a vector of strings or names from df 
@@ -132,7 +132,9 @@ Parameters for SMARTboost
 
 # Inputs that are more likely to be modified by user (all inputs are keywords with default values)
 
-- `loss:Symbol`             [:L2] :L2, :logistic, :Huber, :t
+- `loss:Symbol`             [:L2] :L2,:logistic,:Huber,:t,:lognormal,:logt are supported.
+                            :lognormal and :logt require y > 0 ( y~logt(m,sigma,v) if log(y)~t(m,sigma,v) );
+                            in SMARTpredict(), they give predictions for E(y) if predict=:Ey, and for E(log(y)) if predict=:Egamma
 
 - `modality:Symbol`         [:compromise] Options are: :accurate, :compromise, :fast, :fastest.
                             :fast runs only one model (only cv number of trees) at values defined in param = SMARTparam(). 
@@ -140,8 +142,7 @@ Parameters for SMARTboost
                             Recommended for faster preliminary analysis only.
                             For loss=:logistic, :fast and :fastest also use the quadratic approximation to the loss for large samples.
                             :accurate cross-validates several models (see SMARTfit() for more info).
-                            It is roughly ten times slower than :fast.
-                            :compromise also cross-validates several models. It is roughly 5-6 times slower than :fast, and 10 time slower than :fastest,
+                            :compromise cross-validates fewer models than :accurate. It is roughly 5 times slower than :fast, and 10 time slower than :fastest,
                                         
 - `priortype`               [:hybrid] :hybrid encourages smoothness, but allows both smooth and sharp splits, :smooth forces smooth splits, :sharp forces sharp splits, :disperse has no prior on smoothness.
                             Set to :smooth if you want to force derivatives to be defined everywhere. 
@@ -416,7 +417,7 @@ end
 
 
 """
-        SMARTdata(y,x,param,[dates];T=Float32,fdgp=y,fnames=nothing,enforce_dates=true)
+        SMARTdata(y,x,param,[dates];T=Float32,fnames=[],enforce_dates=true)
 Collects and pre-processes data in preparation for fitting SMARTboost
 
 # Inputs
@@ -448,16 +449,22 @@ Collects and pre-processes data in preparation for fitting SMARTboost
 - y,x,weights are converted to type T, where T is defined in SMARTparam as either Float32 or Float64.
 - When dates are provided, they should, as a rule, be in chronological order in the sense that sort(dates)==dates (for cross-validation functions)
 """
-function SMARTdata(y::Union{AbstractVector,AbstractMatrix,AbstractDataFrame},x::Union{AbstractVector,AbstractMatrix,AbstractDataFrame},
+function SMARTdata(y0::Union{AbstractVector,AbstractMatrix,AbstractDataFrame},x::Union{AbstractVector,AbstractMatrix,AbstractDataFrame},
     param::SMARTparam,dates::AbstractVector=[];weights::AbstractVector=[],fnames = Vector{String}[],enforce_dates::Bool = true)  
 
     T    = param.T
 
-    if typeof(y)<:AbstractDataFrame || eltype(y) <: Union{Bool,Number} || typeof(x)<:AbstractMatrix
-        y = y[:,1]
+    if typeof(y0)<:AbstractDataFrame || eltype(y0) <: Union{Bool,Number} || typeof(y0)<:AbstractMatrix
+        y = y0[:,1]
     else 
         @error "in SMARTdata, y must be of type Number or Bool (true,false)"
     end      
+
+    check_admissible_data(y,param)  # check if data is admissible given param (typically param.loss)
+
+    if param.loss in [:lognormal,:logt]
+        @. y = log(y)
+    end             
 
     if isempty(weights)
         weights=ones(T,length(y))

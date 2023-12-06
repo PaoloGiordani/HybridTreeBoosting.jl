@@ -241,23 +241,18 @@ function map_cat_convert_to_float!(x::AbstractDataFrame,param::SMARTparam;create
 end 
 
 
-
-
-
 # check if data is admissable given param
-function check_admissible_data(data,param)
-
-    T = eltype(data.y)
-
-    if T <: Real
-    else
-        @error "data.y (label) must be Real (not Bool, String, Categorical,...), while it is detected to be $T" 
-    end
+function check_admissible_data(y,param)
 
     if param.loss==:logistic
-        T = eltype(data.y)
-        if minimum(data.y) != T(0) || maximum(data.y) != T(1)
+        if minimum(y) != 0 || maximum(y) != 1
             @error "data.y (label) must be {0,1} for loss = :logistic"
+        end
+    end
+
+    if param.loss==:lognormal || param.loss==:logt
+        if minimum(y) <= 0
+            @error "data.y must be strictly positive for loss = $(param.loss) "
         end
     end
 
@@ -336,7 +331,6 @@ function preparedataSMART(data::SMARTdata,param0::SMARTparam)
                                         # NB: Expands x if some categorical features require an extensive (>1 column) representation
     meanx,stdx = robust_mean_std(x)     # meanx,stdx computed using target encoding values      
 
-    check_admissible_data(data,param)  # check if data is admissible given param (typically param.loss)
     data_standardized = SMARTdata_sharedarray( data.y,(x .- meanx)./stdx,param,data.dates,data.weights,data.fnames) # standardize
 
     param_given_data!(param,data_standardized)    # sets additional parameters that require data. 
@@ -535,7 +529,7 @@ function gridmatrixμ(data::SMARTdata,param::SMARTparam,meanx,stdx;maxn::Int = 1
     w         = data.weights[ssi]     
 
     # Compute standardized y (used later to compute Kantorovic distance from standardized y if y is continuous, else distance from a Gaussian (ys=[]) ).  
-    if loss==:L2 || loss==:Huber || loss==:quantile || loss==:t
+    if loss==:L2 || loss==:Huber || loss==:quantile || loss==:t || loss==:logt || loss==:lognormal
         m = median(data.y[ssi])
         ys  = (data.y[ssi] .- m)/(T(1.25)*mean(abs.(data.y .- m))) # standardize similarly to how x has been de-meaned
     elseif loss==:logistic

@@ -16,6 +16,7 @@
 #    preparedata_predict
 #
 #  POST-ESTIMATION ANALYSIS
+#  SMARTcoeff              provides information on constant coefficients
 #  SMARTrelevance          computes feature importance (Breiman et al 1984 relevance)
 #  SMARTpartialplot        partial dependence plots (keeping all other features fixed, not integrating out)
 #  SMARTmarginaleffect     provisional! Numerical computation of marginal effects.
@@ -38,6 +39,7 @@ Basic information about the main functions in SMARTboost (see help on each funct
 - `SMARTpredict`         predictions for y or natural parameter
 
 #  POST-ESTIMATION ANALYSIS
+- `SMARTcoeff`           provides information on constant coefficients, e.g. dispersion and dof for loss=:t
 - `SMARTrelevance`       computes feature importance (Breiman et al 1984 relevance)
 - `SMARTpartialplot`     partial dependence plots (keeping all other features fixed, not integrating out)
 - `SMARTmarginaleffect`  provisional! Numerical computation of marginal effects.
@@ -45,9 +47,13 @@ Basic information about the main functions in SMARTboost (see help on each funct
 
 Example of use of info function 
 
-    help?> SMARTboost_info
+    help?> SMARTinfo
     or ...
-    julia> SMARTboost_info()
+    julia> SMARTinfo()
+
+To find more information about a specific function, e.g. SMARTfit
+
+    help?> SMARTfit
 
 Example of basic use of SMARTboost functions with iid data and default settings
 
@@ -60,7 +66,7 @@ See the files in the folder examples for more examples of use.
 "
 function SMARTinfo()
 
-    println("Documentation: $(Base.doc(SMARTboost_info))")
+    println("Documentation: $(Base.doc(SMARTinfo))")
 
 end
 
@@ -274,7 +280,7 @@ function SMARTbst(data0::SMARTdata, param::SMARTparam )
         rh,param = gradient_hessian( data.y,data.weights,SMARTtrees.gammafit,param,2)
     end
 
-    # bias-adjust
+    # bias adjustment
     bias,SMARTtrees.gammafit = bias_correct(SMARTtrees.gammafit,data.y,SMARTtrees.gammafit,param)
     SMARTtrees.gamma0 +=  bias
 
@@ -341,7 +347,7 @@ function SMARTpredict_internal(x::AbstractMatrix,SMARTtrees::SMARTboostTrees,pre
         end
     end
 
-    pred = from_gamma_to_Ey(gammafit,SMARTtrees,predict) # # from natural parameter to E(y), depending on predict
+    pred = from_gamma_to_Ey(gammafit,SMARTtrees.param,predict) # # from natural parameter to E(y), depending on predict
 
     return pred
 
@@ -366,7 +372,7 @@ end
 
 """
     SMARTpredict(x,output)
-Forecasts from SMARTboost
+Forecasts from SMARTboost, for y or the natural parameter.
 
 # Inputs
 - `x`                           (n,p) DataFrame or Float matrix of forecast origins (type<:real) or p vector of forecast origin
@@ -374,12 +380,16 @@ Forecasts from SMARTboost
 - `output`                      output from SMARTfit
 
 # Optional inputs
-- `predict`                    [:Ey], :Ey or :Egamma. :Ey returns the forecast of y, :Egamma returns the forecast of the natural parameter.  
+- `predict`                    [:Ey], :Ey or :Egamma. :Ey returns the forecast of y, :Egamma returns the forecast of the natural parameter.
+                               The natural parameter is logit(prob) for :logistic, and mean(log(y)) if :lognormal and :logt.
 - `best_model`                 [false] true to use only the single best model, false to use stacked weighted average
 - `cutoff_paralellel`          [20_000] if x has more than these rows, a parallellized algorithm is called (which is slower for few forecasts)
 
 # Output
-- `yfit`                        (n) vector of forecasts of y (or, outside regression, of the natural parameter), or scalar forecast if n = 1
+- `yf`                         (n) vector of forecasts of y (or, outside regression, of the natural parameter), or scalar forecast if n = 1
+
+# Note:
+- For loss=:logt, E(y) is not available in closed form. An approximation is provided, which holds for small variance or large degrees of freedom. 
 
 # Example of use
     output = SMARTfit(data,param)
@@ -387,29 +397,7 @@ Forecasts from SMARTboost
     yf     = SMARTpredict(x_oos,output,best_model=true)
 """
 function SMARTpredict(x0::Union{AbstractDataFrame,AbstractArray},output::NamedTuple;best_model=false,cutoff_parallel=20_000,predict=:Ey)
-#=
-    param = output.SMARTtrees.param
-    # Prepare the data, which may come as a DataFrame and have missing and categorical, with the
-    # same transformations as in SMARTdataframe for convenient data manipulation
-    if typeof(x0) <: AbstractDataFrame
-        x = deepcopy(x0)
-    else
-        typeof(x0) <: AbstractVector ? x0 = reshape(x0, (length(x0), 1)) : nothing    # transform vector to a matrix since DataFrames does not accept vectors  
-        x = DataFrame(x0,:auto)
-    end
 
-    x = nan_and_missing_predict(x,param)  # for categorical, replaces nan with missing. For non-categorical, does the contrary 
-    convert_dates_to_real!(x,param,predict=true)   
-    if param.mask_missing == true
-        x,fnames = missing_features_extend_x(param,x)      # extend x with dummy features if there were missing in the original dataset
-    end 
-    replace_nan_meanx!(x,param,output.SMARTtrees.meanx)  # only for features NOT in categorical or missing_features
-    
-    x = prepares_categorical_predict(x,param)  # categoricals are mapped to target encoding values; new categories allowed 
-                                               # columns are added if param.cat_representation_dimension>1
-    x = (x .- output.SMARTtrees.meanx)./output.SMARTtrees.stdx
-    x = convert_df_matrix(x,param.T)
-=#    
     x = preparedata_predict(x0,output.SMARTtrees)
 
     if best_model==true || length(output.w)==1
@@ -429,6 +417,51 @@ function SMARTpredict(x0::Union{AbstractDataFrame,AbstractArray},output::NamedTu
     return gammafit    # gammafit is actually Ey if predict = :Ey in SMARTpredict_internal
 
 end 
+
+
+"""
+    SMARTcoeff(output;verbose=true)
+
+Provides some information on constant coefficients for best model (in the form of a tuple.)
+For example, error variance for :L2, dispersion and dof for :t.
+
+# Inputs
+- `output`                      output from SMARTfit
+
+# Output
+- `coeff`                      named tuple with information on fixed coefficients (e.g. variance for :L2, dispersion and dof for :t)
+
+# Example of use
+    output = SMARTfit(data,param)
+    coeff  = SMARTcoeff(output,verbose=false)
+"""
+function SMARTcoeff(output;verbose=true)
+
+    loss = output.bestparam.loss 
+    coeff = output.bestparam.coeff_updated[1]
+
+    if loss == :logistic
+        θ    = (loss=loss,coeff="none")
+    elseif loss == :L2 || loss == :lognormal 
+        θ    = (loss=loss,variance=coeff[1]^2)
+    elseif loss == :t || loss == :logt
+        s2,v    = exp(coeff[1]),exp(coeff[2])
+        θ    = (loss=loss,scale=s2,dof=v,variance="scale*dof/(dof-2)" )
+    elseif loss == :Huber
+        σ2,ψ = coeff[1]^2,coeff[2] 
+        θ    = (loss=loss,variance=σ2,psi=output.bestparam.coeff_user[1])
+    else 
+        @error "loss not supported or misspelled. loss must be in [:logistic,:L2,:Huber,:t,:quantile,:lognormal,:logt]. "
+    end
+
+    if verbose==true
+        display(θ)  
+    end
+
+    return  θ
+
+end     
+
 
 
 # Prepare the data, which may come as a DataFrame and have missing and categorical, with the
@@ -502,11 +535,14 @@ function SMARTpredict_internal(data::SMARTdata,SMARTtrees::SMARTboostTrees,predi
 end
 
 
-# from natural parameter to E(y)
-function from_gamma_to_Ey(gammafit,SMARTtrees,predict)
 
-    param = SMARTtrees.param 
-    loss = param.loss
+# from natural parameter to E(y)
+# NB: for logt, E(y) is an approximation that only holds for small s2 and/or large v. 
+function from_gamma_to_Ey(gammafit,param,predict)
+
+    loss  = param.loss
+    coeff = param.coeff_updated[1]
+    T     = param.T
 
     if predict == :Egamma
         return gammafit 
@@ -515,12 +551,19 @@ function from_gamma_to_Ey(gammafit,SMARTtrees,predict)
     if loss == :logistic
         pred = @. exp(gammafit)/(1+exp(gammafit))
     elseif loss in [:L1,:L2,:Huber,:t,:quantile]
-        pred = gammafit
+        pred  = gammafit
+    elseif loss == :lognormal
+        σ    = coeff[1]
+        pred = @. exp(gammafit + 0.5*σ^2)     
+    elseif loss == :logt
+        s2,v    = exp(coeff[1]),exp(coeff[2])
+        vart    = s2*v/(v-2)
+        pred = @. exp(gammafit + 0.5*vart)   # could be Inf
     else 
-        @error "loss must be :logistic, :L1, :L2, :Huber, :t or :quantile. Loss not supported or misspelled."
+        @error "loss not supported or misspelled. loss must be in [:logistic,:L2,:Huber,:t,:quantile,:lognormal,:logt]. "
     end
 
-    return pred 
+    return pred
 
 end
 
@@ -539,7 +582,7 @@ The additional models considered in modality=:accurate and :compromise are:
 - Rough cross-validation of parameters for categorical features, if any.
 - A penalization to encourage sparsity (fewer relevant features). 
 - Imposing sharp splits on features with high average values of τ (sharp splits), only if the first run suggests it.
-- A different distribution (loss), e.g. :t if :L2 (student-T instead of a Gaussian.)
+- Only for :accurate: 0-2 different distributions (loss), e.g. :t if :L2 (student-T instead of a Gaussian.)
 
 If param.modality=:accurate, lambda for all models is set set min(lambda,0.1). If modality=:compromise, the default learning rate
 lambda=0.2 is used, and the best model is then refitted with lambda = 0.1. 
@@ -556,14 +599,9 @@ Finally, all the estimated models considered are stacked, with weights chosen to
 
 - `cv_grid::Vector`         The code performs a search in the space depth in [1,2,3,4,5,6], trying to fit few models if possible. Provide a
                             vector to over-ride (e.g. [2,4])   
-- `add_hybrid::Bool`        [true] if param.priortype==:hybrid and some important features seem to enter with very sharp splits and/or very smooth splits,
-                             estimates a hybrid model with some features force to have a have sharp splits, and some forced to have smooth split. This model is then added to the stack.
-                             This is then added to the stack.
-- `add_sparse::Bool`        [true]. If p>min_p_sparsity and there is preliminary evidence of sparsity, fits a model with a sparsity-inducing penalization.
-                                    If no evidence of sparsity, fits a model that encourages density. This is then added to the stack.
 - `add_sharp::Bool`         [false] models with sharp splits everywhere. This is then added to the stack. There is almost nothing to be gained from this 
                             with symmetric (obvlivious) trees; it is preferable to stack with standard trees (not implemented internally yet.)
-- `add_different_loss::Bool`  [true for modality=:accurate or :compromise, else false] tries a different loss function (where appropriate)
+- `add_different_loss::Bool`  [true for modality=:accurate, else false] tries a different loss function (where appropriate)
 - `min_p_sparsity`          [10] minimum number of features for sparsity or density penalizations to be considered
 
 # Output (named tuple)
@@ -597,13 +635,12 @@ Finally, all the estimated models considered are stacked, with weights chosen to
     output = SMARTfit(data,param)
 
 """
-function SMARTfit( data::SMARTdata, param::SMARTparam; cv_grid=[],
-    add_hybrid::Bool=true,add_sparse::Bool=true,add_different_loss::Bool=true,add_sharp::Bool=false,
+function SMARTfit( data::SMARTdata, param::SMARTparam; cv_grid=[],add_different_loss::Union{Bool,Symbol}=:default,add_sharp::Bool=false,
     min_p_sparsity=10,skip_full_sample=false)   # skip_full_sample enforces nofullsample even if nfold=1 (used in other functions, not by user)
 
     T,I = param.T,param.I
 
-    additional_models     = 6      # After going through cv_grid, selects best value and fits: hybrid, sparse (up to 3), sharp, different distribution
+    additional_models     = 6    # After going through cv_grid, selects best value and fits: hybrid, sparse (up to 3), sharp, different distribution
     modality              = param.modality
     param0                = deepcopy(param)
 
@@ -624,15 +661,28 @@ function SMARTfit( data::SMARTdata, param::SMARTparam; cv_grid=[],
 
         add_hybrid = false
         add_sparse = false
-        add_sharp = false
         add_different_loss = false
 
         if size(data.x,2)>20_000 && param.loss==:logistic
             param.newton_gaussian_approx = true   # true has large efficiency gains for logistic (loss=...exp())
         end    
 
-    end  
+    else 
         
+        add_hybrid = true
+        add_sparse = true
+
+    end  
+
+    if add_different_loss==:default
+        if modality==:accurate
+            add_different_loss = true
+        else 
+            add_different_loss = false
+        end         
+    end     
+
+
     if modality==:fastest
         param0.nofullsample = true
         isempty(param0.indtrain_a) ? param0.nfold = 1 : nothing 
@@ -648,7 +698,9 @@ function SMARTfit( data::SMARTdata, param::SMARTparam; cv_grid=[],
         end  
     end
 
-    modality==:accurate ? param0.lambda=min(T(0.1),param0.lambda) : nothing
+    if modality==:accurate
+        param0.lambda=min(T(0.1),param0.lambda)
+    end
 
     preliminary_cv!(param0,data,param0.nofullsample)       # preliminary cv of categorical parameters, if modality is not :fast.
 
@@ -857,18 +909,16 @@ function SMARTfit( data::SMARTdata, param::SMARTparam; cv_grid=[],
     best_i = argmin(lossgrid)
     param  = deepcopy(SMARTtrees_a[best_i].param)
 
-    if param.loss == :L2  && add_different_loss==true    # fit a t distribution to residuals, and leave :L2 unless dof<12
+    if add_different_loss 
+        if param.loss == :L2   # fit a t distribution to residuals, and leave :L2 unless dof<10. 
  
-        yfit = SMARTpredict(data.x,SMARTtrees_a[best_i],predict=:Ey) 
-        
-        res = Newton_MAP(data.y - yfit,gH_student,start_value_student,w=data.weights)
-        dof = exp(res.minimizer[2])
+            yfit = SMARTpredict(data.x,SMARTtrees_a[best_i],predict=:Ey) 
+            res = Newton_MAP(data.y - yfit,gH_student,start_value_student,w=data.weights)
+            dof = exp(res.minimizer[2])
 
-        if dof<10
-            param.loss = :t
+            dof<10 ? param.loss = :t : nothing 
             #param.losscv = :mse     # Not needed if this is the last model fitted. 
         end 
-
     end         
 
     # NB: loss is NOT comparable across different distributions.
@@ -907,6 +957,7 @@ function SMARTfit( data::SMARTdata, param::SMARTparam; cv_grid=[],
         param_constraints!(param)
 
         ntrees,loss,meanloss,stdeloss,SMARTtrees1st,indtest,gammafit_test,y_test,problems = SMARTsequentialcv(data,param,indices=indices)
+        gammafit_test = from_gamma_to_Ey(gammafit_test,param,:Ey)    #  gammafit_test now comparable.
 
         i = best_i   # replaces the best model
 

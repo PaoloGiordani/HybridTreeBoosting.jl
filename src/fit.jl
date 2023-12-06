@@ -272,7 +272,7 @@ function lnpτ(τ0::T,param::SMARTparam,info_i,d;τmax=T(100) )::T where T<:Abst
     #stdlntau  = sqrt( (param.varlntau)*(param.doflntau-T(2))/param.doflntau )  # to intrepret varlntau as an actual variance.
 
     # Adjust prior for Kantorovic distance. This adjustment is smaller when Kantorovic distance between y and xi is not as informative, as for :logistic
-    if param.loss==:L2 || param.loss==:Huber || param.loss==:quantile || param.loss==:t
+    if param.loss==:L2 || param.loss==:Huber || param.loss==:quantile || param.loss==:t || param.loss==:lognormal || param.loss==:logt
         α=1
     elseif param.loss==:logistic
         α=0.5
@@ -689,8 +689,9 @@ function loopfeatures(y,w,gammafit_ensemble,r::AbstractVector{T},h::AbstractVect
     n,p   = size(x)
     ps    = Vector(1:p)                    # default: included all features
 
-    # If sparsevs, loop only through the features in best_features, unless it's a scheduled update (then loop through all) 
-#    if param.sparsevs==:On && (ntree in fibonacci(20,param.lambda,param.frequency_update) || isempty(param.best_features) )
+    # If sparsevs, loop only through a) the features in best_features b) dichotomous features (which are very fast)
+    # unless it's a scheduled update (then loop through all) 
+    # if param.sparsevs==:On && (ntree in fibonacci(20,param.lambda,param.frequency_update) || isempty(param.best_features) )
 
     if param.sparsevs==:On && ( ntree in fibonacci(20,param.lambda,param.frequency_update) || isempty(param.best_features) )
         update_best_features = true
@@ -704,7 +705,7 @@ function loopfeatures(y,w,gammafit_ensemble,r::AbstractVector{T},h::AbstractVect
   
         for i in 1:p
             if Info_x[i].exclude==false && Info_x[i].n_unique>1
-                i in param.best_features ? push!(ps,i) : nothing
+                i in param.best_features || Info_x[i].dichotomous ? push!(ps,i) : nothing
             end
         end
   

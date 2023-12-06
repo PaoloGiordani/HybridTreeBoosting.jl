@@ -63,10 +63,15 @@ function SMARTmodelweights(lossgrid,y_test,indtest,gammafit_test_a,data::SMARTda
         w0,lossw = findw_grid(fM,y,weights,param)
     else  
         # initialize with weights proportional to the position (in a ranking) of their loss
-        β0 = invperm(sortperm(lossgrid[ind],rev=true))      # equivalent to StatsBase.tiedrank or R rank()  
-        #β01 = StatsBase.tiedrank(lossgrid[ind],rev=true)    
-        β0 = (β0 .- β0[end])/J
-        β0 = β0[1:end-1]    # last element fixed at 0
+        # this requires all losses to be loglik or to come from the same model, which may not be the case...
+        #β0 = invperm(sortperm(lossgrid[ind],rev=true))      # equivalent to StatsBase.tiedrank or R rank()  
+        #β0 = (β0 .- β0[end])/J
+
+        # initialize from equal weights
+        β0 = fill(T(1),length(ind))
+
+        # last element is always fixed at zero
+        β0 = β0[1:end-1]    
 
         # derivative-based methods like Optim.BFGS and Optim.GradientDescent don't move. Why is the gradient zero? 
         # Try Nelder and SimulatedAnnealing (usually much slower), pick the best 

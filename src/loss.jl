@@ -48,7 +48,7 @@ function loglik_vector(loss,param,y,gammafit)
 
     T = eltype(y)
 
-    if loss==:L2
+    if loss==:L2 || loss == :lognormal
         σ2 = (param.coeff_updated[1][1])^2
         logσ2 = log(σ2)
         ll  = @. -logσ2/2 - ((y - gammafit)^2)/(2*σ2)         # ll is a vector, i.e. loglik for individual observations
@@ -57,11 +57,13 @@ function loglik_vector(loss,param,y,gammafit)
         σ2,ψ = param.coeff_updated[1][1]^2, param.coeff_updated[1][2]
         logσ2 = log(σ2)
         ll = @. -T(0.5)*logσ2 - ( (T(0.5)*r^2)*(abs(r)<ψ)  + ( ψ*abs(r) - T(0.5)*ψ^2  )*(abs(r)≥ψ) )/σ2
-    elseif loss==:t 
+    elseif loss==:t || loss == :logt
         ll = loglik_student(y - gammafit,param.coeff_updated[1])
     elseif loss==:logistic
         bound_gammafit!(gammafit)
-        ll  = @. y*gammafit - log(1 + exp(gammafit))   # exp() is slow. This loss evaluation is very slow. 
+        ll  = @. y*gammafit - log(1 + exp(gammafit))   # exp() is slow. This loss evaluation is very slow.
+    else 
+        @error "loss not implemented"     
     end
 
 end 
@@ -84,16 +86,18 @@ function losscv(param0::SMARTparam,y,gammafit,weights) # iter = 1 when no tree b
             param = updatecoeff(param,y,gammafit,weights,1) # some log-lik require coefficients (e.g. var,dof)
         end    
 
-        if param.loss==:L2
+        if param.loss==:L2 || param.loss == :lognormal
             loss  = (y - gammafit).^2
         elseif param.loss==:Huber
             ψ,r = T.(param.coeff_updated[1][2]),y .- gammafit
             loss  = @. T(2)*( (T(0.5)*r^2)*(abs(r)<ψ)  + ( ψ*abs(r) - T(0.5)*ψ^2  )*(abs(r)≥ψ) )  # multiply by 2 so it is a MSE,
-        elseif param.loss==:t
+        elseif param.loss==:t || param.loss == :logt
             loss = -2*loglik_student(y - gammafit,param.coeff_updated[1])  # deviance=-2loglik
         elseif param.loss == :logistic           # gammafit  = logodds
             bound_gammafit!(gammafit)
             loss  = -y.*gammafit + log.(ones(T,n) + exp.(gammafit))
+        else 
+            @error "loss not implemented"    
         end
 
     else
@@ -134,13 +138,13 @@ function initialize_gamma(data::SMARTdata,param::SMARTparam)
   #meany  = sum(data.y.*data.weights)/sum(data.weights)  # not consistent if E(y|x) correlates with weights
   meany  = mean(data.y)
 
-  if param.loss == :L2
+  if param.loss == :L2 || param.loss == :lognormal
       gamma0 = meany
   elseif param.loss == :logistic
       gamma0 = log( meany/(one(T) - meany) )
   elseif param.loss == :Huber
       gamma0 = huber_mean(data.y,data.weights,stdw_robust(data.y,data.weights);t=param.coeff[1])
-  elseif param.loss == :t
+  elseif param.loss == :t || param.loss == :logt
     gamma0  = student_mean(data.y,data.weights)
  else
      @error "param.loss is misspelled or not supported."
@@ -159,14 +163,16 @@ function updatecoeff(param0,y,gammafit,weights,iter)
 
     if iter>=0  # >=0 continuously, or ==0 for standard
 
-        if param.loss==:L2
+        if param.loss==:L2 || param.loss == :lognormal
             param.coeff_updated = [[std(y - gammafit)]]
         elseif param.loss==:Huber  # 1) σ   2) σ*psi
             σ = stdw_robust(y-gammafit,weights)
             param.coeff_updated = [[σ, param.coeff[1]*σ ]]
-        elseif param.loss==:t
+        elseif param.loss==:t || param.loss == :logt
             res = Newton_MAP(y-gammafit,gH_student,start_value_student,w=weights)
             param.coeff_updated = [[res.minimizer[1],res.minimizer[2]]]
+        else 
+            @error "loss not implemented"    
         end
 
     end
@@ -186,7 +192,7 @@ function gradient_hessian(y::AbstractVector{T},weights::AbstractVector{T},gammaf
 
     param=deepcopy(param0)
 
-    if param.loss == :L2        # loss = ( y - gamma)^2
+    if param.loss == :L2 || param.loss == :lognormal       # loss = ( y - gamma)^2
         g  = @. y - gammafit
         multiply_pb = (param.coeff_updated[1][1])^2  #
         h  = ones(T,1)           # Vector{T} of length 1. This is picked up by various functions to avoid un-necessary computations
@@ -197,7 +203,7 @@ function gradient_hessian(y::AbstractVector{T},weights::AbstractVector{T},gammaf
         g     = @. r*(abs(r)<psi) + psi*sign(r)*(abs(r)>=psi)
         multiply_pb = (param.coeff_updated[1][1])^2
         h     = [mean(g.^2)]          
-    elseif param.loss == :t
+    elseif param.loss == :t || param.loss == :logt
         g     = g_student(y - gammafit,param.coeff_updated[1])
         multiply_pb = T(1)
         h    = [mean(g.^2)]          
@@ -207,6 +213,8 @@ function gradient_hessian(y::AbstractVector{T},weights::AbstractVector{T},gammaf
         h     = @.  prob*( one(T) - prob)
         h     = maximum(hcat(h,fill(T(0.0001),length(h))),dims=2)[:,1] # some offset necessary for robustness for high n and sharply separted classes.
         multiply_pb = T(1)
+    else
+        @error "param.loss is misspelled or not supported."    
     end
 
     # multiply g,h by weights
@@ -281,7 +289,7 @@ function bias_correct(gammafit,y_train,gammafit_train,param)  # gammafit can be 
 
     T = eltype(y_train)
 
-    if param.loss==:Huber || param.loss==:t 
+    if param.loss==:Huber || param.loss==:t || param.loss==:logt
         bias = mean(y_train) - mean(gammafit_train)   # actually -bias 
         gammafit_ba = gammafit .+ bias
     else
