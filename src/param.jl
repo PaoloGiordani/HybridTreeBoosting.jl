@@ -72,7 +72,7 @@ mutable struct SMARTparam{T<:AbstractFloat, I<:Int}
     missing_features::Vector{I}
     info_date::NamedTuple              # information on date feature
     sparsity_penalization::T  # AIC penalization on (number of features - depth)
-    p0::Union{Symbol,I}       # :default (then set to p) or p0 
+    p0::Union{Symbol,I}       # :Auto (then set to p) or p0 
 
     # sub-sampling and pre-selection of features
     sharevs::Union{Symbol,T}  # if <1, adds noise to vs, in vs phase takes a random subset of observations
@@ -93,8 +93,8 @@ mutable struct SMARTparam{T<:AbstractFloat, I<:Int}
     # others
     ntrees::I   # number of trees
     theta::T  # penalization of β: multiplies the default precision. Default 1. Higher values give tighter priors.
-    loglikdivide::T  # the log-likelhood is divided by this scalar. Used to improve inference when observations are correlated.
-    overlap::I       # used in purged-CV
+    loglikdivide::Union{Symbol,T}  # the log-likelhood is divided by this scalar. Used to improve inference when observations are correlated.
+    overlap::I       # used in purged-CV and SMARTloglikdivide
     multiply_pb::T
     varGb::T
     ncores::I        # nprocs()-1, number of cores available
@@ -158,10 +158,7 @@ Parameters for SMARTboost
 - `nofullsample::Bool`      [false] if true and nfold=1, SMARTboost is not re-estimated on the full sample after cross-validation.
                             Reduces computing time by roughly 60%, at the cost of a modest loss of efficiency.
                             Useful for very large datasets, in preliminary analysis, in simulations, and when instructions specify a train/validation split with no re-estimation on full sample.
-
-- `loglikdivide::Float`     [1.0] with time series panel data, SMARTloglikdivide() can be used to calibrate this parameter, which affects the strength of the priors (penalizations.)
 - `overlap::Int`            [0] number of overlaps in time series and panels. Typically overlap = h-1, where y(t) = Y(t+h)-Y(t). Used for purged-CV.
-
 - `verbose::Symbol`         [:Off] verbosity :On or :Off
 - `warnings::Symbol`        [:On] or :Off
 
@@ -196,6 +193,7 @@ Parameters for SMARTboost
 - `losscv`                  [:default] loss function for cross-validation (:mse,:mae,:logistic,:sign). 
 - `n_refineOptim::Int`      [10^6] MAXIMUM number of observations to use fit μ and τ (split point and smoothness).
                             Lower numbers can provide speed-ups with very large n at some cost in terms of fit.
+- `loglikdivide::Float`     [1.0] with time series and longitudinal (or panel) data, higher numbers increase the strength or all priors. The defaults sets it internally using SMARTloglikdivide()
 
 # Additional inputs can be set in SMARTfit(), but keeping the defaults is generally encouraged.
 
@@ -203,16 +201,13 @@ Parameters for SMARTboost
     param = SMARTparam()
 # Example
     param = SMARTparam(nfold=1,sharevalidation=0.2)
-# Example
-    lld,ess =  SMARTloglikdivide(df,:excessret,:date,overlap=h-1)
-    param   =  SMARTparam(data,loglikdivide=lld,overlap=h-1)
 """
 function SMARTparam(;
 
     T = Float32,   # Float32 or Float64. Float32 is up to twice as fast for sufficiently large n (due not to faster computations, but faster copying and storing)
     I = typeof(1),   
     loss = :L2,               # loss function
-    losscv = :default,       # loss used for early stopping and stacking. :default, or :mse, :mae, :Huber, :logistic, :sign
+    losscv = :default,        # loss used for early stopping and stacking. :default, or :mse, :mae, :Huber, :logistic, :sign
     modality = :compromise,     # :accurate, :fast, :compromise 
     coeff = coeff_user(loss,T),      # coefficients (if any) used in loss
     coeff_updated = Vector{T}[],
@@ -239,7 +234,7 @@ function SMARTparam(;
     dofmu   = 10.0,
     priortype = :hybrid,
     max_tau_smooth = 20,         # maximum value of tau allowed when :smooth. 10 can still capture very steep functions in boosting
-    min_unique  = :default,            # Note: over-writes force_sharp_splits unless set to a large number. minimum number of unique values to consider a feature as continuous
+    min_unique  = :Auto,         # Note: over-writes force_sharp_splits unless set to a large number. minimum number of unique values to consider a feature as continuous
     mixed_dc_sharp = false,
     force_sharp_splits = Vector{Bool}(undef,0),  # typically hidden to user: optionally, a p vector of Bool, with j-th value set to true if the j-th feature is forced to enter with a sharp split.
     force_smooth_splits = Vector{Bool}(undef,0),  # typically hidden to user: optionally, a p vector of Bool, with j-th value set to true if the j-th feature is forced to enter with a smooth split (high values of λ not allowed)
@@ -258,7 +253,7 @@ function SMARTparam(;
     missing_features = Vector{I}(undef,0), 
     info_date = (date_column=0,date_first=0,date_last=0),
     sparsity_penalization = 0.3,
-    p0       = :default,
+    p0       = :Auto,
     sharevs  = 1.0,             # if <1, adds noise to vs, in vs phase takes a random subset. :Auto is 0.5 if n>=250k     
     refine_obs_from_vs = false,  # true to add randomization to (μ,τ), assuming sharevs<1
     finalβ_obs_from_vs  = false,  # true to add randomization to final β
@@ -276,7 +271,7 @@ function SMARTparam(;
     # miscel
     ntrees = 1000, # number of trees. 1000 is CatBoost default. 
     theta = 1.0,   # numbers larger than 1 imply tighter penalization on β compared to default. 
-    loglikdivide = 1.0,   # the log-likelhood is divided by this scalar. Used to improve inference when observations are correlated.
+    loglikdivide = :Auto,   # the log-likelhood is divided by this scalar. Used to improve inference when observations are correlated.
     overlap = 0,
     multiply_pb = 1.0,
     varGb   = NaN,      # Relevant only for first tree
@@ -319,6 +314,12 @@ function SMARTparam(;
     end
 
     sharevs==:Auto ? nothing : sharevs=T(sharevs)
+    loglikdivide==:Auto ? nothing : loglikdivide=T(loglikdivide)
+    p0==:Auto ? nothing : p0=I(p0)   # if :Auto, set in param_given_data!()
+
+    if min_unique==:Auto
+        modality in [:fast,:fastest] ? min_unique = 10 : min_unique = 5
+    end     
 
     # Functions on indtrain_a and indtest_a, if user provides them 
     if length(indtrain_a)>length(indtest_a)
@@ -336,18 +337,11 @@ function SMARTparam(;
             indtest_a[i]  = I.(round.(indtest_a[i]))
         end
     end 
-
-    p0==:default ? nothing : p0=I(p0)   # if :default, set in param_given_data!()
-
-    if min_unique==:default
-        modality in [:fast,:fastest] ? min_unique = 10 : min_unique = 5
-    end     
      
-
     param = SMARTparam(T,I,loss,losscv,Symbol(modality),T.(coeff),coeff_updated,Symbol(verbose),Symbol(warnings),I(num_warnings),randomizecv,I(nfold),nofullsample,T(sharevalidation),indtrain_a,indtest_a,T(stderulestop),T(lambda),I(depth),I(depth1),Symbol(sigmoid),
         T(meanlntau),T(varlntau),T(doflntau),T(multiplier_stdtau),T(varmu),T(dofmu),Symbol(priortype),T(max_tau_smooth),I(min_unique),mixed_dc_sharp,force_sharp_splits,force_smooth_splits,exclude_features,cat_features,cat_features_extended,cat_dictionary,cat_values,cat_globalstats,I(cat_representation_dimension),T(n0_cat),T(mean_encoding_penalization),Bool(delete_missing),mask_missing,missing_features,info_date,T(sparsity_penalization),p0,sharevs,refine_obs_from_vs,finalβ_obs_from_vs,
         I(n_refineOptim),T(subsampleshare_columns),Symbol(sparsevs),T(frequency_update),
-        I(number_best_features),best_features,I(mugridpoints),I(taugridpoints),T(xtolOptim),Symbol(method_refineOptim),I(ntrees),T(theta),T(loglikdivide),I(overlap),T(multiply_pb),T(varGb),I(ncores),I(seed_datacv),I(seed_subsampling),newton_gaussian_approx,
+        I(number_best_features),best_features,I(mugridpoints),I(taugridpoints),T(xtolOptim),Symbol(method_refineOptim),I(ntrees),T(theta),loglikdivide,I(overlap),T(multiply_pb),T(varGb),I(ncores),I(seed_datacv),I(seed_subsampling),newton_gaussian_approx,
         I(newton_max_steps),I(newton_max_steps_final),T(newton_tol),T(newton_tol_final),I(newton_max_steps_refineOptim),linesearch)
 
     param_constraints!(param) # enforces constraints across options. Must be repeated in SMARTfit.
@@ -357,14 +351,20 @@ end
 
 
 
-# Sets some parameters that require knowledge of data. Notice that data.x may contain NaN. 
+# Sets some parameters that require knowledge of data. Notice that data.x (but no data.y) may contain NaN. 
 function param_given_data!(param::SMARTparam,data::SMARTdata)
 
     n,p = size(data.x)
     I = typeof(param.nfold)
     T = typeof(param.lambda)
-        
-    if param.p0==:default 
+
+    # compute loglikdivide unless user provided it 
+    if param.loglikdivide == :Auto
+        lld,ess = SMARTloglikdivide(data.y,data.dates,overlap=param.overlap)
+        param.loglikdivide = T(lld)
+    end
+
+    if param.p0==:Auto 
         param.p0=p 
     end
 
@@ -433,24 +433,19 @@ Collects and pre-processes data in preparation for fitting SMARTboost
                             If not supplied, the default 1:n assumes a cross-section of independent realizations (conditional on x) or a single time series.
 - 'weights':                [ones(T,n)] vector of floats or Floats, weights for weighted likelhood
 - `fnames::Vector{String}`: [x1, x2, ... ] feature names
-- `enforce_dates::Bool`:    [true] enforces dates to be chronological, i.e. sorted(unique(dates)) = unique(dates)
 
 
 # Examples of use
     data = SMARTdata(y,x,param)
-    data = SMARTdata(y,df[:,[:CAPE, :momentum ]],param)
+    data = SMARTdata(y,x,param,dates=dates,fnames=names)
+    data = SMARTdata(y,df[:,[:CAPE, :momentum ]],param,dates=df.dates,fnames=df.names)
     data = SMARTdata(y,df[:,3:end],param)
-    data = SMARTdata(y,x,param,dates=df.dates,fnames=df.names)
-    s = std(data.y)
-    lastdate = maximum(data.dates)
 
 # Notes
-- If there is any categorical or date type in x, x will be modified. Make a copy x0=copy(x) prior to SMARTdata() if the original data is needed.
-- y,x,weights are converted to type T, where T is defined in SMARTparam as either Float32 or Float64.
-- When dates are provided, they should, as a rule, be in chronological order in the sense that sort(dates)==dates (for cross-validation functions)
+- When dates are provided, the data will be ordered chronologically (for cross-validation functions) unless the user has provided explicit training and validation sets.
 """
 function SMARTdata(y0::Union{AbstractVector,AbstractMatrix,AbstractDataFrame},x::Union{AbstractVector,AbstractMatrix,AbstractDataFrame},
-    param::SMARTparam,dates::AbstractVector=[];weights::AbstractVector=[],fnames = Vector{String}[],enforce_dates::Bool = true)  
+    param::SMARTparam,dates::AbstractVector=[];weights::AbstractVector=[],fnames = Vector{String}[])  
 
     T    = param.T
 
@@ -480,14 +475,20 @@ function SMARTdata(y0::Union{AbstractVector,AbstractMatrix,AbstractDataFrame},x:
         fnames = ["x$i" for i in 1:size(x,2)]    
     end 
 
-    if isempty(dates) || enforce_dates==false
+    if isempty(dates)
         dates = collect(1:length(y))
+        ordered_dates = true
     else
         datesu  = unique(dates)
-        @assert(datesu==sort(datesu), " Dates must be in chronological order: unique(dates) is required to be in ascending order (for cross-validation functions). ")
-    end
+        ordered_dates = datesu==sort(datesu)   # Are data in chronological order?
 
-    @assert(minimum(weights)>=0, " weights cannot be negative ")
+        # if dates are not in chronological order, sort y,x,weights by date (done below for xp) UNLESS user has provided indtrain_a 
+        # (cross-validation obs), in which case issue a warning 
+        if !ordered_dates && !isempty(param.indtrain_a)
+            @warn " Dates are not in chronological order, but user has provided explicity training and validation sets, so data will be left unordered."
+        end
+  
+    end
 
     # pre-process data
 
@@ -500,13 +501,31 @@ function SMARTdata(y0::Union{AbstractVector,AbstractMatrix,AbstractDataFrame},x:
         xp = DataFrame(x,Symbol.(fnames))    
     end
 
+    if !ordered_dates && isempty(param.indtrain_a)
+        sortindex = sortperm(dates)
+        y       = y[sortindex]
+        xp      = xp[sortindex,:]
+        weights = weights[sortindex]
+        dates   = dates[sortindex]
+    end 
+
     xp=replace_nan_with_missing(xp)    # facilitates functions using skipmissing, and identification of missing into a single case
 
     if param.delete_missing == true
         keep_obs = .!vec(any(ismissing.(x),dims=2))
         xp = xp[keep_obs,:]
         y  = y[keep_obs]
+        weights = weights[keep_obs]
+        dates   = dates[keep_obs]
     end     
+
+    # delete any row where y is missing 
+    y = replace_nan_with_missing(y)    # facilitates functions using skipmissing, and identification of missing into a single case
+    keep_obs = .!(ismissing.(y))
+    xp  = xp[keep_obs,:]
+    y   = y[keep_obs]
+    weights = weights[keep_obs]
+    dates   = dates[keep_obs]
 
     convert_dates_to_real!(xp,param)   # modifies both param and x: updates info_date in param
     categorical_features!(param,xp)    # updates param.cat_features_bool and param.cat_features

@@ -1224,7 +1224,7 @@ end
 
 # Computes mean weighted value of tau as exp(mean(logtau*w)), where w = sqrt(fi2). Dichotomous features are not counted.
 # Can then be used to force sharp splits on those features where SMARTboost selects high τ, if these features contribute non-trivially to the fit.
-# Argument: sharpness may be difficultfor SMARTboost to fit due to the greedy, iterative nature of the algorithm (the first values will tend to be smooth)
+# Argument: sharpness may be difficult for SMARTboost to fit due to the greedy, iterative nature of the algorithm (the first values will tend to be smooth)
 #
 # Use:
 # weighted_meean_tau = meean_weighted_tau(output.SMARTtrees)   # output is (p,1), vector of median weighted values of tau
@@ -1246,7 +1246,7 @@ function mean_weighted_tau(SMARTtrees)
       wj = sqrt.(fi2[i.==j])
 
       if length(τj)>0 && Info_x[j].dichotomous==false
-        @. τj = τj*(τj<=100) + T(100)*(τj>100)    # bound Inf at 100
+        @. τj = τj*(τj<=50) + T(50)*(τj>50)    # bound Inf at 50
         avgtau[j] = sum(τj.*wj)/sum(wj)
       end
 

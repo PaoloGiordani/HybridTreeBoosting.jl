@@ -22,6 +22,7 @@
 #  SMARTmarginaleffect     provisional! Numerical computation of marginal effects.
 #  SMARToutput             collects fitted parameters in matrices
 #  tight_sparsevs          warns if sparsevs seems to compromise fit 
+#  SMARTweightedtau        computes weighted smoothing parameter
 
 "
     SMARTinfo()
@@ -29,9 +30,9 @@ Basic information about the main functions in SMARTboost (see help on each funct
 
 
 # Setting up the model 
-- `SMARTloglikdivide`    calibrates param.loglikdivide for panel data and/or overlapping data
 - `SMARTindexes_from_dates` builds train and test sets indexes for expanding window cross-validation
 - `SMARTparam`           parameters, defaults or user-provided.
+- `SMARTdata`            y,x and, optionally, dates, weights, and names of features
 
 # Fitting and forecasting 
 - `SMARTfit`             fits SMARTboost with cv (or validation/early stopping) of number of trees and, optionally, depth or other parameter
@@ -44,6 +45,7 @@ Basic information about the main functions in SMARTboost (see help on each funct
 - `SMARTpartialplot`     partial dependence plots (keeping all other features fixed, not integrating out)
 - `SMARTmarginaleffect`  provisional! Numerical computation of marginal effects.
 - `SMARToutput`          collects fitted parameters in matrices
+- `SMARTweightedtau`     computes weighted smoothing parameter to help assess function smoothness
 
 Example of use of info function 
 
@@ -72,8 +74,13 @@ end
 
 
 
-"""
+#=
     SMARTloglikdivide(df,y_symbol,date_symbol;overlap=0)
+
+loglikdivide is now computed internally, so the user does not need to call this function for lld,
+only if interested in effective_sample_size.
+
+Old documentation:
 Suggests a value for param.loglikdivide., where nominal sample size/loglikedivide = effective sample size.
 Relevant panel data (longitudinal data) and some time series. 
 The only effect of loglikdivide in SMARTboost is to calibrate the strength of the prior in relation to the likelihood evidence.
@@ -92,15 +99,14 @@ by overlapping observation when y(t) = Y(t+horizon) - Y(t).
 
 # Example of use
     lld,ess =  SMARTloglikdivide(df,:excessret,:date,overlap=h-1)
-    param   =  SMARTparam(loglikdivide=lld)
 
-"""
+=#
 function SMARTloglikdivide(df::DataFrame,y_symbol,date_symbol;overlap = 0)
 
     overlap = Int(overlap); y_symbol = Symbol(y_symbol); date_symbol = Symbol(date_symbol)  # required by R wrapper
 
-    dates             = unique(df.date)
-    y                 = df[:,y_symbol] .- mean(df[:,y_symbol])
+    dates     = unique(df.date)
+    y         = df[:,y_symbol] .- mean(df[:,y_symbol])
     ssc       = 0.0
 
     for date in dates
@@ -122,6 +128,33 @@ function SMARTloglikdivide(df::DataFrame,y_symbol,date_symbol;overlap = 0)
 
 end
 
+
+
+function SMARTloglikdivide(y::AbstractVector{T},dates_all;overlap=0) where T<:Real
+
+    overlap = Int(overlap)
+    dates   = unique(dates_all)
+    y      = y .- mean(y)
+    ssc    = 0.0
+
+    for date in dates
+        ssc   = ssc + (sum(y[dates_all.==date]))^2
+    end
+
+    loglikdivide  = ssc/sum(y.^2)   # roughly accounts for cross-correlation as in clustered standard errors.
+
+    if loglikdivide<0.9
+      @warn "loglikdivide is calculated to be $loglikdivide (excluding any overlap). Numbers smaller than one imply negative cross-correlation, perhaps induced by output transformation (e.g. from y to rank(y)).
+      loglikvidide WILL BE SET TO 1.0 by default. If the negative cross-correlation is genuine, the original value of $loglikdivide can be used, which would imply weaker priors."
+      loglikdivide = 1.0
+    end
+
+    loglikdivide  = loglikdivide*( 1 + overlap/2 ) # roughly accounts for auto-correlation induced by overlapping, e.g. y(t) = p(t+h) - p(t)
+    effective_sample_size = length(y)/loglikdivide
+
+   return loglikdivide,effective_sample_size
+
+end
 
 
 
@@ -149,7 +182,9 @@ Computes indexes of training set and test set for cumulative CV and pseudo-real-
 - Inefficient for large datasets
 
 """
-function SMARTindexes_from_dates(df::DataFrame,datesymbol::Symbol,first_date::Date,n_reestimate::Int)
+function SMARTindexes_from_dates(df::DataFrame,datesymbol::Symbol,first_date,n_reestimate)
+
+    n_reestimate = Int(n_reestimate)
 
     indtrain_a = Vector{Int}[]
     indtest_a  = Vector{Int}[]
@@ -188,57 +223,6 @@ function SMARTindexes_from_dates(df::DataFrame,datesymbol::Symbol,first_date::Da
 end
 
 
-
-"""
-    SMARTloglikdivide(y,date;overlap=0)
-
-This method is R compatible
-
-Suggests a value for param.loglikdivide (where param::SMARTparam). sample size/loglikedivide = effective sample size.
-The only effect of loglikdivide in SMARTboost is to calibrate the strength of the prior in relation to the likelihood evidence.
-The value obtained from this function can also be used as the starting value in a cross-validation search.
-Accounts (roughly) for cross-sectional correlation using a clustered standard errors approach, and for serial correlation induced
-by overlapping observation when y(t) = Y(t+horizon) - Y(t).
-
-# Inputs
-- `y:Vector`       vector of dependent variable
-- `date::Vector`   vector of dates
-- `overlap::Int`   (keyword) [0] horizon = number of overlaps + 1
-
-# Output
-- `loglikdivide::Float`
-- `effective_sample_size::Float`
-
-# Example of use
-    lld    =  SMARTloglikdivide(data.y,data.dates,overlap=h-1)
-    param  =  SMARTparam(loglikdivide=lld)
-
-"""
-function SMARTloglikdivide(y::Vector,date::Vector;overlap = 0)
-
-    overlap = Int(overlap)
-
-    dates  = unique(date)
-    y      = y .- mean(y)
-    ssc       = 0.0
-
-    for d in dates
-        ssc   = ssc + (sum(y[d.==date]))^2
-    end
-
-    loglikdivide  = ssc/sum(y.^2)   # roughly accounts for cross-correlation as in clustered standard errors.
-
-    if loglikdivide<0.9
-        @warn "loglikdivide is calculated to be $loglikdivide (excluding any overlap). Numbers smaller than one imply negative cross-correlation, perhaps induced by output transformation (e.g. from y to rank(y)).
-        loglikvidide WILL BE SET TO 1.0 by default. If the negative cross-correlation is genuine, the original value of $loglikdivide can be used, which would imply weaker priors."
-        loglikdivide = 1.0
-    end
-
-    loglikdivide  = loglikdivide*( 1 + overlap/2 ) # roughly accounts for auto-correlation induced by overlapping, e.g. y(t) = p(t+h) - p(t)
-
-   return loglikdivide
-
-end
 
 
 
@@ -582,7 +566,6 @@ The additional models considered in modality=:accurate and :compromise are:
 - Rough cross-validation of parameters for categorical features, if any.
 - A penalization to encourage sparsity (fewer relevant features). 
 - Imposing sharp splits on features with high average values of τ (sharp splits), only if the first run suggests it.
-- Only for :accurate: 0-2 different distributions (loss), e.g. :t if :L2 (student-T instead of a Gaussian.)
 
 If param.modality=:accurate, lambda for all models is set set min(lambda,0.1). If modality=:compromise, the default learning rate
 lambda=0.2 is used, and the best model is then refitted with lambda = 0.1. 
@@ -601,7 +584,6 @@ Finally, all the estimated models considered are stacked, with weights chosen to
                             vector to over-ride (e.g. [2,4])   
 - `add_sharp::Bool`         [false] models with sharp splits everywhere. This is then added to the stack. There is almost nothing to be gained from this 
                             with symmetric (obvlivious) trees; it is preferable to stack with standard trees (not implemented internally yet.)
-- `add_different_loss::Bool`  [true for modality=:accurate, else false] tries a different loss function (where appropriate)
 - `min_p_sparsity`          [10] minimum number of features for sparsity or density penalizations to be considered
 
 # Output (named tuple)
@@ -635,7 +617,7 @@ Finally, all the estimated models considered are stacked, with weights chosen to
     output = SMARTfit(data,param)
 
 """
-function SMARTfit( data::SMARTdata, param::SMARTparam; cv_grid=[],add_different_loss::Union{Bool,Symbol}=:default,add_sharp::Bool=false,
+function SMARTfit( data::SMARTdata, param::SMARTparam; cv_grid=[],add_different_loss::Bool=false,add_sharp::Bool=false,
     min_p_sparsity=10,skip_full_sample=false)   # skip_full_sample enforces nofullsample even if nfold=1 (used in other functions, not by user)
 
     T,I = param.T,param.I
@@ -661,7 +643,6 @@ function SMARTfit( data::SMARTdata, param::SMARTparam; cv_grid=[],add_different_
 
         add_hybrid = false
         add_sparse = false
-        add_different_loss = false
 
         if size(data.x,2)>20_000 && param.loss==:logistic
             param.newton_gaussian_approx = true   # true has large efficiency gains for logistic (loss=...exp())
@@ -673,15 +654,6 @@ function SMARTfit( data::SMARTdata, param::SMARTparam; cv_grid=[],add_different_
         add_sparse = true
 
     end  
-
-    if add_different_loss==:default
-        if modality==:accurate
-            add_different_loss = true
-        else 
-            add_different_loss = false
-        end         
-    end     
-
 
     if modality==:fastest
         param0.nofullsample = true
@@ -836,7 +808,7 @@ function SMARTfit( data::SMARTdata, param::SMARTparam; cv_grid=[],add_different_
 
         best_i      = argmin(lossgrid)
         bestvalue   = cvgrid[best_i]
-        force_sharp_splits = 12 .< mean_weighted_tau(SMARTtrees_a[best_i]) .<100 # 100 indicates that the split is always sharp anyway
+        force_sharp_splits = 10 .< mean_weighted_tau(SMARTtrees_a[best_i]) .<100 # 100 indicates that the split is always sharp anyway
         fnames,fi,fnames_sorted,fi_sorted,sortedindx = SMARTrelevance(SMARTtrees_a[best_i],data)
         fi_sharp = sort(fi[force_sharp_splits.==true],rev=true)
         p_sharp = length(fi_sharp)
@@ -921,6 +893,7 @@ function SMARTfit( data::SMARTdata, param::SMARTparam; cv_grid=[],add_different_
         end 
     end         
 
+    # Experimental. Not well tested yet. Perhaps cleaner to run SMARTfit with a different loss. 
     # NB: loss is NOT comparable across different distributions.
     if add_different_loss==true && (param.loss != SMARTtrees_a[best_i].param.loss) 
  
@@ -1400,4 +1373,65 @@ function tight_sparsevs(ntrees,param)       #ntrees is the number of trees in th
 
 end
 
+""" 
+
+    SMARTweightedtau(output,data;verbose=true,plot_tau=true)
+
+Computes weighted (by variance importance gain at each split) smoothing parameter τ for each
+feature, and for the entire model (features are averaged by variance importance)
+statistics for each feature, averaged over all trees. Sharp thresholds (τ=Inf) are bounded at 50.
+NOTE: all statistics are computed only on the best model produced by SMARTfit. 
+
+# Input 
+- `output`   output from SMARTfit
+- `data`     data input to SMARTfit
+
+# Optional inputs 
+- `verbose`   [true]  prints out the results to screen as DataFrame
+- `plot_tau`  [true]  plots a sigmoid with avgtau (see below) to get a sense of function smoothness.
+
+# Output
+- `avgtau`    scalar, average importance weighted τ over all features (also weighted by variance importance) 
+- `avgtau_a`  p-vector of avg importance weighted τ for each feature 
+- `df`        dataframe collecting avgtau_a information (only if verbose=true)
+
+
+# Example of use
+output = SMARTfit(data,param)
+avgtau,avgtau_a,dftau = SMARTweightedtau(output,data)
+avgtau,avgtau_a,dftau = SMARTweightedtau(output,data,verbose=false,plot_tau=false)
+
+"""
+function SMARTweightedtau(output,data;verbose::Bool=true,plot_tau::Bool=true)
+
+    T = Float64
+    SMARTtrees = output.SMARTtrees
+    p = max(length(SMARTtrees.infeatures),length(SMARTtrees.meanx))  # they should be the same ...
+    
+    avgtau_a = mean_weighted_tau(SMARTtrees)
+    fnames,fi,fnames_sorted,fi_sorted,sortedindx = SMARTrelevance(SMARTtrees,data)
+    
+    avgtau  = sum(avgtau_a.*fi)/sum(fi)
+    df = DataFrame(feature = fnames, importance = fi, avgtau = avgtau_a,
+           sorted_feature = fnames_sorted, sorted_importance = fi_sorted, sorted_avgtau = avgtau_a[sortedindx])
+
+    if verbose==true
+        df = DataFrame(feature = fnames, importance = fi, avgtau = avgtau_a,
+        sorted_feature = fnames_sorted, sorted_importance = fi_sorted, sorted_avgtau = avgtau_a[sortedindx])
+        display(df)
+        println("\n average smoothing parameter is $avgtau ")
+    else 
+        df = nothing     
+    end 
+
+    if plot_tau==true
+        x = range(-2,stop=2,length=100)
+        τ,μ = avgtau,0.0
+        g = @. 0.5 + 0.5*( 0.5*τ*(x-μ)/sqrt(( 1.0 + ( 0.5*τ*(x-μ) )^2  )) )
+        display(plot(x,g,legend=false,title="sqrt sigmoid with τ = $avgtau", xlabel = "standardized x"))
+    end
+
+    return T(avgtau),T.(avgtau_a),df
+
+end 
 
