@@ -564,8 +564,8 @@ may then fit, where appropriate, a few more models, which incrementally modify t
 
 The additional models considered in modality=:accurate and :compromise are:
 - Rough cross-validation of parameters for categorical features, if any.
-- A penalization to encourage sparsity (fewer relevant features). 
-- Imposing sharp splits on features with high average values of τ (sharp splits), only if the first run suggests it.
+- A penalization to encourage sparsity (fewer relevant features), unless user sets add_sparse=false.
+- Imposing sharp splits on features with high average values of τ (sharp splits), only if the first run suggests it, unless user sets add_hybrid=false.
 
 If param.modality=:accurate, lambda for all models is set set min(lambda,0.1). If modality=:compromise, the default learning rate
 lambda=0.2 is used, and the best model is then refitted with lambda = 0.1. 
@@ -618,7 +618,7 @@ Finally, all the estimated models considered are stacked, with weights chosen to
 
 """
 function SMARTfit( data::SMARTdata, param::SMARTparam; cv_grid=[],add_different_loss::Bool=false,add_sharp::Bool=false,
-    min_p_sparsity=10,skip_full_sample=false)   # skip_full_sample enforces nofullsample even if nfold=1 (used in other functions, not by user)
+    add_sparse=true,add_hybrid=true,min_p_sparsity=10,skip_full_sample=false)   # skip_full_sample enforces nofullsample even if nfold=1 (used in other functions, not by user)
 
     T,I = param.T,param.I
 
@@ -647,11 +647,6 @@ function SMARTfit( data::SMARTdata, param::SMARTparam; cv_grid=[],add_different_
         if size(data.x,2)>20_000 && param.loss==:logistic
             param.newton_gaussian_approx = true   # true has large efficiency gains for logistic (loss=...exp())
         end    
-
-    else 
-        
-        add_hybrid = true
-        add_sparse = true
 
     end  
 
