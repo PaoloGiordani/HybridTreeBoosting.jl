@@ -497,9 +497,10 @@ end
 # iii) an equally spaced grid between minimum(xi) and maximum(xi). Option iii) is fastest. Here I use i), but at most maxn (default 100_000) observations are sampled,
 # and @distributed for. Deciles are interpolated.
 # If distrib_threads = false, uses @distributed and SharedArray. SharedArray can occasionally produce an error in Windows (not in Linux).
+# If this happens, the code switches to distrib_threads = true 
 # If distrib_threads = true, uses Threads.@threads. 
 function gridmatrixμ(data::SMARTdata,param::SMARTparam,meanx,stdx;maxn::Int = 100_000,tol = 0.005, maxiter::Int = 100, fuzzy::Bool = false,
-         distrib_threads::Bool=true)
+         distrib_threads::Bool=false)
 
     x        = data.x
     T        = param.T 
@@ -511,18 +512,25 @@ function gridmatrixμ(data::SMARTdata,param::SMARTparam,meanx,stdx;maxn::Int = 1
     @assert(npoints<n,"npoints cannot be larger than n")
 
     # grid for mu and information on feature x[:,i]    
-    if distrib_threads
+
+    if distrib_threads==false
+        try 
+            mugrid0     = SharedArray{T}(npoints,p)
+            dichotomous = SharedVector{Bool}(p)
+            kd          = SharedVector{T}(p)     # Kantorovic 2-distance from feature i to a normal
+            n_unique_a  = SharedVector{Int}(p)   # number of unique values in xi
+            mixed_dc    = SharedVector{Bool}(p)  # if a feature is discrete or mixed discrete-continuous: some deciles are repeated
+        catch ex
+            dstrib_threads = true
+        end           
+    end     
+
+    if distrib_threads == true 
         mugrid0     = Matrix{T}(undef,npoints,p)
         dichotomous = Vector{Bool}(undef,p)
         kd          = Vector{T}(undef,p)     # Kantorovic 2-distance from feature i to a normal
         n_unique_a  = Vector{Int}(undef,p)   # number of unique values in xi
         mixed_dc    = Vector{Bool}(undef,p)  # if a feature is discrete or mixed discrete-continuous: some deciles are repeated
-    else     
-        mugrid0     = SharedArray{T}(npoints,p)
-        dichotomous = SharedVector{Bool}(p)
-        kd          = SharedVector{T}(p)     # Kantorovic 2-distance from feature i to a normal
-        n_unique_a  = SharedVector{Int}(p)   # number of unique values in xi
-        mixed_dc    = SharedVector{Bool}(p)  # if a feature is discrete or mixed discrete-continuous: some deciles are repeated
     end 
 
     n>maxn ? ssi=randperm(Random.MersenneTwister(param.seed_datacv),n)[1:maxn] : ssi=collect(1:n)

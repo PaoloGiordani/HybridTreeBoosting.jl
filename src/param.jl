@@ -168,13 +168,13 @@ Parameters for SMARTboost
                             Set cat_features=[0] to override the automatic detection and force no categorical feature.  
 
 - `lambda::Float`           [0.1 or 0.2] Learning rate. 0.10 for (nearly) best performance. 0.2 is a good compromise. Default is 0.1 of modality=:accruate, and 0.2 otherwise.
-- `depth::Int`              [4] tree depth. Unless modality = :fast or :fastest, this is over-written as depth is cross-validated. See SMARTfit() for more options.
+- `depth::Int`              [5] tree depth. Unless modality = :fast or :fastest, this is over-written as depth is cross-validated. See SMARTfit() for more options.
 - `sparsity_penalization`   [0.3] positive numbers encourage sparsity. The range [0.0-1.5] should cover most scenarios. 
                             Automatically cv in modality=:compromise and :accurate. Increase to obtain a more parsimonious model.
 
 # Inputs that may sometimes be modified by user (all inputs are keyword with default values)
 
-- `ntrees::Int`             [1000] Maximum number of trees. SMARTfit will automatically stop when cv loss stops decreasing.
+- `ntrees::Int`             [2000] Maximum number of trees. SMARTfit will automatically stop when cv loss stops decreasing.
 - `sharevs`                 [1.0] row subsampling in variable selection phase (only to choose feature on which to split.)
                             :Auto sets sharevs so that the subsample size is proportional to 50k*sqrt(n/50k).
                             At high n, sharevs<1 speeds up computations, but can reduce accuracy, particularly in sparse setting with low SNR.         
@@ -223,7 +223,7 @@ function SMARTparam(;
     stderulestop = 0.01,         # e.g. 0.01. Applies to stopping while adding trees to the ensemble. larger numbers give smaller ensembles.
     lambda = 0.20,
     # Tree structure and priors
-    depth  = 4,        # 3 allows 2nd degree interaction and is fast. 4 takes almost twice as much on average. 5 can be 8-10 times slower.
+    depth  = 5,        # 3 allows 2nd degree interaction and is fast. 4 takes almost twice as much on average. 5 can be 8-10 times slower.
     depth1 = 10,
     sigmoid = :sigmoidsqrt,  # :sigmoidsqrt or :sigmoidlogistic
     meanlntau= 1.0,    # Assume a Gaussian for log(tau).
@@ -269,7 +269,7 @@ function SMARTparam(;
     xtolOptim = 0.02,  # tolerance in the optimization e.g. 0.02 (measured in dμ). It is automatically reduced if tau is large 
     method_refineOptim = :pmap, #  :pmap, :distributed 
     # miscel
-    ntrees = 1000, # number of trees. 1000 is CatBoost default. 
+    ntrees = 2000, # number of trees. 1000 is CatBoost default, but in SMARTboost trees are shallow.  
     theta = 1.0,   # numbers larger than 1 imply tighter penalization on β compared to default. 
     loglikdivide = :Auto,   # the log-likelhood is divided by this scalar. Used to improve inference when observations are correlated.
     overlap = 0,

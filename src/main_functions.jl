@@ -580,7 +580,7 @@ Finally, all the estimated models considered are stacked, with weights chosen to
 
 # Optional inputs
 
-- `cv_grid::Vector`         The code performs a search in the space depth in [1,2,3,4,5,6], trying to fit few models if possible. Provide a
+- `cv_grid::Vector`         The code performs a search in the space depth in [2,3,4,5,6], trying to fit few models if possible. Provide a
                             vector to over-ride (e.g. [2,4])   
 - `add_sharp::Bool`         [false] models with sharp splits everywhere. This is then added to the stack. There is almost nothing to be gained from this 
                             with symmetric (obvlivious) trees; it is preferable to stack with standard trees (not implemented internally yet.)
@@ -629,7 +629,7 @@ function SMARTfit( data::SMARTdata, param::SMARTparam; cv_grid=[],add_different_
     # if isempty(cv_grid), fits depth=2,3,4. If 2 is best, fits 1. If 3 is best, stops. If 4 is best, fits 5 and (if :accurate) 6.
     if isempty(cv_grid)
         user_provided_grid = false
-        cv_grid=[1,2,3,4,5,6]   
+        cv_grid=[1,2,3,4,5,6]     # NB: later code assumes this grid
     else     
         user_provided_grid = true
     end     
@@ -702,12 +702,13 @@ function SMARTfit( data::SMARTdata, param::SMARTparam; cv_grid=[],add_different_
     end 
 
     # Cross-validate depths in the model described by param0. 
-    # if isempty(cv_grid), fits depth=2,3,4. If 2 is best, fits 1. If 3 is best, stops. If 4 is best, fits 5 and (if :accurate) 6.
+    # if isempty(cv_grid), fits depth=3,4,5. If 3 is best, fits 1,2. If 4 is best, stops. If 5 is best, fits 6 (:accurate only).
+    # NB: assumes cv_grid = [1,2,3,4,5,6]
     if user_provided_grid==false
 
-        i_a = [2,3,4]
+        i_a = [3,4,5]
 
-        for j in 1:2
+        for _ in 1:2
 
             for i in i_a 
 
@@ -721,16 +722,16 @@ function SMARTfit( data::SMARTdata, param::SMARTparam; cv_grid=[],add_different_
                 treesize[i],lossgrid[i],meanloss_a[i],stdeloss_a[i],SMARTtrees_a[i],gammafit_test_a[i],indtest_a,y_test_a = ntrees,loss,meanloss,stdeloss,SMARTtrees1st,gammafit_test,indtest,y_test 
                 problems_somewhere = problems_somewhere + problems
 
-                i==5 && lossgrid[5]>lossgrid[4] ? break : nothing
+               # i==4 && lossgrid[4]>lossgrid[3] ? break : nothing   # would save time, but sensitive to noise
 
             end     
 
-            if argmin(lossgrid)==2
-                i_a = [1]
-            elseif argmin(lossgrid)==3
+            if argmin(lossgrid)==3
+                i_a = [1,2]
+            elseif argmin(lossgrid)==4
                 break
             else
-                param.modality==:accurate ? i_a = [5,6] : i_a = [5]      
+                param.modality==:accurate ? i_a = [6] : break      
             end     
  
         end 
@@ -1370,12 +1371,12 @@ end
 
 """ 
 
-    SMARTweightedtau(output,data;verbose=true,plot_tau=true)
+    SMARTweightedtau(output,data;verbose=true,plot_tau=true,best_model=false)
 
 Computes weighted (by variance importance gain at each split) smoothing parameter τ for each
 feature, and for the entire model (features are averaged by variance importance)
 statistics for each feature, averaged over all trees. Sharp thresholds (τ=Inf) are bounded at 50.
-NOTE: all statistics are computed only on the best model produced by SMARTfit. 
+best_model=true for single model with lowest CV loss, best_model= false for weighted average (weights optimized by stacking)
 
 # Input 
 - `output`   output from SMARTfit
@@ -1394,17 +1395,29 @@ NOTE: all statistics are computed only on the best model produced by SMARTfit.
 # Example of use
 output = SMARTfit(data,param)
 avgtau,avgtau_a,dftau = SMARTweightedtau(output,data)
-avgtau,avgtau_a,dftau = SMARTweightedtau(output,data,verbose=false,plot_tau=false)
+avgtau,avgtau_a,dftau = SMARTweightedtau(output,data,verbose=false,plot_tau=false,best_model=true)
 
 """
-function SMARTweightedtau(output,data;verbose::Bool=true,plot_tau::Bool=true)
+function SMARTweightedtau(output,data;verbose::Bool=true,plot_tau::Bool=true,best_model::Bool=false)
 
     T = Float64
     SMARTtrees = output.SMARTtrees
     p = max(length(SMARTtrees.infeatures),length(SMARTtrees.meanx))  # they should be the same ...
     
-    avgtau_a = mean_weighted_tau(SMARTtrees)
-    fnames,fi,fnames_sorted,fi_sorted,sortedindx = SMARTrelevance(SMARTtrees,data)
+    if best_model==true
+        avgtau_a = mean_weighted_tau(SMARTtrees)
+    else     
+        avgtau_a = zeros(p)
+        w        = output.w
+        
+        for i in eachindex(w)
+            if w[i]>0 
+                avgtau_a += w[i]*mean_weighted_tau(output.SMARTtrees_a[i])
+            end 
+        end 
+    end     
+
+    fnames,fi,fnames_sorted,fi_sorted,sortedindx = SMARTrelevance(output,data,verbose=false,best_model=best_model)
     
     avgtau  = sum(avgtau_a.*fi)/sum(fi)
     df = DataFrame(feature = fnames, importance = fi, avgtau = avgtau_a,
@@ -1429,4 +1442,3 @@ function SMARTweightedtau(output,data;verbose::Bool=true,plot_tau::Bool=true)
     return T(avgtau),T.(avgtau_a),df
 
 end 
-
