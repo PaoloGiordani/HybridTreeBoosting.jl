@@ -1361,7 +1361,7 @@ function tight_sparsevs(ntrees,param)       #ntrees is the number of trees in th
     param.depth==1 ? warning_threshold = 0.7 : warning_threshold = 0.5 
 
     if param.warnings==:On && param.sparsevs==:On && ratio_actual_max > warning_threshold
-        @warn "WARNING: with sparsevs=:On, the number of candidate features is $(round(100*ratio_actual_max,digits=1))% of the theoretical max, which suggests that sparsevs may be placing a constraint on feature selection,
+        @warn "WARNING: with sparsevs=:On, the number of candidate features is $(round(100*ratio_actual_max,digits=1))% of the theoretical max, which suggests a dense setting in which sparsevs may be placing a constraint on feature selection,
         potentially leading to a loss of accuracy. Consider setting sparsevs=:Off, or increasing number_best_features (default 10) to increase the number of candidate features. "
     end
 

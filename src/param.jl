@@ -184,7 +184,7 @@ Parameters for SMARTboost
 - `stderulestop::Float`     [0.01] A positive number stops iterations while the loss is still decreasing. This results in faster computations at minimal loss of fit.
 - `delete_missing`          [false] true to delete rows with missing values in any feature, false to handle missing internally (recommended).
 - `theta`                   [1]  numbers larger than 1 imply tighter penalization on β (final leaf values) compared to default.
-- `meanlntau::Float`        [0.0] prior mean of log(τ). Set to higher numbers to suggest less smooth functions.        
+- `meanlntau::Float`        [1.0] prior mean of log(τ). Set to higher numbers to suggest less smooth functions.        
 - `mugridpoints::Int`       [10] number of points at which to evaluate μ during variable selection. 5 is sufficient on simulated data with normal or uniform distributions, but actual data may benefit from more (due to with highly non-Gaussian features).
                             For extremely complex and nonlinear features, more than 10 may be needed.        
 - `force_sharp_splits`      [] optionally, a p vector of Bool, with j-th value set to true if the j-th feature is forced to enter with a sharp split.
