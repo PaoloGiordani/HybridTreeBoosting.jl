@@ -521,7 +521,7 @@ function gridmatrixμ(data::SMARTdata,param::SMARTparam,meanx,stdx;maxn::Int = 1
             n_unique_a  = SharedVector{Int}(p)   # number of unique values in xi
             mixed_dc    = SharedVector{Bool}(p)  # if a feature is discrete or mixed discrete-continuous: some deciles are repeated
         catch ex
-            dstrib_threads = true
+            distrib_threads = true
         end           
     end     
 
