@@ -550,7 +550,6 @@ end
 
 
 # Selects best (μ,τ) for a given feature using a rough grid in τ and, as default, a rough grid on μ.
-# If loss increases, break loop over tau (reduces computation costs by some 25%), which assumes monotonicity in τ. (Remove? Make it an option?)
 function add_depth(t)
 
     loss,τ,μ,nan_present = best_μτ_excluding_nan(t)
@@ -663,9 +662,8 @@ function best_μτ_excluding_nan(t)
 
         for (indexμ,μ) in enumerate(μgridi)
 
-            for (indexτ,τ) in enumerate(τgrid)
+            for (indexτ,τ) in enumerate(τgrid) # PG: don't break this loop since mugrid only has ten points (would be reasonable to break with extensive search on μ)
                 lossmatrix[indexτ,indexμ] = Gfitβ(y,w,gammafit_ensemble,r,h,G0,xi,param,infeatures,fi,info_i,[μ,log(τ),T(0)],G,Gh,llik0)
-                if indexτ>1 && (lossmatrix[indexτ,indexμ])>(lossmatrix[indexτ-1,indexμ]); break; end  #  if loss increases, break loop over tau (reduces computation costs by some 25%)
             end
 
         end
