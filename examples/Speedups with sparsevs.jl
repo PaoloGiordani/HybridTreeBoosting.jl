@@ -15,12 +15,18 @@ in this group of best_features at the first update (10 if the same features have
 at each split). In the next tree, only the features in this group will be
 considered as candidates for splitting, saving time for large p. At the next predetermined
 update, the best features are added to this group.
+Dichotomous features (i.e. dummies, taking only two values) are always included, since much faster.
 Since features never leave the group of best_features, this group can get large if the environment
 is dense, and will stay small if the environment is sparse. Large speed-ups gains are therefore
 not guaranteed, but the forecasting accuracy should not be strongly affected except in extreme
 cases where several hundred features are needed to accurately fit the data. To prevent loss of fit,
 an automatic warning is issued if the size of the group of best_features is over 50% the largest
 theoretical size (output.ratio_actual_max>0.5).
+
+The speed-ups gains are typically smaller than may be expected, due to the fact that i) parallelization
+becomes more efficient for larger p*/number_workers (where p* is the number of candidate features at
+a given split, and p*<p if sparsevs = :On ), and ii) there is a fixed cost for refineOptim 
+(refine otimization of μ,τ,m given i). Speed-ups are larger for very large p (e.g. p=2000)
 
 paolo.giordani@bi.no
 """
@@ -40,7 +46,6 @@ Random.seed!(123)
 # Options for data generation 
 n         = 1_000
 p         = 1_000        # number of features 
-dummies   = false        # true if x, x_test are 0-1 (faster).
 stde      = 1            
 
 # Options for SMARTboost: modality is the key parameter guiding hyperparameter tuning and learning rate.
@@ -81,10 +86,6 @@ if f_dgp==Friedman_function
     x,x_test = rand(n,p), rand(200_000,p)    # Friedman function on U(0,1)
 else 
     x,x_test = randn(n,p), randn(200_000,p)    
-
-    if dummies 
-        x,x_test = Float64.(x .> 0), Float64.(x_test .> 0)
-    end 
 end     
 
 
@@ -127,7 +128,7 @@ param   = SMARTparam(modality=modality,ntrees=ntrees,sparsevs=sparsevs,
 
 data  = SMARTdata(y,x,param)
 
-println("\n n = $n, p = $p, dummies=$dummies, modality = $modality, sparsevs = $sparsevs, frequency_update = $frequency_update")
+println("\n n = $n, p = $p, modality = $modality, sparsevs = $sparsevs, frequency_update = $frequency_update")
 println(" time to fit ")
 
 @time output = SMARTfit(data,param);

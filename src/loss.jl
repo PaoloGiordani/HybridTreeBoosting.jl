@@ -171,6 +171,7 @@ function updatecoeff(param0,y,gammafit,weights,iter)
         elseif param.loss==:t || param.loss == :logt
             res = Newton_MAP(y-gammafit,gH_student,start_value_student,w=weights)
             param.coeff_updated = [[res.minimizer[1],res.minimizer[2]]]
+        elseif param.loss==:logistic   # no parameter to update    
         else 
             @error "loss not implemented"    
         end

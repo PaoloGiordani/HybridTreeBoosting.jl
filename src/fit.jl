@@ -684,7 +684,7 @@ end
 
 # looping using @distributed or (since @distributed requires SharedArray, which can crash on Windows) Distributed.@spawn.
 # pmap is as slow as map in this settings, which I don't understand, since it works as expected in refineOptim.
-function loopfeatures(y,w,gammafit_ensemble,r::AbstractVector{T},h::AbstractVector{T},G0::AbstractArray{T},x::AbstractMatrix{T},ifit,infeatures,fi,μgrid,Info_x,τgrid::AbstractVector{T},param::SMARTparam,ntree)::AbstractArray{T} where T<:AbstractFloat
+function loopfeatures(y,w,gammafit_ensemble,gammafit,r::AbstractVector{T},h::AbstractVector{T},G0::AbstractArray{T},x::AbstractMatrix{T},ifit,infeatures,fi,μgrid,Info_x,τgrid::AbstractVector{T},param::SMARTparam,ntree)::AbstractArray{T} where T<:AbstractFloat
 
     n,p   = size(x)
     ps    = Vector(1:p)                    # default: included all features
@@ -728,9 +728,9 @@ function loopfeatures(y,w,gammafit_ensemble,r::AbstractVector{T},h::AbstractVect
     end
 
     if typeof(outputarray)<:SharedArray
-        outputarray = loopfeatures_distributed(outputarray,n,p,ps,y,w,gammafit_ensemble,r,h,G0,x,ifit,infeatures,fi,μgrid,Info_x,τgrid,param,ntree,allow_preliminaryvs)
+        outputarray = loopfeatures_distributed(outputarray,n,p,ps,y,w,gammafit_ensemble,gammafit,r,h,G0,x,ifit,infeatures,fi,μgrid,Info_x,τgrid,param,ntree,allow_preliminaryvs)
     else     
-        outputarray = loopfeatures_spawn(outputarray,n,p,ps,y,w,gammafit_ensemble,r,h,G0,x,ifit,infeatures,fi,μgrid,Info_x,τgrid,param,ntree,allow_preliminaryvs)
+        outputarray = loopfeatures_spawn(outputarray,n,p,ps,y,w,gammafit_ensemble,gammafit,r,h,G0,x,ifit,infeatures,fi,μgrid,Info_x,τgrid,param,ntree,allow_preliminaryvs)
     end
 
     return outputarray
@@ -746,9 +746,9 @@ end
 #       outputarray[i,:] = fetch(future)
 #
 # outputarray is Matrix{T}(undef,p,4) #  [loss, τ, μ, m ]  p, not length(ps)
-function loopfeatures_spawn(outputarray,n,p,ps,y,w,gammafit_ensemble,r,h,G0,x,ifit,infeatures,fi,μgrid,Info_x,τgrid,param,ntree,allow_preliminaryvs)
+function loopfeatures_spawn(outputarray,n,p,ps,y,w,gammafit_ensemble,gammafit,r,h,G0,x,ifit,infeatures,fi,μgrid,Info_x,τgrid,param,ntree,allow_preliminaryvs)
 
-    T = param.T
+    T,I = param.T,param.I
     outputarray[:,1] = fill(T(Inf),p)   #                   p, not p_new (if p>p_new, some will be Inf)
 
     if param.subsampleshare_columns < 1
@@ -756,6 +756,27 @@ function loopfeatures_spawn(outputarray,n,p,ps,y,w,gammafit_ensemble,r,h,G0,x,if
         ps     = ps[randperm(Random.MersenneTwister(param.seed_subsampling+2*ntree),p)[1:psmall]]                  # subs-sample, no reimmission
     end
 
+    # preliminary variable selection
+    d = I(round(log(2*size(G0,2))/log(2))) 
+
+    if param.pvs == :On && d >= param.min_d_pvs && length(ps)>2*param.p_pvs    
+
+        # By setting gammafit_ensemble=gammafit_ensemble+gammafit, and G0=1, I fit a smooth stomp. 
+        @sync @distributed for i in ps
+
+            if Info_x[i].exclude==false  && Info_x[i].n_unique>1
+                t   = (y=y,w=w,gammafit_ensemble=gammafit_ensemble+gammafit,r=r,h=h,G0=ones(T,n,1),xi=x[:,i],infeatures=infeatures,fi=fi,info_i=Info_x[i],μgridi=μgrid[i],τgrid=τgrid,param=param)
+                outputarray[i,:] = add_depth(t)     # [loss, τ, μ, m ]
+            end
+  
+        end
+ 
+        ps = sortperm(outputarray[:,1])[1:param.p_pvs]    # redefine ps
+        outputarray[:,1] = fill(T(Inf),p)
+
+    end 
+
+    # (second stage) variable selection.
     @sync for i in ps        
         @async begin # use @async to create a task that will be scheduled to run on any available worker process
             if Info_x[i].exclude==false  && Info_x[i].n_unique>1
@@ -772,15 +793,35 @@ end
 
 
 # outputarray is SharedArray{T}(p,4)
-function loopfeatures_distributed(outputarray,n,p,ps,y,w,gammafit_ensemble,r,h,G0,x,ifit,infeatures,fi,μgrid,Info_x,τgrid,param,ntree,allow_preliminaryvs)
+function loopfeatures_distributed(outputarray,n,p,ps,y,w,gammafit_ensemble,gammafit,r,h,G0,x,ifit,infeatures,fi,μgrid,Info_x,τgrid,param,ntree,allow_preliminaryvs)
 
-    T = param.T
+    T,I = param.T,param.I
     outputarray[:,1] = fill(T(Inf),p)   #                   p, not p_new (if p>p_new, some will be Inf)
 
     if param.subsampleshare_columns < 1
         psmall = convert(Int64,round(p*param.subsampleshare_columns))
         ps     = ps[randperm(Random.MersenneTwister(param.seed_subsampling+2*ntree),p)[1:psmall]]                  # subs-sample, no reimmission
     end
+
+    # preliminary variable selection
+    d = I(round(log(2*size(G0,2))/log(2))) 
+
+    if param.pvs == :On && d >= param.min_d_pvs && length(ps)>2*param.p_pvs     
+
+        # By setting gammafit_ensemble=gammafit_ensemble+gammafit, and G0=1, I fit a smooth stomp. 
+        @sync @distributed for i in ps
+
+            if Info_x[i].exclude==false  && Info_x[i].n_unique>1
+                t   = (y=y,w=w,gammafit_ensemble=gammafit_ensemble+gammafit,r=r,h=h,G0=ones(T,n,1),xi=x[:,i],infeatures=infeatures,fi=fi,info_i=Info_x[i],μgridi=μgrid[i],τgrid=τgrid,param=param)
+                outputarray[i,:] = add_depth(t)     # [loss, τ, μ, m ]
+            end
+  
+        end
+ 
+        ps = sortperm(outputarray[:,1])[1:param.p_pvs]    # redefine ps
+        outputarray[:,1] = fill(T(Inf),p)
+
+    end 
 
     # (second stage) variable selection.
     @sync @distributed for i in ps
@@ -1042,9 +1083,9 @@ function fit_one_tree_inner(y::AbstractVector{T},w,SMARTtrees::SMARTboostTrees,r
 
         # variable selection, optionally using a random sub-sample of the sample
         if length(ssi) == n
-            outputarray = loopfeatures(y,w,gammafit_ensemble,r,h,G0,x,ifit,infeatures,fi,μgrid,Info_x,τgrid,param,ntree)  # loops over all variables
+            outputarray = loopfeatures(y,w,gammafit_ensemble,gammafit0,r,h,G0,x,ifit,infeatures,fi,μgrid,Info_x,τgrid,param,ntree)  # loops over all variables
         else            # Variable selection using a random sub-set of the sample.
-            outputarray = loopfeatures(ys,ws,gammafit_ensembles,rs,hs,G0[ssi,:],xs,ifit,infeatures,fi,μgrid,Info_x,τgrid,param,ntree)  # loops over all variables
+            outputarray = loopfeatures(ys,ws,gammafit_ensembles,gammafit0,rs,hs,G0[ssi,:],xs,ifit,infeatures,fi,μgrid,Info_x,τgrid,param,ntree)  # loops over all variables
         end
 
         i               = argmin(outputarray[:,1])  # outputarray[:,1] is loss (minus log marginal likelihood) vector

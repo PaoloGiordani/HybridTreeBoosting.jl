@@ -525,7 +525,7 @@ end
 function from_gamma_to_Ey(gammafit,param,predict)
 
     loss  = param.loss
-    coeff = param.coeff_updated[1]
+    isempty(param.coeff_updated) ? nothing : coeff = param.coeff_updated[1]
     T     = param.T
 
     if predict == :Egamma
@@ -702,11 +702,15 @@ function SMARTfit( data::SMARTdata, param::SMARTparam; cv_grid=[],add_different_
     end 
 
     # Cross-validate depths in the model described by param0. 
-    # if isempty(cv_grid), fits depth=3,4,5. If 3 is best, fits 1,2. If 4 is best, stops. If 5 is best, fits 6 (:accurate only).
+    # option 1: if isempty(cv_grid), fits depth=3,4,5. If 3 is best, fits 2. If 4 is best, stops. If 5 is best, fits 6.
+    # option 2 (faster): if isempty(cv_grid), fits depth=3,5. If 3 is best, fits 2. If 5 is best, fits 6.
     # NB: assumes cv_grid = [1,2,3,4,5,6]
     if user_provided_grid==false
 
-        i_a = [3,4,5]
+        # option 1
+        # i_a = [3,4,5]
+        # option 2 
+        i_a = [3,5]
 
         for _ in 1:2
 
@@ -727,11 +731,12 @@ function SMARTfit( data::SMARTdata, param::SMARTparam; cv_grid=[],add_different_
             end     
 
             if argmin(lossgrid)==3
-                i_a = [1,2]
+                i_a = [2]
             elseif argmin(lossgrid)==4
                 break
             else
-                param.modality==:accurate ? i_a = [6] : break      
+                i_a = [6]
+                #param.modality==:accurate ? i_a = [6] : break      
             end     
  
         end 
@@ -815,11 +820,10 @@ function SMARTfit( data::SMARTdata, param::SMARTparam; cv_grid=[],add_different_
 
         if p_sharp>0    
             condition1 = fi_sharp[1]>10
-            condition2 = sum(fi_sharp[1:minimum([2,p_sharp])])>15
-            condition3 = sum(fi_sharp[1:minimum([3,p_sharp])])>18
-            condition4 = sum(fi_sharp[1:minimum([10,p_sharp])])>25
-            condition5 = sum(fi_sharp)>33
-            condition_sharp = condition1 || condition2 || condition3 || condition4 || condition5
+            condition2 = sum(fi_sharp[1:minimum([3,p_sharp])])>15
+            condition3 = sum(fi_sharp[1:minimum([10,p_sharp])])>20
+            condition4 = sum(fi_sharp)>25
+            condition_sharp = condition1 || condition2 || condition3 || condition4
         else 
             condition_sharp = false     
         end

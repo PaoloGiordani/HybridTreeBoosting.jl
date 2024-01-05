@@ -84,6 +84,10 @@ mutable struct SMARTparam{T<:AbstractFloat, I<:Int}
     frequency_update::T 
     number_best_features::I 
     best_features::Vector{I}
+    pvs::Symbol              # :On, :Off, :Auto  
+    p_pvs::I    # number of features taken to second stage (i.e. when actual G0 is used).
+    min_d_pvs::I    # minimum depth at which to start preliminaryvs. 2 as a minimum. 
+
     # grid and optimization parameters
     mugridpoints::I  # points at which to evaluate μ during variable selection. 5 is sufficient on simulated data, but actual data can benefit from more (due to with highly non-Gaussian (and non-uniform))
     taugridpoints::I  # points at which to evaluate τ during variable selection. 1-5 are supported. If less than 3, refinement is then on a grid with more points
@@ -223,7 +227,7 @@ function SMARTparam(;
     stderulestop = 0.01,         # e.g. 0.01. Applies to stopping while adding trees to the ensemble. larger numbers give smaller ensembles.
     lambda = 0.20,
     # Tree structure and priors
-    depth  = 5,        # 3 allows 2nd degree interaction and is fast. 4 takes almost twice as much on average. 5 can be 8-10 times slower.
+    depth  = 5,        # 3 allows 2nd degree interaction and is fast. 4 takes almost twice as much per tree on average. 5 can be 8-10 times slower per tree. However, fewer deeper trees are required, so the actual increase in computing costs is smaller.
     depth1 = 10,
     sigmoid = :sigmoidsqrt,  # :sigmoidsqrt or :sigmoidlogistic
     meanlntau= 1.0,    # Assume a Gaussian for log(tau).
@@ -263,6 +267,9 @@ function SMARTparam(;
     frequency_update = 1.0,       # when sparsevs, 1 for Fibonacci, 2 to update at 2*Fibonacci etc...               
     number_best_features = 10,    # number of best feature in each node to store into best_features    
     best_features   = Vector{I}(undef,0),
+    pvs = :Off,              # :On, :Off, :Auto. Experiments suggests modest speed gains when sparsevs=:On, but could speed up with very large p and depth > 5, at some loss of fit.   
+    p_pvs = 100,           # number of features taken to second stage (i.e. when actual G0 is used). 100 chosen by experimentation. No gains to set it lower. 
+    min_d_pvs = 4,        # minimum depth at which to start preliminary vs. >=2. 
     # grid and optimization parameters
     mugridpoints = 10,  # points at which to evaluate μ during variable selection. 5 is sufficient on simulated data, but actual data can benefit from more (due to with highly non-Gaussian features
     taugridpoints = 3,  # points at which to evaluate τ during variable selection. 1-5 are supported. If less than 3, refinement is then on a grid with more points
@@ -293,6 +300,10 @@ function SMARTparam(;
         newton_max_steps,newton_max_steps_final,newton_gaussian_approx = 1,1,false 
     end     
 
+    if loss==:Huber && warnings==:On 
+        @warn "loss = :t is recommended instead of loss = :Huber. The t loss automatically estimates the degres of freedom and typically converges faster. "
+    end     
+
     @assert(doflntau>T(2), " doflntau must be greater than 2.0 (for variance to be defined) ")
     @assert(T(1e-20) < xtolOptim, "xtolOptim must be positive ")
 
@@ -300,7 +311,8 @@ function SMARTparam(;
         @warn "setting param.depth higher than 6 typically results in very high computing costs"
     end
 
-    ncores = nprocs()-1    
+    ncores = nprocs()-1
+    
 
     # The following works even if sharevalidation is a Float which is meant as an integer (e.g. in R wrapper)
     if T(sharevalidation)==T(round(sharevalidation))  # integer
@@ -316,7 +328,7 @@ function SMARTparam(;
     sharevs==:Auto ? nothing : sharevs=T(sharevs)
     loglikdivide==:Auto ? nothing : loglikdivide=T(loglikdivide)
     p0==:Auto ? nothing : p0=I(p0)   # if :Auto, set in param_given_data!()
-
+ 
     if min_unique==:Auto
         modality in [:fast,:fastest] ? min_unique = 10 : min_unique = 5
     end     
@@ -341,7 +353,7 @@ function SMARTparam(;
     param = SMARTparam(T,I,loss,losscv,Symbol(modality),T.(coeff),coeff_updated,Symbol(verbose),Symbol(warnings),I(num_warnings),randomizecv,I(nfold),nofullsample,T(sharevalidation),indtrain_a,indtest_a,T(stderulestop),T(lambda),I(depth),I(depth1),Symbol(sigmoid),
         T(meanlntau),T(varlntau),T(doflntau),T(multiplier_stdtau),T(varmu),T(dofmu),Symbol(priortype),T(max_tau_smooth),I(min_unique),mixed_dc_sharp,force_sharp_splits,force_smooth_splits,exclude_features,cat_features,cat_features_extended,cat_dictionary,cat_values,cat_globalstats,I(cat_representation_dimension),T(n0_cat),T(mean_encoding_penalization),Bool(delete_missing),mask_missing,missing_features,info_date,T(sparsity_penalization),p0,sharevs,refine_obs_from_vs,finalβ_obs_from_vs,
         I(n_refineOptim),T(subsampleshare_columns),Symbol(sparsevs),T(frequency_update),
-        I(number_best_features),best_features,I(mugridpoints),I(taugridpoints),T(xtolOptim),Symbol(method_refineOptim),I(ntrees),T(theta),loglikdivide,I(overlap),T(multiply_pb),T(varGb),I(ncores),I(seed_datacv),I(seed_subsampling),newton_gaussian_approx,
+        I(number_best_features),best_features,Symbol(pvs),I(p_pvs),I(min_d_pvs),I(mugridpoints),I(taugridpoints),T(xtolOptim),Symbol(method_refineOptim),I(ntrees),T(theta),loglikdivide,I(overlap),T(multiply_pb),T(varGb),I(ncores),I(seed_datacv),I(seed_subsampling),newton_gaussian_approx,
         I(newton_max_steps),I(newton_max_steps_final),T(newton_tol),T(newton_tol_final),I(newton_max_steps_refineOptim),linesearch)
 
     param_constraints!(param) # enforces constraints across options. Must be repeated in SMARTfit.
@@ -379,6 +391,10 @@ function param_given_data!(param::SMARTparam,data::SMARTdata)
         param.sharevs = α
     end 
 
+    if param.pvs==:Auto
+        p>10*param.p_pvs && param.depth>5 ? param.pvs=:On : param.pvs=:Off
+    end 
+    
 end         
 
 
