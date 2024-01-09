@@ -14,7 +14,10 @@ This can be accomplished as follow
 - set modality=:compromise or :accurate, take a subsample of the data (say 10% or 20%), and run output=SMARTfit() on that.
 - set param=output.bestparam, and then param.modality=:fast or :fastest, and run SMARTfit() on the full data.
   
-This process works because 
+FACENDA !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+CONSIDER THE FOLLOWING: 
+- mugridtau = 5 in preliminary ... 
+- points_refineOptim = 7 or even 4 instead of 12 ... 
 
 paolo.giordani@bi.no
 """

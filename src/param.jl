@@ -87,13 +87,12 @@ mutable struct SMARTparam{T<:AbstractFloat, I<:Int}
     pvs::Symbol              # :On, :Off, :Auto  
     p_pvs::I    # number of features taken to second stage (i.e. when actual G0 is used).
     min_d_pvs::I    # minimum depth at which to start preliminaryvs. 2 as a minimum. 
-
     # grid and optimization parameters
     mugridpoints::I  # points at which to evaluate μ during variable selection. 5 is sufficient on simulated data, but actual data can benefit from more (due to with highly non-Gaussian (and non-uniform))
     taugridpoints::I  # points at which to evaluate τ during variable selection. 1-5 are supported. If less than 3, refinement is then on a grid with more points
     xtolOptim::T
     method_refineOptim::Symbol  # which method for refineOptim, e.g. pmap, @distributed, .... 
-
+    points_refineOptim::I      # number of values of tau for refineOptim. Default 12. Other values allowed are 4,7.
     # others
     ntrees::I   # number of trees
     theta::T  # penalization of β: multiplies the default precision. Default 1. Higher values give tighter priors.
@@ -275,6 +274,7 @@ function SMARTparam(;
     taugridpoints = 3,  # points at which to evaluate τ during variable selection. 1-5 are supported. If less than 3, refinement is then on a grid with more points
     xtolOptim = 0.02,  # tolerance in the optimization e.g. 0.02 (measured in dμ). It is automatically reduced if tau is large 
     method_refineOptim = :pmap, #  :pmap, :distributed 
+    points_refineOptim = 12,    # number of values of tau for refineOptim. Default 12. Other values allowed are 4,7.
     # miscel
     ntrees = 2000, # number of trees. 1000 is CatBoost default, but in SMARTboost trees are shallow.  
     theta = 1.0,   # numbers larger than 1 imply tighter penalization on β compared to default. 
@@ -353,7 +353,8 @@ function SMARTparam(;
     param = SMARTparam(T,I,loss,losscv,Symbol(modality),T.(coeff),coeff_updated,Symbol(verbose),Symbol(warnings),I(num_warnings),randomizecv,I(nfold),nofullsample,T(sharevalidation),indtrain_a,indtest_a,T(stderulestop),T(lambda),I(depth),I(depth1),Symbol(sigmoid),
         T(meanlntau),T(varlntau),T(doflntau),T(multiplier_stdtau),T(varmu),T(dofmu),Symbol(priortype),T(max_tau_smooth),I(min_unique),mixed_dc_sharp,force_sharp_splits,force_smooth_splits,exclude_features,cat_features,cat_features_extended,cat_dictionary,cat_values,cat_globalstats,I(cat_representation_dimension),T(n0_cat),T(mean_encoding_penalization),Bool(delete_missing),mask_missing,missing_features,info_date,T(sparsity_penalization),p0,sharevs,refine_obs_from_vs,finalβ_obs_from_vs,
         I(n_refineOptim),T(subsampleshare_columns),Symbol(sparsevs),T(frequency_update),
-        I(number_best_features),best_features,Symbol(pvs),I(p_pvs),I(min_d_pvs),I(mugridpoints),I(taugridpoints),T(xtolOptim),Symbol(method_refineOptim),I(ntrees),T(theta),loglikdivide,I(overlap),T(multiply_pb),T(varGb),I(ncores),I(seed_datacv),I(seed_subsampling),newton_gaussian_approx,
+        I(number_best_features),best_features,Symbol(pvs),I(p_pvs),I(min_d_pvs),I(mugridpoints),I(taugridpoints),T(xtolOptim),Symbol(method_refineOptim),
+        I(points_refineOptim),I(ntrees),T(theta),loglikdivide,I(overlap),T(multiply_pb),T(varGb),I(ncores),I(seed_datacv),I(seed_subsampling),newton_gaussian_approx,
         I(newton_max_steps),I(newton_max_steps_final),T(newton_tol),T(newton_tol_final),I(newton_max_steps_refineOptim),linesearch)
 
     param_constraints!(param) # enforces constraints across options. Must be repeated in SMARTfit.

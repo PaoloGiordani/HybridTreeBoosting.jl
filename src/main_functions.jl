@@ -1379,7 +1379,7 @@ end
 
 Computes weighted (by variance importance gain at each split) smoothing parameter τ for each
 feature, and for the entire model (features are averaged by variance importance)
-statistics for each feature, averaged over all trees. Sharp thresholds (τ=Inf) are bounded at 50.
+statistics for each feature, averaged over all trees. Sharp thresholds (τ=Inf) are bounded at 40.
 best_model=true for single model with lowest CV loss, best_model= false for weighted average (weights optimized by stacking)
 
 # Input 
@@ -1391,15 +1391,16 @@ best_model=true for single model with lowest CV loss, best_model= false for weig
 - `plot_tau`  [true]  plots a sigmoid with avgtau (see below) to get a sense of function smoothness.
 
 # Output
-- `avgtau`    scalar, average importance weighted τ over all features (also weighted by variance importance) 
-- `avgtau_a`  p-vector of avg importance weighted τ for each feature 
-- `df`        dataframe collecting avgtau_a information (only if verbose=true)
+- `avgtau`         scalar, average importance weighted τ over all features (also weighted by variance importance) 
+- `avg_explogtau`  scalar, exponential of average importance weighted log τ over all features (also weighted by variance importance) 
+- `avgtau_a`       p-vector of avg importance weighted τ for each feature 
+- `df`             dataframe collecting avgtau_a information (only if verbose=true)
 
 
 # Example of use
 output = SMARTfit(data,param)
-avgtau,avgtau_a,dftau = SMARTweightedtau(output,data)
-avgtau,avgtau_a,dftau = SMARTweightedtau(output,data,verbose=false,plot_tau=false,best_model=true)
+avgtau,avg_explogtau,avgtau_a,dftau = SMARTweightedtau(output,data)
+avgtau,avg_explogtau,avgtau_a,dftau = SMARTweightedtau(output,data,verbose=false,plot_tau=false,best_model=true)
 
 """
 function SMARTweightedtau(output,data;verbose::Bool=true,plot_tau::Bool=true,best_model::Bool=false)
@@ -1424,6 +1425,8 @@ function SMARTweightedtau(output,data;verbose::Bool=true,plot_tau::Bool=true,bes
     fnames,fi,fnames_sorted,fi_sorted,sortedindx = SMARTrelevance(output,data,verbose=false,best_model=best_model)
     
     avgtau  = sum(avgtau_a.*fi)/sum(fi)
+    exp_avglogtau = exp( sum(log.(avgtau_a).*fi)/sum(fi) )
+
     df = DataFrame(feature = fnames, importance = fi, avgtau = avgtau_a,
            sorted_feature = fnames_sorted, sorted_importance = fi_sorted, sorted_avgtau = avgtau_a[sortedindx])
 
@@ -1431,7 +1434,12 @@ function SMARTweightedtau(output,data;verbose::Bool=true,plot_tau::Bool=true,bes
         df = DataFrame(feature = fnames, importance = fi, avgtau = avgtau_a,
         sorted_feature = fnames_sorted, sorted_importance = fi_sorted, sorted_avgtau = avgtau_a[sortedindx])
         display(df)
-        println("\n average smoothing parameter is $avgtau ")
+        println("\n Average smoothing parameter τ is $(round(avgtau,digits=1)).")
+        println("\n In sufficiently large samples, and if modality=:compromise or :accurate:")
+        println("\n - Values above 20-25 suggest little smoothness in important features. SMARTboost may slightly outperform or slightly underperform other gradient boosting machines.")
+        println(" - At 10-15 or lower, SMARTboost should outperform other gradient boosting machines, or at least be worth including in an ensemble.")
+        println(" - At 5-7 or lower, SMARTboost should strongly outperform other gradient boosting machines.")
+
     else 
         df = nothing     
     end 
@@ -1440,9 +1448,18 @@ function SMARTweightedtau(output,data;verbose::Bool=true,plot_tau::Bool=true,bes
         x = range(-2,stop=2,length=100)
         τ,μ = avgtau,0.0
         g = @. 0.5 + 0.5*( 0.5*τ*(x-μ)/sqrt(( 1.0 + ( 0.5*τ*(x-μ) )^2  )) )
-        display(plot(x,g,legend=false,title="sqrt sigmoid with τ = $avgtau", xlabel = "standardized x"))
+
+        display(plot(x,g,
+                title="measures of average smoothing",
+                xlabel = "standardized x",
+                label = ["avg(tau)"],
+                legend = :bottomright,
+                linecolor = :blue,
+                linestyle = :solid,
+                linewidth = 5,
+                ))
     end
 
-    return T(avgtau),T.(avgtau_a),df
+    return T(avgtau),T(exp_avglogtau),T.(avgtau_a),df
 
 end 

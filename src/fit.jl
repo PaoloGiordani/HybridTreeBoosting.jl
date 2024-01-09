@@ -920,7 +920,9 @@ end
 
 
 # After completing the first step (selecting a feature), use μ0 and τ0 as starting points for a more refined optimization. Uses Optim
-# Tolerance is set on μ, with smaller tolerance (1/2) if τ is  higher than 10
+# Tolerance is set on μ, with smaller tolerance for larger values of if τ.
+# PG: in older versions, τgrid depended on τ0, which I now consider a mistake (because the initial μgrid is very rough,
+#   τ0 can be much smaller than τ in refineOptim.)
 function refineOptim_μτ_excluding_nan(y,w,gammafit_ensemble,r::AbstractVector{T},h::AbstractVector{T},G0::AbstractArray{T},xi::AbstractVector{T},infeatures,fi,info_i::Info_xi,μ0::T,τ0::T,
     param::SMARTparam,gridvectorτ::AbstractVector{T}) where T<:AbstractFloat
 
@@ -939,25 +941,15 @@ function refineOptim_μτ_excluding_nan(y,w,gammafit_ensemble,r::AbstractVector{
 
     if param.priortype==:sharp || info_i.force_sharp==true
         τgrid = T[Inf]
-    elseif τ0==T(Inf)  # best fitting value in preliminary feature selection was a sharp threshold; still allow for some lower values of τ as finer grid over μ gives sharp trees an advantage in the preliminary phase
-        τgrid = convert(Vector{T},[5,10,20,40,80,Inf])
     else
-        # optimize tau on a grid, and mu by NR with line search. If param.mugridpoints is smaller, the grid is wider
-        if param.taugridpoints == 1
-            τgrid = convert(Vector{T},exp.([ log(τ0)+j for j = -2.7:0.3:2.7 ]))
-        elseif param.taugridpoints == 2
-            τgrid = convert(Vector{T},exp.([ log(τ0)+j for j = -1.8:0.3:1.8 ]))
+        if param.points_refineOptim==4  # in some cases, 4 and then 4 again may be more efficient
+            τgrid = T[1,3,9,Inf]           
+        elseif param.points_refineOptim==7
+            τgrid = T[0.5,1,2,4,8,16,Inf]           
         else
-            τgrid = convert(Vector{T},exp.([ log(τ0)+j for j = -0.9:0.3:0.9 ]))   # largest τ around 22 if largest tau in grid is 9
-        end
-
-        if τ0==gridvectorτ[1] && length(gridvectorτ)==3; τgrid=vcat( T(0.2),τgrid[1:end-1] ); end; # allow linear behavior
-
-        if τ0==gridvectorτ[end] && param.priortype !==:smooth
-            τgrid = vcat(τgrid,T.([40,80,Inf])) # Inf appealing for mixed discrete continuous, but differentiability is lost...
-        end
-
-    end
+            τgrid = T[0.4,0.66,1,1.5,2.2,3.3,5,7.5,12,18,27,Inf]   # 12 
+        end           
+    end    
 
     if (param.priortype == :smooth) || (info_i.force_smooth==true)
         τgrid = τgrid[τgrid .<= param.max_tau_smooth]
@@ -1261,10 +1253,10 @@ end
 
 
 
-# Computes mean weighted value of tau as exp(mean(logtau*w)), where w = sqrt(fi2). Dichotomous features are not counted.
+# Computes mean weighted value of tau as. Dichotomous features are counted as sharp splits.
 # Can then be used to force sharp splits on those features where SMARTboost selects high τ, if these features contribute non-trivially to the fit.
 # Argument: sharpness may be difficult for SMARTboost to fit due to the greedy, iterative nature of the algorithm (the first values will tend to be smooth)
-#
+# Note: bounds Inf at 40, and treats dichotomous as sharp splits (so τ=40)
 # Use:
 # weighted_meean_tau = meean_weighted_tau(output.SMARTtrees)   # output is (p,1), vector of median weighted values of tau
 function mean_weighted_tau(SMARTtrees)
@@ -1285,8 +1277,10 @@ function mean_weighted_tau(SMARTtrees)
       wj = sqrt.(fi2[i.==j])
 
       if length(τj)>0 && Info_x[j].dichotomous==false
-        @. τj = τj*(τj<=50) + T(50)*(τj>50)    # bound Inf at 50
+        @. τj = τj*(τj<=40) + T(40)*(τj>40)    # bound Inf at 40
         avgtau[j] = sum(τj.*wj)/sum(wj)
+      elseif length(τj)>0 && Info_x[j].dichotomous==true
+        avgtau[j] = T(40)
       end
 
     end

@@ -245,8 +245,8 @@ end
 function check_admissible_data(y,param)
 
     if param.loss==:logistic
-        if minimum(y) != 0 || maximum(y) != 1
-            @error "data.y (label) must be {0,1} for loss = :logistic"
+        if minimum(y) < 0 || maximum(y) > 1
+            @warn "data.y (label) must be in [0,1] for loss = :logistic"
         end
     end
 
@@ -439,7 +439,7 @@ function gridvectorτ(meanlntau::T,varlntau::T,taugridpoints::Int;priortype::Sym
         elseif taugridpoints==4
             τgrid = [1.0,2.0,4.0,9.0]
         elseif taugridpoints==5
-            τgrid = [0.3, 1.0,2.0,4.0,9.0]
+            τgrid = [0.3,1.0,2.0,4.0,9.0]
         end
     end
 
@@ -496,6 +496,7 @@ end
 # I considered three ways of selecting the candidate split points: i) quantiles(), ii) clustering, like k-means or fuzzy k-means on each column of x. (Note: If the matrix is sparse, e.g. lots of 0.0, but not dichotomous, in general k-means will NOT place a value at exactly zero (but close))
 # iii) an equally spaced grid between minimum(xi) and maximum(xi). Option iii) is fastest. Here I use i), but at most maxn (default 100_000) observations are sampled,
 # and @distributed for. Deciles are interpolated.
+# features on which sharp splits are imposed are given three times as many points in mugrid (so computing times comparable with other features, which evaluate on three values of τ)    
 # If distrib_threads = false, uses @distributed and SharedArray. SharedArray can occasionally produce an error in Windows (not in Linux).
 # If this happens, the code switches to distrib_threads = true 
 # If distrib_threads = true, uses Threads.@threads. 
@@ -509,13 +510,22 @@ function gridmatrixμ(data::SMARTdata,param::SMARTparam,meanx,stdx;maxn::Int = 1
     npoints  = npoints0 + 1
     n,p      = size(data.x)
 
-    @assert(npoints<n,"npoints cannot be larger than n")
+    # if forcing sharp splits, triple the number of grid points for μ
+    if isempty(param.force_sharp_splits)
+        npoints_mugrid0 = npoints
+        sharp_splits = fill(false,p)
+    else 
+        npoints_mugrid0 = 3*param.mugridpoints + 1  # features that force sharp splits have 3 times as many points in mugrid 
+        sharp_splits = param.force_sharp_splits
+    end     
+
+    @assert(npoints_mugrid0<n,"npoints cannot be larger than n")
 
     # grid for mu and information on feature x[:,i]    
 
     if distrib_threads==false
         try 
-            mugrid0     = SharedArray{T}(npoints,p)
+            mugrid0     = SharedArray{T}(npoints_mugrid0,p)
             dichotomous = SharedVector{Bool}(p)
             kd          = SharedVector{T}(p)     # Kantorovic 2-distance from feature i to a normal
             n_unique_a  = SharedVector{Int}(p)   # number of unique values in xi
@@ -526,7 +536,7 @@ function gridmatrixμ(data::SMARTdata,param::SMARTparam,meanx,stdx;maxn::Int = 1
     end     
 
     if distrib_threads == true 
-        mugrid0     = Matrix{T}(undef,npoints,p)
+        mugrid0     = Matrix{T}(undef,npoints_mugrid0,p)
         dichotomous = Vector{Bool}(undef,p)
         kd          = Vector{T}(undef,p)     # Kantorovic 2-distance from feature i to a normal
         n_unique_a  = Vector{Int}(undef,p)   # number of unique values in xi
@@ -548,19 +558,22 @@ function gridmatrixμ(data::SMARTdata,param::SMARTparam,meanx,stdx;maxn::Int = 1
 
     if distrib_threads
         @threads for i = 1:p
-            fill_vectors_mugridmatrix!(x,ssi,i,ys,w,mugrid0,npoints,n_unique_a,mixed_dc,dichotomous,kd)
+            fill_vectors_mugridmatrix!(x,ssi,i,ys,w,mugrid0,sharp_splits[i],npoints,n_unique_a,mixed_dc,dichotomous,kd)
         end    
     else     
         @sync @distributed for i = 1:p
-            fill_vectors_mugridmatrix!(x,ssi,i,ys,w,mugrid0,npoints,n_unique_a,mixed_dc,dichotomous,kd)
+            fill_vectors_mugridmatrix!(x,ssi,i,ys,w,mugrid0,sharp_splits[i],npoints,n_unique_a,mixed_dc,dichotomous,kd)
         end     
     end 
 
     # Interpolate npoints+1 deciles, and reshape mugrid0 into a vector of vectors (categorical features may have fewer than npoints unique values, and then using npoints would be wasteful)
     mugrid = Vector{Vector{T}}(undef,p)
+
     for i in 1:p
-        m = sort(unique(mugrid0[:,i]))
-        if length(m) < npoints  # can only happens if number(unique)<npoints; then we don't want to interpolate and lose one point
+        sharp_splits[i]==true ? npoints_i=npoints_mugrid0 : npoints_i=npoints  # if not sharp splits, keep only the first npoints values
+        m = sort(unique(mugrid0[1:npoints_i,i]))
+
+        if length(m) < npoints_i  # can only happens if number(unique)<npoints; then we don't want to interpolate and lose one point
             mugrid[i]=m
         else
             m_int = Vector{T}(undef,length(m)-1)
@@ -598,6 +611,7 @@ function gridmatrixμ(data::SMARTdata,param::SMARTparam,meanx,stdx;maxn::Int = 1
 
         Info_x[i] = Info_xi( i,exclude_feature,dichotomous[i],n,n_cat,force_sharp,force_smooth,
         n_unique_a[i],mixed_dc[i],T(kd[i]),meanx[i],stdx[i],minimum(x[:,i]),maximum(x[:,i]) )
+
     end
     
     return mugrid,Info_x
@@ -605,12 +619,12 @@ end
 
 
 
+function fill_vectors_mugridmatrix!(x,ssi,i,ys,w,mugrid0,sharp_split_i,npoints,n_unique_a,mixed_dc,dichotomous,kd)
 
-function fill_vectors_mugridmatrix!(x,ssi,i,ys,w,mugrid0,npoints,n_unique_a,mixed_dc,dichotomous,kd)
-
+    npoints_sharp = size(mugrid0,1) 
     xi        = x[ssi,i]            # already standardized
 
-    miss_a    = isnan.(xi)          # exclude missing values     
+    miss_a   = isnan.(xi)          # exclude missing values     
     xi       = xi[miss_a .== false]
     wi       = w[miss_a .== false]
     isempty(ys) ? yi = ys : yi = ys[miss_a .== false]
@@ -625,41 +639,43 @@ function fill_vectors_mugridmatrix!(x,ssi,i,ys,w,mugrid0,npoints,n_unique_a,mixe
 
     if dichotomous[i] == false
     
-        if n_unique<=npoints  
+        sharp_split_i==true ? npoints_i=npoints_sharp : npoints_i=npoints  
+
+        if n_unique<=npoints_i  
             mugrid0[1:n_unique,i]=unique_xi
-            u = unique(mugrid0[:,i])
+            u = unique(mugrid0[1:npoints_i,i])
             length_u = length(u)
 
-            if npoints>n_unique
-                mugrid0[n_unique+1:npoints,i]=fill(unique_xi[1],npoints-n_unique)
+            if npoints_i>n_unique
+                mugrid0[n_unique+1:npoints_i,i]=fill(unique_xi[1],npoints_i-n_unique)
             end # replicated values will be eliminated later
         
-        else   # Method i), quantiles, merging repeated values.    
-            mugrid0[:,i] = quantile(xi,[i for i = 0.5/npoints:1/npoints:1-0.5/npoints])  # length = npoints = npoints0+1
-            u = unique(mugrid0[:,i])
+        else   # Method i), quantiles, merging repeated values.
+            mugrid0[1:npoints_i,i] = quantile(xi,[i for i = 0.5/npoints_i:1/npoints_i:1-0.5/npoints_i])  # length = npoints = npoints0+1
+            u = unique(mugrid0[1:npoints_i,i])
             length_u = length(u)
 
-            if length_u<=Int(ceil(npoints*2/3))   # repeated deciles
+            if length_u<=Int(ceil(npoints_i*2/3))   # repeated deciles
                 mugrid0[1:length_u,i] = u[1:length_u]
-                mugrid0[length_u+1:end,i] = quantile(unique_xi,[i for i = 1/(npoints+1-length_u):1/(npoints+1-length_u):1-1/(npoints+1-length_u)])
+                mugrid0[length_u+1:npoints_i,i] = quantile(unique_xi,[i for i = 1/(npoints_i+1-length_u):1/(npoints_i+1-length_u):1-1/(npoints_i+1-length_u)])
             end
 
             #=
             # Method ii), clustering                 
             if fuzzy==true
-                r   = Clustering.fuzzy_cmeans(x[ssi,i]', npoints, 2.0; tol = tol, maxiter=maxiter, display = :none)
+                r   = Clustering.fuzzy_cmeans(x[ssi,i]', npoints_i, 2.0; tol = tol, maxiter=maxiter, display = :none)
             else
-                r   = Clustering.kmeans(x[ssi,i]', npoints; tol = tol, maxiter=maxiter, display = :none)  # input matrix is the adjoint (p,n). Output is Matrix
+                r   = Clustering.kmeans(x[ssi,i]', npoints_i; tol = tol, maxiter=maxiter, display = :none)  # input matrix is the adjoint (p,n). Output is Matrix
             end
 
-            mugrid0[:,i] = sort(vec(r.centers))
+            mugrid0[1:npoints_i,i] = sort(vec(r.centers))
             =#
         end
 
-        # Is the feature mixed discrete-continuous? (Some deciles are repeated.)
-        if npoints>=10
-            length_u<11 ? mixed_dc[i]=true : mixed_dc[i]=false  
-        elseif npoints>=6
+        # Is the feature mixed discrete-continuous? (Enough deciles are repeated.)
+        if npoints_i>=10
+            length_u<10 ? mixed_dc[i]=true : mixed_dc[i]=false  
+        elseif npoints_i>=6
             length_u<6 ? mixed_dc[i]=true : mixed_dc[i]=false  
         else
             mixed_dc[i]=false

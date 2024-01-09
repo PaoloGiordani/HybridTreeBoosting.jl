@@ -17,6 +17,7 @@ Simulated iid data, additively nonlinear dgp.
 - fit, with automatic hyperparameter tuning if modality is :compromise or :accurate
 - save fitted model (upload fitted model)
 - feature importance
+- average τ (smoothness parameter), which is also plotted
 - partial effects plots
 
 
@@ -75,6 +76,7 @@ f        = f_1(x[:,1],b1) + f_2(x[:,2],b2) + f_3(x[:,3],b3) + f_4(x[:,4],b4)
 f_test   = f_1(x_test[:,1],b1) + f_2(x_test[:,2],b2) + f_3(x_test[:,3],b3) + f_4(x_test[:,4],b4)
 
 loss==:logistic ? y = (exp.(f)./(1.0 .+ exp.(f))).>rand(n) : y=stde*randn(n)+f
+y = (exp.(f)./(1.0 .+ exp.(f)))
 
 # set up SMARTparam and SMARTdata, then fit and predit
 param  = SMARTparam(loss=loss,priortype=priortype,randomizecv=randomizecv,nfold=nfold,verbose=verbose,warnings=warnings,
@@ -84,8 +86,10 @@ data   = SMARTdata(y,x,param)
 @time output = SMARTfit(data,param)
 yf     = SMARTpredict(x_test,output,predict=:Egamma)  # predict the natural parameter
 
+avgtau,avgtau_a,dftau = SMARTweightedtau(output,data,verbose=true,plot_tau=true,best_model=false);
+
 println(" \n modality = $(param.modality), nfold = $nfold ")
-println(" depth = $(output.bestvalue), number of trees = $(output.ntrees) ")
+println(" depth = $(output.bestvalue), number of trees = $(output.ntrees), avgtau $avgtau ")
 println(" out-of-sample RMSE from truth ", sqrt(sum((yf - f_test).^2)/n_test) )
 
 # save (load) fitted model
