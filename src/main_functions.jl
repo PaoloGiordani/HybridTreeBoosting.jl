@@ -802,9 +802,8 @@ function SMARTfit( data::SMARTdata, param::SMARTparam; cv_grid=[],add_different_
 
     end 
 
-    # Additional model: Fit hybrid model, with sharp splits forced on features with high τ. Threshold set at tau=8.
+    # Additional model: Fit hybrid model, with sharp splits forced on features with high τ. Threshold set at tau=10.
     # Only if the high τ are for features with non-trivial importance (fi)
-    # Far less important and omitted to save computing time: smooth splits forced on features with very low tau.
     if param.priortype==:hybrid && add_hybrid
 
         best_i      = argmin(lossgrid)
@@ -846,6 +845,8 @@ function SMARTfit( data::SMARTdata, param::SMARTparam; cv_grid=[],add_different_
             param      = deepcopy(SMARTtrees_a[best_i].param)
             param.force_sharp_splits = force_sharp_splits
             #param.force_smooth_splits = force_smooth_splits
+
+
 
             param_given_data!(param,data)
             param_constraints!(param)

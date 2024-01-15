@@ -2,7 +2,7 @@
 # Data preprocessing functions
 #
 #
-# The following functions are applied once, on the first SMARTdata 
+# The following functions are applied once, on the first SMARTdata() 
 #  
 # replace_nan_with_missing()
 # replace_missing_with_nan()
@@ -515,7 +515,7 @@ function gridmatrixμ(data::SMARTdata,param::SMARTparam,meanx,stdx;maxn::Int = 1
         npoints_mugrid0 = npoints
         sharp_splits = fill(false,p)
     else 
-        npoints_mugrid0 = 3*param.mugridpoints + 1  # features that force sharp splits have 3 times as many points in mugrid 
+        npoints_mugrid0 = 1*param.mugridpoints + 1  # features that force sharp splits may have more points in mugrid (as an alternative to refineOptim)
         sharp_splits = param.force_sharp_splits
     end     
 
@@ -582,7 +582,17 @@ function gridmatrixμ(data::SMARTdata,param::SMARTparam,meanx,stdx;maxn::Int = 1
             end
             mugrid[i] = m_int
         end
+
     end
+
+    # If augment_mugrid is not empty, add these points to mugrid[i], unless i is dichotomous 
+    if !isempty(param.augment_mugrid)
+        for i in 1:p
+            if dichotomous[i]==false
+                mugrid[i] = vcat(mugrid[i],param.augment_mugrid[i])
+            end     
+        end
+    end      
 
     # Info_x collects information on the feature: dichotomous, number of unique values, mixed discrete-continuous etc...
     # Information that is not needed for forecasting.

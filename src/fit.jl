@@ -41,7 +41,7 @@
 #  (tau_info)        provides info on posterior variance of estimated tau.
 # speedup_preliminaryvs() 
 # calibrate_n_preliminaryvs!()
-
+# augment_mugrid_from_mu()
 
 
 
@@ -673,6 +673,11 @@ function best_μτ_excluding_nan(t)
         τ        = τgrid[minindex[1]]
         μ        = μgridi[minindex[2]]
 
+        # If τ==Inf, carry out a full optimization over μ (and then skip refineOptim unless subsampling)
+        if τ==Inf   
+            loss,τ,μ,nan_present = refineOptim_μτ_excluding_nan(y,w,gammafit_ensemble,r,h,G0,xi,infeatures,fi,info_i,μ,τ,param,[τ])
+         end 
+
     end
 
     return loss,τ,μ,nan_present
@@ -834,7 +839,6 @@ function loopfeatures_distributed(outputarray,n,p,ps,y,w,gammafit_ensemble,gamma
     return Array(outputarray)   # convert SharedArray to Array
 
 end
-
 
 
 
@@ -1006,7 +1010,7 @@ function optimize_μτ(y,w,gammafit_ensemble,r,h,G0,xi,param,infeatures,fi,info_
     n,p = size(G0)
     G   = Matrix{T}(undef,n,p*2)
     Gh  = similar(G)
-    res  = Optim.optimize( μ -> Gfitβ2(y,w,gammafit_ensemble,r,h,G0,xi,param,infeatures,fi,info_i,μ,τ,T(0),G,Gh,llik0),[μ0],Optim.BFGS(linesearch = LineSearches.BackTracking()), Optim.Options(iterations = 100,x_tol = param.xtolOptim/T(1+(τ>=10)+(τ>=0)+(τ>=40)+6*(τ>100))  ))
+    res  = Optim.optimize( μ -> Gfitβ2(y,w,gammafit_ensemble,r,h,G0,xi,param,infeatures,fi,info_i,μ,τ,T(0),G,Gh,llik0),[μ0],Optim.BFGS(linesearch = LineSearches.BackTracking()), Optim.Options(iterations = 100,x_tol = param.xtolOptim/T(1+(τ>=10)+(τ>=20)+5*(τ>100))  ))
 
     return res
 
@@ -1086,7 +1090,11 @@ function fit_one_tree_inner(y::AbstractVector{T},w,SMARTtrees::SMARTboostTrees,r
         if length(ssi)<n && param.refine_obs_from_vs
             loss,τ,μ,m = refineOptim(ys,ws,gammafit_ensembles,rs,hs,G0[ssi,:],x[ssi,i],infeatures,fi,Info_x[i],μ0,τ0,m0,param,τgrid)
         elseif param.n_refineOptim>=n
-            loss,τ,μ,m = refineOptim(y,w,gammafit_ensemble,r,h,G0,x[:,i],infeatures,fi,Info_x[i],μ0,τ0,m0,param,τgrid)
+            if τ0==Inf                                 # assumes a full optimization carried out in vs   
+                loss,τ,μ,m = loss0,τ0,μ0,m0
+            else         
+                loss,τ,μ,m = refineOptim(y,w,gammafit_ensemble,r,h,G0,x[:,i],infeatures,fi,Info_x[i],μ0,τ0,m0,param,τgrid)
+            end    
         else           
             ssi2 = randperm(Random.MersenneTwister(param.seed_subsampling+ntree),n)[1:param.n_refineOptim]  # subs-sample, no reimmission
             length(h)==1 ? hs2=h : hs2=h[ssi2]
@@ -1329,3 +1337,38 @@ function tau_info(SMARTtrees::SMARTboostTrees)
 
     return mw,varw,mse,postprob2
 end
+
+
+# Augments mugrid with quantiles from previously fitted model.
+#
+# Does not seem to helpful in the vast majority of cases, but it may for some 
+# highly nonlinear functions (to be tested! No evidence at this point that it is ever helpful.)
+# 
+# Use:
+# output = SMARTfit(data,param)
+# param.augment_mugrid = augment_mugrid_from_mu(output,data,npoints)
+# output = SMARTfit(data,param)
+function augment_mugrid_from_mu(output,data;npoints=10)   # number of points  
+
+    i,μ,τ,fi2 = SMARToutput(output.SMARTtrees)
+    p = size(data.x,2)
+  
+    augment_mugrid = Vector{Vector}(undef,p)
+  
+    for j in 1:p
+      s    = i.==j
+      sums = sum(s)
+  
+      if sums>0
+        μj = μ[s]
+        K  = min(npoints,sums)
+        q = [q/K for q in 1:K-1]  
+        augment_mugrid[j] = quantile(μj,q)
+      end 
+  
+    end
+    
+    return augment_mugrid
+  
+  end 
+  

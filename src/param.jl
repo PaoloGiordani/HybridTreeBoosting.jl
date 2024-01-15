@@ -59,6 +59,7 @@ mutable struct SMARTparam{T<:AbstractFloat, I<:Int}
     force_sharp_splits::Vector{Bool}
     force_smooth_splits::Vector{Bool}
     exclude_features::Vector{Bool}
+    augment_mugrid::Vector{Vector{T}}
     cat_features::Union{Vector{I},Vector{Symbol},Vector{String}}   # indices of categorical features, or names in DataFrame 
     cat_features_extended::Vector{I}                               # indices of categorical features requiring an extended representation  
     cat_dictionary::Vector{Dict}  # each element in the vector stores the dictionary mapping each category to a number
@@ -242,6 +243,7 @@ function SMARTparam(;
     force_sharp_splits = Vector{Bool}(undef,0),  # typically hidden to user: optionally, a p vector of Bool, with j-th value set to true if the j-th feature is forced to enter with a sharp split.
     force_smooth_splits = Vector{Bool}(undef,0),  # typically hidden to user: optionally, a p vector of Bool, with j-th value set to true if the j-th feature is forced to enter with a smooth split (high values of λ not allowed)
     exclude_features = Vector{Bool}(undef,0),    # typically hidden to user optionally, a p vector of Bool, with j-th value set to true if the j-th feature should not be considered as a candidate for a split
+    augment_mugrid  = Vector{Vector{T}}(undef,0),
     cat_features = Vector{I}(undef,0),        # p vector of Bool, j-th value set to true for a  categorical feature. If empty, strings are interpreted as categorical   
     cat_features_extended = Vector{I}(undef,0),
     cat_dictionary=Vector{Dict}(undef,0),       # global variable to store the dictionary mapping each category to a number
@@ -351,7 +353,7 @@ function SMARTparam(;
     end 
      
     param = SMARTparam(T,I,loss,losscv,Symbol(modality),T.(coeff),coeff_updated,Symbol(verbose),Symbol(warnings),I(num_warnings),randomizecv,I(nfold),nofullsample,T(sharevalidation),indtrain_a,indtest_a,T(stderulestop),T(lambda),I(depth),I(depth1),Symbol(sigmoid),
-        T(meanlntau),T(varlntau),T(doflntau),T(multiplier_stdtau),T(varmu),T(dofmu),Symbol(priortype),T(max_tau_smooth),I(min_unique),mixed_dc_sharp,force_sharp_splits,force_smooth_splits,exclude_features,cat_features,cat_features_extended,cat_dictionary,cat_values,cat_globalstats,I(cat_representation_dimension),T(n0_cat),T(mean_encoding_penalization),Bool(delete_missing),mask_missing,missing_features,info_date,T(sparsity_penalization),p0,sharevs,refine_obs_from_vs,finalβ_obs_from_vs,
+        T(meanlntau),T(varlntau),T(doflntau),T(multiplier_stdtau),T(varmu),T(dofmu),Symbol(priortype),T(max_tau_smooth),I(min_unique),mixed_dc_sharp,force_sharp_splits,force_smooth_splits,exclude_features,augment_mugrid,cat_features,cat_features_extended,cat_dictionary,cat_values,cat_globalstats,I(cat_representation_dimension),T(n0_cat),T(mean_encoding_penalization),Bool(delete_missing),mask_missing,missing_features,info_date,T(sparsity_penalization),p0,sharevs,refine_obs_from_vs,finalβ_obs_from_vs,
         I(n_refineOptim),T(subsampleshare_columns),Symbol(sparsevs),T(frequency_update),
         I(number_best_features),best_features,Symbol(pvs),I(p_pvs),I(min_d_pvs),I(mugridpoints),I(taugridpoints),T(xtolOptim),Symbol(method_refineOptim),
         I(points_refineOptim),I(ntrees),T(theta),loglikdivide,I(overlap),T(multiply_pb),T(varGb),I(ncores),I(seed_datacv),I(seed_subsampling),newton_gaussian_approx,
