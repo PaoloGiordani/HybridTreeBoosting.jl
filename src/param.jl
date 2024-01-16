@@ -136,8 +136,8 @@ Parameters for SMARTboost
 
 # Inputs that are more likely to be modified by user (all inputs are keywords with default values)
 
-- `loss:Symbol`             [:L2] :L2,:logistic,:Huber,:t,:lognormal,:logt are supported.
-                            :lognormal and :logt require y > 0 ( y~logt(m,sigma,v) if log(y)~t(m,sigma,v) );
+- `loss:Symbol`             [:L2] :L2,:logistic,:t,:Huber,:gamma,:lognormal, are supported.
+                            :gamma and :lognormal require y > 0 ( y~logt(m,sigma,v) if log(y)~t(m,sigma,v) );
                             in SMARTpredict(), they give predictions for E(y) if predict=:Ey, and for E(log(y)) if predict=:Egamma
 
 - `modality:Symbol`         [:compromise] Options are: :accurate, :compromise, :fast, :fastest.
