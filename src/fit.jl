@@ -271,8 +271,7 @@ function lnpτ(τ0::T,param::SMARTparam,info_i,d;τmax=T(100) )::T where T<:Abst
     #depth = T( param.depth1+maximum([0.0, 0.5*(param.depth-param.depth1) ]) )  # matters only if prior is modified for d
     #stdlntau  = sqrt( (param.varlntau)*(param.doflntau-T(2))/param.doflntau )  # to intrepret varlntau as an actual variance.
 
-    # Adjust prior for Kantorovic distance. This adjustment is smaller when Kantorovic distance between y and xi is not as informative, as for :logistic
-    if param.loss==:L2 || param.loss==:Huber || param.loss==:quantile || param.loss==:t || param.loss==:lognormal || param.loss==:logt
+    if param.loss in [:L2,:gamma,:Huber,:quantile,:t,:lognormal,:logt]    
         α=1
     elseif param.loss==:logistic
         α=0.5
@@ -354,7 +353,6 @@ function fitβ(y,w,gammafit_ensemble,r0::AbstractVector{T},h0::AbstractVector{T}
         end
 
         logpriors = logpdfpriors(β,μ,τ,m,d,p,pb,param,info_i,infeatures,fi,T)
-
         loss      = -( llik + logpriors)
 
         if iter==maxsteps || loss0-loss<tol
@@ -1092,7 +1090,7 @@ function fit_one_tree_inner(y::AbstractVector{T},w,SMARTtrees::SMARTboostTrees,r
         elseif param.n_refineOptim>=n
             if τ0==Inf                                 # assumes a full optimization carried out in vs   
                 loss,τ,μ,m = loss0,τ0,μ0,m0
-            else         
+            else
                 loss,τ,μ,m = refineOptim(y,w,gammafit_ensemble,r,h,G0,x[:,i],infeatures,fi,Info_x[i],μ0,τ0,m0,param,τgrid)
             end    
         else           

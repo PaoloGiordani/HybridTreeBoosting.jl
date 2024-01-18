@@ -154,7 +154,7 @@ function SMARTsequentialcv( data::SMARTdata, param::SMARTparam; indices=Vector(1
         param_nf,data_nf,meanx,stdx          = preparedataSMART(data_nf,param)
 
         τgrid,μgrid,info_x,n_train,p         = preparegridsSMART(data_nf,param_nf,meanx,stdx)
-        gamma0                               = initialize_gamma(data_nf,param_nf)
+        gamma0                               = initialize_gamma0(data_nf,param_nf)
         gammafit                             = fill(gamma0,length(indtrain))
 
         param_a[nf] = updatecoeff(param_nf,data_nf.y,gammafit,data_nf.weights,0)
@@ -168,7 +168,7 @@ function SMARTsequentialcv( data::SMARTdata, param::SMARTparam; indices=Vector(1
 
     end
 
-    lossM,meanloss,stdeloss,j = zeros(T,param.ntrees,nfold),zeros(T,param.ntrees),zeros(T,param.ntrees), I(0)
+    lossM,meanloss,stdeloss,j = zeros(T,param.ntrees,nfold),fill(T(Inf),param.ntrees),zeros(T,param.ntrees),I(0)
     gammafit_test0 = T[]
 
     # Preliminay run to calibrate coefficients and priors 

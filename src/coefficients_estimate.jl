@@ -7,14 +7,16 @@
 #   res = Newton_MAP(y,gH_student_with_mean,start_value_student_with_mean)
 # 
 # Functions specific to student-T distribution (here with zero mean), in terms of log(s2) and log(v), where s=std for Gaussian
-#   loglik_student()
-#   loss_student()
 #   start_value_student()
 #   gH_student( )            
 #   start_value_student_with_mean()
 #   gH_student_with_mean()      , used in initialization of the mean 
 #
- 
+# Functions specific to gamma distribution, in terms of log(k), where k is the shape parameter.
+#
+#   start_value_gamma()   
+#   gH_gamma 
+#   
 
 # Newton minimizer of the log-likelihood or log posterior, with outer score approximation of the Hessian
 # gH() should return  g,H = gH(y,x,θ;w=..), with H (p,p) and g (p,1). θ₀ = startvalue(y,x)   
@@ -159,9 +161,52 @@ function gH_student_with_mean(y0,x,coeff;w=1)  # w and x can be missing
     H  = -gₘ'gₘ 
     g = sum(gₘ,dims=1)'
 
-    # Add priors to log(v)
+    # Add priors
     g[3]   += -T(0.5)*(log(v) - mean_prior)/var_prior
     H[3,3] += -T(0.5)/var_prior 
 
     return -g,-H
 end
+
+
+
+# start value for log(k), for the unconditional distribution. by method of moments.
+# μ is estimated as mean(y), and std(y)=μ/sqrt(k) 
+function start_value_gamma(y,x)   
+
+    μ  = mean(y)
+    k  = (μ^2)/var(y)
+
+    return log(k) 
+
+end     
+
+
+# Gradient and Hessian for minus logpdf_gamma (x=gammafit). Hessian by outer score.
+# coeff = log(k), k the dispersion parameter.
+# Could be made more efficient by having both gammafit and μ as inputs.
+function gH_gamma(y,gammafit,coeff;w=1)  # w and x can be missing
+
+    T = eltype(y)
+    μ = exp.(gammafit)
+    k = exp(coeff[1])
+    # center a weak prior at start value. Wasteful to re-compute it at every it, as here ... 
+    k_unconditional  = (mean(y)^2)/var(y)
+    mean_prior,var_prior = log(k_unconditional),T(0.5^2)
+    
+    g = k*( log.(y) - y./μ - gammafit .+ log(k) .+ 1 .- digamma(k) )
+    
+    if w != 1
+        @. g = g*w
+    end 
+
+    H = -g'g  
+    g = sum(g)
+
+    # Add priors 
+    g += -T(0.5)*(coeff[1] - mean_prior)/var_prior
+    H += -T(0.5)/var_prior 
+
+    return -g,-H
+end
+

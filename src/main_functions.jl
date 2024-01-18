@@ -244,7 +244,7 @@ function SMARTbst(data0::SMARTdata, param::SMARTparam )
 
     τgrid,μgrid,Info_x,n,p         = preparegridsSMART(data,param,meanx,stdx)
 
-    gamma0                         = initialize_gamma(data,param)
+    gamma0                         = initialize_gamma0(data,param)
     gammafit                       = fill(gamma0,n)
 
     param          = updatecoeff(param,data.y,gammafit,data.weights,0)
@@ -435,7 +435,7 @@ function SMARTcoeff(output;verbose=true)
         σ2,ψ = coeff[1]^2,coeff[2] 
         θ    = (loss=loss,variance=σ2,psi=output.bestparam.coeff_user[1])
     else 
-        @error "loss not supported or misspelled. loss must be in [:logistic,:L2,:Huber,:t,:quantile,:lognormal,:logt]. "
+        @error "loss not supported or misspelled. loss must be in [:logistic,:gamma,:L2,:Huber,:t,:quantile,:lognormal,:logt]. "
     end
 
     if verbose==true
@@ -536,6 +536,8 @@ function from_gamma_to_Ey(gammafit,param,predict)
         pred = @. exp(gammafit)/(1+exp(gammafit))
     elseif loss in [:L1,:L2,:Huber,:t,:quantile]
         pred  = gammafit
+    elseif loss == :gamma 
+        pred  = exp.(gammafit)    
     elseif loss == :lognormal
         σ    = coeff[1]
         pred = @. exp(gammafit + 0.5*σ^2)     
@@ -643,10 +645,6 @@ function SMARTfit( data::SMARTdata, param::SMARTparam; cv_grid=[],add_different_
 
         add_hybrid = false
         add_sparse = false
-
-        if size(data.x,2)>20_000 && param.loss==:logistic
-            param.newton_gaussian_approx = true   # true has large efficiency gains for logistic (loss=...exp())
-        end    
 
     end  
 

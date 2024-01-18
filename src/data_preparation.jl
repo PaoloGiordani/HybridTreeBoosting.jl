@@ -250,7 +250,7 @@ function check_admissible_data(y,param)
         end
     end
 
-    if param.loss==:lognormal || param.loss==:logt
+    if param.loss in [:gamma,:lognormal,:logt]
         if minimum(y) <= 0
             @error "data.y must be strictly positive for loss = $(param.loss) "
         end
@@ -546,10 +546,14 @@ function gridmatrixμ(data::SMARTdata,param::SMARTparam,meanx,stdx;maxn::Int = 1
     n>maxn ? ssi=randperm(Random.MersenneTwister(param.seed_datacv),n)[1:maxn] : ssi=collect(1:n)
     w         = data.weights[ssi]     
 
-    # Compute standardized y (used later to compute Kantorovic distance from standardized y if y is continuous, else distance from a Gaussian (ys=[]) ).  
-    if loss==:L2 || loss==:Huber || loss==:quantile || loss==:t || loss==:logt || loss==:lognormal
+    # Compute standardized y, used later to compute Kantorovic distance from standardized y if y is continuous, else distance from a Gaussian (ys=[]) ).  
+    if loss in [:L2,:Huber,:t,:quantile,:lognormal,:logt]    
         m = median(data.y[ssi])
         ys  = (data.y[ssi] .- m)/(T(1.25)*mean(abs.(data.y .- m))) # standardize similarly to how x has been de-meaned
+    elseif loss in [:gamma]   # lognormal sets data.y=log, but for not for gamma. Take logs as it is log(mean) which is modeled. 
+        ys  = log.(data.y[ssi])
+        m   = median(ys)
+        ys  = (ys .- m)/(T(1.25)*mean(abs.(ys .- m)))    # standardize similarly to how x has been de-meaned       
     elseif loss==:logistic
         ys = T[]
     else

@@ -105,7 +105,7 @@ mutable struct SMARTparam{T<:AbstractFloat, I<:Int}
     seed_datacv::I     # sets random seed if randomizecv=true
     seed_subsampling::I   # sets random seed used on subsampling iterations (will be seed=seed_subsampling + iter)
     # Newton optimization
-    newton_gaussian_approx::Bool
+    newton_gaussian_approx::Union{Symbol,Bool}
     newton_max_steps::I
     newton_max_steps_final::I
     newton_tol::T
@@ -137,8 +137,10 @@ Parameters for SMARTboost
 # Inputs that are more likely to be modified by user (all inputs are keywords with default values)
 
 - `loss:Symbol`             [:L2] :L2,:logistic,:t,:Huber,:gamma,:lognormal, are supported.
-                            :gamma and :lognormal require y > 0 ( y~logt(m,sigma,v) if log(y)~t(m,sigma,v) );
-                            in SMARTpredict(), they give predictions for E(y) if predict=:Ey, and for E(log(y)) if predict=:Egamma
+                            :gamma and :lognormal require y > 0 
+
+                            In SMARTpredict(), predictions are for E(y) if predict=:Ey, while predict=:Egamma forecasts the relevant parameter otherwise
+                            ( E(logit(prob)) for :logistic, E(log(y)) for :lognormal, E(log(E(y))) for :gamma  
 
 - `modality:Symbol`         [:compromise] Options are: :accurate, :compromise, :fast, :fastest.
                             :fast runs only one model (only cv number of trees) at values defined in param = SMARTparam(). 
@@ -214,7 +216,7 @@ function SMARTparam(;
     losscv = :default,        # loss used for early stopping and stacking. :default, or :mse, :mae, :Huber, :logistic, :sign
     modality = :compromise,     # :accurate, :fast, :compromise 
     coeff = coeff_user(loss,T),      # coefficients (if any) used in loss
-    coeff_updated = Vector{T}[],
+    coeff_updated = Vector{Vector{T}}(undef,2), # first vector for coeff used in loglik, second for coeff in losscv (where coefficients should be constant)
     verbose = :Off,      # level of verbosity, :On, :Off
     warnings=:On,
     num_warnings=0,
@@ -287,7 +289,7 @@ function SMARTparam(;
     seed_datacv = 1,       # sets random seed if randomizecv=true
     seed_subsampling = 2,  # sets random seed used on subsampling iterations (will be seed=seed_subsampling + iter)
     # Newton optimization: good default is one step in preliminary phase, and evaluate actual log-lik, and iterate to convergence for final β
-    newton_gaussian_approx = false, # true has large speed gains for logistic for large n (loss=...exp.()). If true, and if newton_max_steps=1 (hence not in final) evaluates the Gaussian approximation to the log-likelihood rather than the likelihood itself except in final phase (given i,mu,tau)
+    newton_gaussian_approx = :Auto, # true has large speed gains for logistic for large n (loss=...exp.()). If true, and if newton_max_steps=1 (hence not in final) evaluates the Gaussian approximation to the log-likelihood rather than the likelihood itself except in final phase (given i,mu,tau)
     newton_max_steps = 1,         # vs phase. 1 seems sufficient, in combination with gaussian_approx=false, to get most of the gains  
     newton_max_steps_final = 20,  # small impact on cost and large gains.
     newton_tol = 1,        # Keep large (e.g. 1.0) to avoid unnecessay iterations in preliminary phase
@@ -300,7 +302,7 @@ function SMARTparam(;
            
     if loss==:L2    
         newton_max_steps,newton_max_steps_final,newton_gaussian_approx = 1,1,false 
-    end     
+    end          
 
     if loss==:Huber && warnings==:On 
         @warn "loss = :t is recommended instead of loss = :Huber. The t loss automatically estimates the degres of freedom and typically converges faster. "
@@ -330,7 +332,7 @@ function SMARTparam(;
     sharevs==:Auto ? nothing : sharevs=T(sharevs)
     loglikdivide==:Auto ? nothing : loglikdivide=T(loglikdivide)
     p0==:Auto ? nothing : p0=I(p0)   # if :Auto, set in param_given_data!()
- 
+    
     if min_unique==:Auto
         modality in [:fast,:fastest] ? min_unique = 10 : min_unique = 5
     end     
@@ -398,6 +400,17 @@ function param_given_data!(param::SMARTparam,data::SMARTdata)
         p>10*param.p_pvs && param.depth>5 ? param.pvs=:On : param.pvs=:Off
     end 
     
+    if param.newton_gaussian_approx == :Auto
+        newton_gaussian_approx = false
+        loss = param.loss
+        loss ==:gamma ? param.newton_gaussian_approx = true : nothing  # no sizable loss of fit at any n, and 30-40% faster.
+
+        if loss == :logistic && size(data.x,2)>20_000 && param.modality in [:fast,:fastest]
+            param.newton_gaussian_approx = true
+        end     
+
+    end  
+
 end         
 
 
