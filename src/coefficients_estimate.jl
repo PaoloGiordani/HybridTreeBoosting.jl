@@ -194,7 +194,7 @@ function gH_gamma(y,gammafit,coeff;w=1)  # w and x can be missing
     k_unconditional  = (mean(y)^2)/var(y)
     mean_prior,var_prior = log(k_unconditional),T(0.5^2)
     
-    g = k*( log.(y) - y./μ - gammafit .+ log(k) .+ 1 .- digamma(k) )
+    g = k*( log.(y) - y./μ - gammafit .+ log(k) .+ 1 .- SpecialFunctions.digamma(k) )
     
     if w != 1
         @. g = g*w

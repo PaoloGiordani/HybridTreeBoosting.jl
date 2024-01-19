@@ -876,6 +876,11 @@ function SMARTfit( data::SMARTdata, param::SMARTparam; cv_grid=[],add_different_
 
     end 
 
+    # Before trying a different distribution, store param from the best solution. This will be used in 
+    # SMARTmodelweights, which for some loss functions involving additional coefficients (:t,:gamma,...)
+    # needs values of these coefficients, which param0 does not have.
+    bestparam_original_loss = SMARTtrees_a[argmin(lossgrid)].param
+
     # Additional model 6: try a different distribution (loss), at previous best values of depth and sparsity
     best_i = argmin(lossgrid)
     param  = deepcopy(SMARTtrees_a[best_i].param)
@@ -892,8 +897,8 @@ function SMARTfit( data::SMARTdata, param::SMARTparam; cv_grid=[],add_different_
         end 
     end         
 
-    # Experimental. Not well tested yet. Perhaps cleaner to run SMARTfit with a different loss. 
-    # NB: loss is NOT comparable across different distributions.
+    # Experimental. Not well tested yet. 
+    # NB: cv loss may NOT comparable across different distributions.
     if add_different_loss==true && (param.loss != SMARTtrees_a[best_i].param.loss) 
  
         param_given_data!(param,data)
@@ -915,7 +920,7 @@ function SMARTfit( data::SMARTdata, param::SMARTparam; cv_grid=[],add_different_
     best_i = argmin(lossgrid)
 
     if SMARTtrees_a[best_i].param.loss != param0.loss
-        w,lossw = SMARTmodelweights(lossgrid,y_test_a,indtest_a,gammafit_test_a,data,param0)
+        w,lossw = SMARTmodelweights(lossgrid,y_test_a,indtest_a,gammafit_test_a,data,bestparam_original_loss)
         best_i = argmax(w)
     end     
     
@@ -954,7 +959,7 @@ function SMARTfit( data::SMARTdata, param::SMARTparam; cv_grid=[],add_different_
     best_i = argmin(lossgrid)
 
     if SMARTtrees_a[best_i].param.loss != param0.loss
-        w,lossw = SMARTmodelweights(lossgrid,y_test_a,indtest_a,gammafit_test_a,data,param0)
+        w,lossw = SMARTmodelweights(lossgrid,y_test_a,indtest_a,gammafit_test_a,data,bestparam_original_loss)
         best_i = argmax(w)
     end     
 
@@ -964,7 +969,7 @@ function SMARTfit( data::SMARTdata, param::SMARTparam; cv_grid=[],add_different_
     # with weight>=0.1 (to reduce computing time). 
     if (param0.nofullsample==false || param0.nfold>1) && skip_full_sample==false
 
-        w,lossw = SMARTmodelweights(lossgrid,y_test_a,indtest_a,gammafit_test_a,data,param0)
+        w,lossw = SMARTmodelweights(lossgrid,y_test_a,indtest_a,gammafit_test_a,data,bestparam_original_loss)
         w[best_i]=max(w[best_i],0.1)   # the best model should be refitted
         w = w.*(w .>= 0.1)
         w = w/sum(w)
@@ -999,7 +1004,7 @@ function SMARTfit( data::SMARTdata, param::SMARTparam; cv_grid=[],add_different_
         w = zeros(T,length(lossgrid))
         w[argmin(lossgrid)] = T(1)
     else
-        w,lossw = SMARTmodelweights(lossgrid,y_test_a,indtest_a,gammafit_test_a,data,param0)
+        w,lossw = SMARTmodelweights(lossgrid,y_test_a,indtest_a,gammafit_test_a,data,bestparam_original_loss)
     end
 
     # provide some additional output
