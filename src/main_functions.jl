@@ -426,7 +426,7 @@ function SMARTcoeff(output;verbose=true)
 
     if loss == :logistic
         θ    = (loss=loss,coeff="none")
-    elseif loss == :L2 || loss == :lognormal 
+    elseif loss in [:L2,:lognormal,:L2loglink] 
         θ    = (loss=loss,variance=coeff[1]^2)
     elseif loss == :t || loss == :logt
         s2,v    = exp(coeff[1]),exp(coeff[2])
@@ -434,8 +434,11 @@ function SMARTcoeff(output;verbose=true)
     elseif loss == :Huber
         σ2,ψ = coeff[1]^2,coeff[2] 
         θ    = (loss=loss,variance=σ2,psi=output.bestparam.coeff_user[1])
+    elseif loss == :gamma 
+        k    = coeff[1][1]
+        θ    = (loss=loss,shape=k)    
     else 
-        @error "loss not supported or misspelled. loss must be in [:logistic,:gamma,:L2,:Huber,:t,:quantile,:lognormal,:logt]. "
+        @error "loss not supported or misspelled. loss must be in [:logistic,:gamma,:L2,:Huber,:t,:quantile,:lognormal,:logt,:L2loglink]. "
     end
 
     if verbose==true
@@ -536,7 +539,7 @@ function from_gamma_to_Ey(gammafit,param,predict)
         pred = @. exp(gammafit)/(1+exp(gammafit))
     elseif loss in [:L1,:L2,:Huber,:t,:quantile]
         pred  = gammafit
-    elseif loss == :gamma 
+    elseif loss in [:gamma,:L2loglink] 
         pred  = exp.(gammafit)    
     elseif loss == :lognormal
         σ    = coeff[1]
@@ -561,13 +564,13 @@ end
 
 Fits SMARTboost with with k-fold cross-validation of number of trees and depth, and possibly a few more models.
 
-If param.modality is :fast or :fastest, fits a single model, at depth=param.depth. For param.modality=:accurate or :compromise,  
+If param.modality is :fast or :fastest, fits one model, at param, and if needed a second where sharp splits are 
+forced on features with high average values of τ. For param.modality=:accurate or :compromise,  
 may then fit, where appropriate, a few more models, which incrementally modify the original specification.
 
 The additional models considered in modality=:accurate and :compromise are:
 - Rough cross-validation of parameters for categorical features, if any.
 - A penalization to encourage sparsity (fewer relevant features), unless user sets add_sparse=false.
-- Imposing sharp splits on features with high average values of τ (sharp splits), only if the first run suggests it, unless user sets add_hybrid=false.
 
 If param.modality=:accurate, lambda for all models is set set min(lambda,0.1). If modality=:compromise, the default learning rate
 lambda=0.2 is used, and the best model is then refitted with lambda = 0.1. 
@@ -643,9 +646,7 @@ function SMARTfit( data::SMARTdata, param::SMARTparam; cv_grid=[],add_different_
             user_provided_grid = true 
        end      
 
-        add_hybrid = false
-        add_sparse = false
-
+       add_sparse = false
     end  
 
     if modality==:fastest
@@ -801,9 +802,9 @@ function SMARTfit( data::SMARTdata, param::SMARTparam; cv_grid=[],add_different_
     end 
 
     # Additional model: Fit hybrid model, with sharp splits forced on features with high τ. Threshold set at tau=10.
-    # Only if the high τ are for features with non-trivial importance (fi)
+    # Only if the high τ are for features with non-trivial importance (fi).
     if param.priortype==:hybrid && add_hybrid
-
+  
         best_i      = argmin(lossgrid)
         bestvalue   = cvgrid[best_i]
         force_sharp_splits = 10 .< mean_weighted_tau(SMARTtrees_a[best_i]) .<100 # 100 indicates that the split is always sharp anyway
@@ -843,8 +844,6 @@ function SMARTfit( data::SMARTdata, param::SMARTparam; cv_grid=[],add_different_
             param      = deepcopy(SMARTtrees_a[best_i].param)
             param.force_sharp_splits = force_sharp_splits
             #param.force_smooth_splits = force_smooth_splits
-
-
 
             param_given_data!(param,data)
             param_constraints!(param)

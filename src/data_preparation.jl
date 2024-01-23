@@ -253,7 +253,11 @@ function check_admissible_data(y,param)
     if param.loss in [:gamma,:lognormal,:logt]
         if minimum(y) <= 0
             @error "data.y must be strictly positive for loss = $(param.loss) "
-        end
+        end 
+    elseif param.loss in [:L2loglink]
+        if minimum(y) < 0 
+            @error "data.y must be non-negative for loss = $(param.loss)"
+        end     
     end
 
 end
@@ -334,6 +338,11 @@ function preparedataSMART(data::SMARTdata,param0::SMARTparam)
     data_standardized = SMARTdata_sharedarray( data.y,(x .- meanx)./stdx,param,data.dates,data.weights,data.fnames) # standardize
 
     param_given_data!(param,data_standardized)    # sets additional parameters that require data. 
+
+    if param0.loss in [:L2,:Huber,:t,:lognormal,:logt,:gamma,:L2loglink,:logistic,:quantile,:logvar]
+    else 
+        @error "add the new loss to categorical.jl"
+    end    
 
     return param,data_standardized,meanx,stdx  
     
@@ -550,8 +559,8 @@ function gridmatrixμ(data::SMARTdata,param::SMARTparam,meanx,stdx;maxn::Int = 1
     if loss in [:L2,:Huber,:t,:quantile,:lognormal,:logt]    
         m = median(data.y[ssi])
         ys  = (data.y[ssi] .- m)/(T(1.25)*mean(abs.(data.y .- m))) # standardize similarly to how x has been de-meaned
-    elseif loss in [:gamma]   # lognormal sets data.y=log, but for not for gamma. Take logs as it is log(mean) which is modeled. 
-        ys  = log.(data.y[ssi])
+    elseif loss in [:gamma,:L2loglink]   # lognormal sets data.y=log, but for not for gamma. Take logs as it is log(mean) which is modeled. 
+        ys  = log.(data.y[ssi].+T(1e-5))
         m   = median(ys)
         ys  = (ys .- m)/(T(1.25)*mean(abs.(ys .- m)))    # standardize similarly to how x has been de-meaned       
     elseif loss==:logistic

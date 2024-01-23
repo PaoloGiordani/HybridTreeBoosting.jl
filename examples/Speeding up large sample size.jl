@@ -40,12 +40,12 @@ dummies   = true        # true if x, x_test are 0-1 (much faster).
 stde      = 1            
 
 # Options for SMARTboost: modality is the key parameter guiding hyperparameter tuning and learning rate.
-# :fast and :fastest only fit one model at default parameters, while :compromise and :accurate perform
+# :fast only fits one model at default parameters, while :compromise and :accurate perform
 # automatic hyperparameter tuning. 
 
 randomsubset      = 0.1          # e.g. 0.1 or 0.2. Share of observations in the first sub-set 
 modality_subs     = :compromise  # :accurate or :compromise (default)
-modality_full     = :fast        # :fast or :fastest
+modality_full     = :fast        # :fast
 
 nfold_subs       = 1             # number of cv folds. 1 sufficient if the sub-sample is sufficiently large 
 nfold_full       = 1         

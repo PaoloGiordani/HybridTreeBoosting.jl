@@ -65,7 +65,12 @@ function loglik_vector(loss,param,y,gammafit)
     elseif loss==:gamma
         k  = exp(param.coeff_updated[1][1]) 
         μ  = exp.(gammafit) 
-        ll = (k-1)*log.(y) - k*(y./μ) - k*gammafit .+log(k)  .- SpecialFunctions.loggamma(k)  
+        ll = (k-1)*log.(y) - k*(y./μ) - k*gammafit .+log(k)  .- SpecialFunctions.loggamma(k)
+    elseif loss==:L2loglink
+        σ2 = (param.coeff_updated[1][1])^2
+        logσ2 = log(σ2)
+        μ  = exp.(gammafit)
+        ll  = @. -logσ2/2 - ((y - μ)^2)/(2*σ2)        
     else 
         @error "loss not implemented"     
     end
@@ -91,7 +96,7 @@ function losscv(param0::SMARTparam,y,gammafit,weights) # iter = 1 when no tree b
         end    
 
         if param.loss==:L2 || param.loss == :lognormal
-            loss  = (y - gammafit).^2
+            loss  = @. (y - gammafit)^2
         elseif param.loss==:Huber
             ψ,r = T.(param.coeff_updated[2][2]),y .- gammafit   # coeff_updated[2], which do not change after the first iter
             loss  = @. T(2)*( (T(0.5)*r^2)*(abs(r)<ψ)  + ( ψ*abs(r) - T(0.5)*ψ^2  )*(abs(r)≥ψ) )  # multiply by 2 so it is a MSE,
@@ -104,6 +109,9 @@ function losscv(param0::SMARTparam,y,gammafit,weights) # iter = 1 when no tree b
             k = exp(param.coeff_updated[2][1])   # notice it's coeff_udpated[2], which do not change after the first tree
             μ  = exp.(gammafit)
             loss = - ( (k-1)*log.(y) - k*(y./μ) - k*gammafit .+log(k)  .- SpecialFunctions.loggamma(k) ) 
+        elseif param.loss == :L2loglink
+            μ  = exp.(gammafit)
+            loss  = @. (y - μ)^2
         else 
             @error "loss not implemented"    
         end
@@ -155,7 +163,7 @@ function initialize_gamma0(data::SMARTdata,param::SMARTparam)
       gamma0 = huber_mean(y,data.weights,stdw_robust(y,weights);t=param.coeff[1])
   elseif param.loss == :t || param.loss == :logt
     gamma0  = student_mean(y,weights)
-  elseif param.loss == :gamma 
+  elseif param.loss in [:gamma,:L2loglink] 
     gamma0 = log(meany)   
  else
      @error "param.loss is misspelled or not supported."
@@ -189,7 +197,9 @@ function updatecoeff(param0,y,gammafit,weights,iter)
                 param.coeff_updated[1] = [res.minimizer[1]]
             elseif iter<=1 
                 param.coeff_updated[1] = [log(param.coeff[1])]
-            end            
+            end
+        elseif param.loss==:L2loglink        
+            param.coeff_updated[1] = [std(y - exp.(gammafit))]                
         else 
             @error "loss not implemented"    
         end
@@ -241,8 +251,13 @@ function gradient_hessian(y::AbstractVector{T},weights::AbstractVector{T},gammaf
         μ  = exp.(gammafit) 
         g  = @. y/μ - 1
         multiply_pb = 1/k  
-        h  = ones(T,1)    # second derivatives is k*y/μ, so E() wrt y becomes k. 
-    else
+        h  = ones(T,1)    # second derivatives is k*y/μ, so E() wrt y becomes k.
+    elseif param.loss == :L2loglink
+        μ  = exp.(gammafit)
+        g  = @. (y - μ)*μ
+        multiply_pb = (param.coeff_updated[1][1])^2  #
+        h  = μ.^2          # Fisher scoring, E(y)=μ
+    else      
         @error "param.loss is misspelled or not supported."    
     end
 
@@ -316,7 +331,7 @@ function bias_correct(gammafit,y_train,gammafit_train,param)  # gammafit can be 
 
     T = eltype(y_train)
 
-    if param.loss==:Huber || param.loss==:t || param.loss==:logt
+    if param.loss in [:Huber,:t,:logt]
         bias = mean(y_train) - mean(gammafit_train)   # actually -bias 
         gammafit_ba = gammafit .+ bias
     else

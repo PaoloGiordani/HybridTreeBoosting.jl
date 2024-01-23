@@ -136,11 +136,11 @@ Parameters for SMARTboost
 
 # Inputs that are more likely to be modified by user (all inputs are keywords with default values)
 
-- `loss:Symbol`             [:L2] :L2,:logistic,:t,:Huber,:gamma,:lognormal, are supported.
-                            :gamma and :lognormal require y > 0 
-
+- `loss:Symbol`             [:L2] :L2,:L2loglink,:logistic,:t,:Huber,:gamma, are supported.
+                            :gamma and :L2loglink require y > 0
+                            Parameters such as shape for :gamma and (dispersion,dof) for :t are computed internally by MLE. Inspect them using SMARTcoeff()
                             In SMARTpredict(), predictions are for E(y) if predict=:Ey, while predict=:Egamma forecasts the relevant parameter otherwise
-                            ( E(logit(prob)) for :logistic, E(log(y)) for :lognormal, E(log(E(y))) for :gamma  
+                            ( E(logit(prob)) for :logistic, for :gamma and L2loglink 
 
 - `modality:Symbol`         [:compromise] Options are: :accurate, :compromise, :fast, :fastest.
                             :fast runs only one model (only cv number of trees) at values defined in param = SMARTparam(). 

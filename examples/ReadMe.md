@@ -3,14 +3,15 @@
 A good path to familiarize yourself with SMARTboost is to study the following examples:
 
   * `Basic use` (main options, savings and loading results)
-  * `Logistic regression` (binary classification)
+  * `Logistic` (binary classification)
   * `Global Equity Panel` (time series and panels/longitudinal data)
   * `Speeding up large sample size` (strategies to reduce computing time for large n)
 
 The other examples explore more specific aspects of SMARTboost: 
 
-  * `Huber unbiased` (outlier robust losses in SMARTboost and lightGBM)
-  * `lognormal and logt` (an option if min(y)>0)
+  * `Huber and t unbiased` (outlier robust losses in SMARTboost and lightGBM)
+  * `t distribution` (the recommended robust loss in SMARTboost)
+  * `gamma distribution` (an option if min(y)>0)
   * `Speedups with sparsevs` (shows how SMARTboost speeds up feature selection when p is large)
 
 # When is SMARTboost likely to outperform (underperform) other GBM like XGB and LightGBM?
