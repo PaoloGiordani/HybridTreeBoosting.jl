@@ -57,7 +57,7 @@ function loglik_vector(loss,param,y,gammafit)
         σ2,ψ = param.coeff_updated[1][1]^2, param.coeff_updated[1][2]
         logσ2 = log(σ2)
         ll = @. -T(0.5)*logσ2 - ( (T(0.5)*r^2)*(abs(r)<ψ)  + ( ψ*abs(r) - T(0.5)*ψ^2  )*(abs(r)≥ψ) )/σ2
-    elseif loss==:t || loss == :logt
+    elseif loss==:t
         ll = loglik_student(y - gammafit,param.coeff_updated[1])
     elseif loss==:logistic
         bound_gammafit!(gammafit)
@@ -70,7 +70,13 @@ function loglik_vector(loss,param,y,gammafit)
         σ2 = (param.coeff_updated[1][1])^2
         logσ2 = log(σ2)
         μ  = exp.(gammafit)
-        ll  = @. -logσ2/2 - ((y - μ)^2)/(2*σ2)        
+        ll  = @. -logσ2/2 - ((y - μ)^2)/(2*σ2)
+    elseif loss==:Poisson 
+        ll = @. -SpecialFunctions.loggamma(y+1) + y*gammafit - exp(gammafit)  # factorial(y)=gamma(y+1)
+    elseif loss==:gammaPoisson
+        μ  = exp.(gammafit)
+        α  = exp(param.coeff_updated[1][1])
+        ll = @. SpecialFunctions.loggamma(y + 1/α) - SpecialFunctions.loggamma(1/α) - SpecialFunctions.loggamma(y + 1) + y*log((μ*α)/(1 + μ*α)) + (1/α)*log(1/(1 + μ*α))                 
     else 
         @error "loss not implemented"     
     end
@@ -80,16 +86,16 @@ end
 
 
 # losscv is used in cv only (and it does not need to be a proper log-likelihood).
-# if lossf == :default, then same loss as in gradient_hessian is used.
-# Other options for lossf are :mse :rmse :mae :logistic :sign
+# if losscv == :default, then same loss as in gradient_hessian is used.
+# Other options for losscv are :mse :rmse :mae :logistic :sign
 function losscv(param0::SMARTparam,y,gammafit,weights) # iter = 1 when no tree built yet, iter = j for j-1 trees already in the ensemble
 
     T = param0.T
     n = length(y)
     param = deepcopy(param0)
-    lossf = param.losscv
+    losscv = param.losscv
 
-    if lossf == :default
+    if losscv == :default
 
         if isempty(param.coeff_updated)  # when stacking models coeff_updated is not initialized 
             param = updatecoeff(param,y,gammafit,weights,1) # some log-lik require coefficients (e.g. var,dof)
@@ -100,7 +106,7 @@ function losscv(param0::SMARTparam,y,gammafit,weights) # iter = 1 when no tree b
         elseif param.loss==:Huber
             ψ,r = T.(param.coeff_updated[2][2]),y .- gammafit   # coeff_updated[2], which do not change after the first iter
             loss  = @. T(2)*( (T(0.5)*r^2)*(abs(r)<ψ)  + ( ψ*abs(r) - T(0.5)*ψ^2  )*(abs(r)≥ψ) )  # multiply by 2 so it is a MSE,
-        elseif param.loss==:t || param.loss == :logt
+        elseif param.loss==:t
             loss = -2*loglik_student(y - gammafit,param.coeff_updated[2])  # deviance=-2loglik. Notice it's coeff_updated[2], which do not change after the first tree
         elseif param.loss == :logistic           # gammafit  = logodds
             bound_gammafit!(gammafit)
@@ -112,28 +118,50 @@ function losscv(param0::SMARTparam,y,gammafit,weights) # iter = 1 when no tree b
         elseif param.loss == :L2loglink
             μ  = exp.(gammafit)
             loss  = @. (y - μ)^2
+        elseif param.loss==:Poisson 
+            loss = @. SpecialFunctions.loggamma(y+1) - y*gammafit + exp(gammafit)
+        elseif param.loss==:gammaPoisson
+            μ  = exp.(gammafit)
+            α  = exp(param.coeff_updated[2][1])
+            loss = @. -(SpecialFunctions.loggamma(y + 1/α) - SpecialFunctions.loggamma(1/α) - SpecialFunctions.loggamma(y + 1) + y*log((μ*α)/(1 + μ*α)) + (1/α)*log(1/(1 + μ*α)) )                
         else 
             @error "loss not implemented"    
         end
 
     else
 
-        if lossf == :mse
-            loss  = (y - gammafit).^2
-        elseif lossf == :rmse
-            resid = y - gammafit
-            loss  = abs.(resid)
-        elseif lossf == :Huber
+        if losscv == :mse
+
+            if param.loss in [:L2,:t,:Huber,:lognormal]
+                μ     = gammafit
+            elseif param.loss in [:gamma,:Poisson,:gammaPoisson]
+                μ     = exp.(gammafit)
+            else 
+                @error "losscv=:mse not coded for loss=$(param.loss)"
+            end
+
+            loss  = (y - μ).^2
+
+        elseif losscv == :Huber
             ψ = T.(param.coeff_updated[1][2])
             r = @. y - gammafit
             loss  = @. T(2)*( (T(0.5)*r^2)*(abs(r)<ψ)  + ( ψ*abs(r) - T(0.5)*ψ^2  )*(abs(r)≥ψ) )  # multiply by 2 so it is a MSE,
-        elseif lossf == :mae
+        elseif losscv == :mae
             loss  = abs.(y - gammafit)
-        elseif lossf == :logistic
+        elseif losscv == :logistic
             bound_gammafit!(gammafit)
             loss  = -y.*gammafit + log.(ones(T,n) + exp.(gammafit))
-        elseif lossf == :sign
-            loss = sign.(y) .== sign.(gammafit)    
+        elseif losscv == :sign
+            loss = sign.(y) .== sign.(gammafit)
+        elseif losscv == :logloss
+            if param.loss in [:L2,:t,:Huber]
+                loss = @. ( log(y+T(0.0001)) - log(gammafit+T(0.0001)) )^2
+            elseif param.loss in [:gamma,:L2loglink]
+                loss = @. ( log(y+T(0.0001)) - log(exp(gammafit+T(0.0001))) )^2
+            else
+                @error "losscv = :logloss not coded for loss=$loss"
+            end         
+
         end
 
     end
@@ -155,15 +183,15 @@ function initialize_gamma0(data::SMARTdata,param::SMARTparam)
   #meany  = sum(data.y.*data.weights)/sum(data.weights)  # not consistent if E(y|x) correlates with weights
   meany  = mean(y)
 
-  if param.loss == :L2 || param.loss == :lognormal
+  if param.loss in [:L2,:lognormal]
       gamma0 = meany
   elseif param.loss == :logistic
       gamma0 = log( meany/(one(T) - meany) )
   elseif param.loss == :Huber
       gamma0 = huber_mean(y,data.weights,stdw_robust(y,weights);t=param.coeff[1])
-  elseif param.loss == :t || param.loss == :logt
+  elseif param.loss == :t
     gamma0  = student_mean(y,weights)
-  elseif param.loss in [:gamma,:L2loglink] 
+  elseif param.loss in [:gamma,:L2loglink,:Poisson,:gammaPoisson] 
     gamma0 = log(meany)   
  else
      @error "param.loss is misspelled or not supported."
@@ -179,6 +207,7 @@ end
 function updatecoeff(param0,y,gammafit,weights,iter)
 
     param=deepcopy(param0)
+    T    = param.T
 
     if iter>=0  # >=0 continuously, or ==0 for standard
 
@@ -187,14 +216,24 @@ function updatecoeff(param0,y,gammafit,weights,iter)
         elseif param.loss==:Huber  # 1) σ   2) σ*psi
             σ = stdw_robust(y-gammafit,weights)
             param.coeff_updated[1] = [σ, param.coeff[1]*σ ]
-        elseif param.loss==:t || param.loss == :logt
+        elseif param.loss==:t
             res = Newton_MAP(y-gammafit,gH_student,start_value_student,w=weights)
             param.coeff_updated[1] = [res.minimizer[1],res.minimizer[2]]
-        elseif param.loss==:logistic   # no parameter to update  
+        elseif param.loss in [:logistic,:Poisson]   # no parameter to update
+            param.coeff_updated[1] = [T(NaN)]
         elseif param.loss==:gamma
             if isnan(param0.coeff[1])   # user has not provided a coeff: estimate it  
                 res = Newton_MAP(y,gH_gamma,start_value_gamma,w=weights,x=gammafit)        
                 param.coeff_updated[1] = [res.minimizer[1]]
+            elseif iter<=1 
+                param.coeff_updated[1] = [log(param.coeff[1])]
+            end
+        elseif param.loss==:gammaPoisson 
+            if isnan(param0.coeff[1])   # user has not provided a coeff: estimate it  
+                μ   = @. exp(gammafit)    # Newton was brittle: grid search instead. 
+                α0  = max( T(log(0.01)),(var(y) - mean(y))/mean(y)^2 )   # gammaPoisson not defined for α = 0. α-->0 can give numerical problems.
+                res  = Optim.optimize( logα -> loss_gammaPoisson(logα,y,μ),[log(α0)],Optim.BFGS(linesearch = LineSearches.BackTracking()), Optim.Options(iterations = 100,x_tol = 0.01 ))
+                param.coeff_updated[1] = [max(log(T(0.01)),res.minimizer[1])]     # gammaPoisson not defined for α = 0. α-->0 can give numerical problems.
             elseif iter<=1 
                 param.coeff_updated[1] = [log(param.coeff[1])]
             end
@@ -204,9 +243,7 @@ function updatecoeff(param0,y,gammafit,weights,iter)
             @error "loss not implemented"    
         end
 
-        if iter<=1
-            param.coeff_updated[2] = param.coeff_updated[1]  # for losscv, keep coeff constant. Set it at first estimate
-        end 
+        param.coeff_updated[2] = param.coeff_updated[1]           # update parameter used in cv (do only for iter<=1 to keep a constant parameter in cv)
 
     end
 
@@ -236,7 +273,7 @@ function gradient_hessian(y::AbstractVector{T},weights::AbstractVector{T},gammaf
         g     = @. r*(abs(r)<psi) + psi*sign(r)*(abs(r)>=psi)
         multiply_pb = (param.coeff_updated[1][1])^2
         h     = [mean(g.^2)]          
-    elseif param.loss == :t || param.loss == :logt
+    elseif param.loss == :t
         g     = g_student(y - gammafit,param.coeff_updated[1])
         multiply_pb = T(1)
         h    = [mean(g.^2)]          
@@ -244,19 +281,34 @@ function gradient_hessian(y::AbstractVector{T},weights::AbstractVector{T},gammaf
         prob,gammafit  = prob_logistic!(gammafit)   # # prob=exp(g)/(1+exp(g)) will be NaN if abs(g) is too large, which can happen with near-perfect classification.
         g     = @. y - prob
         h     = @.  prob*( one(T) - prob)
-        h     = maximum(hcat(h,fill(T(0.0001),length(h))),dims=2)[:,1] # some offset necessary for robustness for high n and sharply separted classes.
+        h     = maximum(hcat(h,fill(T(0.0001),length(h))),dims=2)[:,1] # some offset necessary for robustness for high n and sharply separated classes.
         multiply_pb = T(1)
     elseif param.loss == :gamma
         k  = exp(param.coeff_updated[1][1])  
         μ  = exp.(gammafit) 
         g  = @. y/μ - 1
+        g    = minimum(hcat(g,fill(T(1000),length(g))),dims=2)[:,1] 
         multiply_pb = 1/k  
-        h  = ones(T,1)    # second derivatives is k*y/μ, so E() wrt y becomes k.
+        h  = ones(T,1)       # Fisher scoring 
+    elseif param.loss == :Poisson 
+        μ  = exp.(gammafit)
+        g  = @. y - μ
+        h  = μ
+        h  = maximum(hcat(h,fill(T(0.001),length(h))),dims=2)[:,1]  
+        multiply_pb = T(1)
+    elseif param.loss == :gammaPoisson 
+        μ  = exp.(gammafit)
+        α  = exp(param.coeff_updated[1][1])
+        g  = @. (y - μ)./(1 + α*μ)
+        h  = @. μ/(1 + α*μ)   # Fisher scoring         
+        h    = maximum(hcat(h,fill(T(0.0001),length(h))),dims=2)[:,1]  
+        multiply_pb = T(1)              
     elseif param.loss == :L2loglink
         μ  = exp.(gammafit)
         g  = @. (y - μ)*μ
         multiply_pb = (param.coeff_updated[1][1])^2  #
         h  = μ.^2          # Fisher scoring, E(y)=μ
+        h  = maximum(hcat(h,fill(T(0.0001*mean(μ.^2)),length(h))),dims=2)[:,1] # some offset necessary for robustness if h -> 0
     else      
         @error "param.loss is misspelled or not supported."    
     end
@@ -331,7 +383,7 @@ function bias_correct(gammafit,y_train,gammafit_train,param)  # gammafit can be 
 
     T = eltype(y_train)
 
-    if param.loss in [:Huber,:t,:logt]
+    if param.loss in [:Huber,:t]
         bias = mean(y_train) - mean(gammafit_train)   # actually -bias 
         gammafit_ba = gammafit .+ bias
     else
@@ -370,3 +422,9 @@ function g_student(y,coeff)   # gradient of log-lik for the mean. y=resid, coeff
 
 end
 
+
+function loss_gammaPoisson(logα,y,μ)
+    α  = exp.(logα)[1]
+    loss = @. -(SpecialFunctions.loggamma(y + 1/α) - SpecialFunctions.loggamma(1/α) - SpecialFunctions.loggamma(y + 1) + y*log((μ*α)/(1 + μ*α)) + (1/α)*log(1/(1 + μ*α)) )                
+    return sum(loss)
+end     

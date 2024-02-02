@@ -197,13 +197,15 @@ function SMARTsequentialcv( data::SMARTdata, param::SMARTparam; indices=Vector(1
             Gβ,ij,μj,τj,mj,βj,fi2j = fit_one_tree(data_nf.y,data_nf.weights,
                     SMARTtrees_a[nf],rh_a[nf].r,rh_a[nf].h,data_nf.x,μgrid,info_x,τgrid,param_a[nf])
 
+            lossM[i,nf],losses  = losscv(param_a[nf],data.y[indtest],gammafit_test_a[nf],data.weights[indtest] )  # losscv computed before updating parameters, using same parameters as for lik. losscv is a (ntest) vector of losses.  
+         
             param_a[nf] = updatecoeff(param_a[nf],data_nf.y,SMARTtrees_a[nf].gammafit+Gβ,data_nf.weights,i) # +Gβ, NOT +λGβ
             updateSMARTtrees!(SMARTtrees_a[nf],Gβ,SMARTtree(ij,μj,τj,mj,βj,fi2j),i,param_a[nf])
             rh_a[nf],param_a[nf] = gradient_hessian( data_nf.y,data_nf.weights,SMARTtrees_a[nf].gammafit,param_a[nf],2)
             gammafit_test_a[nf] = gammafit_test_a[nf] + param.lambda*SMARTtreebuild(x_test,ij,μj,τj,mj,βj,param_a[nf])
             bias,gammafit_test_ba_a[nf] = bias_correct(gammafit_test_a[nf],data_nf.y,SMARTtrees_a[nf].gammafit+Gβ,param)
  
-            lossM[i,nf],losses  = losscv(param_a[nf],data.y[indtest],gammafit_test_a[nf],data.weights[indtest] )  # lossv is a (ntest) vector of losses. 
+            #lossM[i,nf],losses  = losscv(param_a[nf],data.y[indtest],gammafit_test_a[nf],data.weights[indtest] )  # lossv is a (ntest) vector of losses. 
             lossv = vcat(lossv,losses)
             gammafit_test = vcat(gammafit_test,gammafit_test_ba_a[nf])  # bias-adjusted (used in stacking), while loss is computed on original fit
 
@@ -260,7 +262,7 @@ function SMARTsequentialcv( data::SMARTdata, param::SMARTparam; indices=Vector(1
         @warn "The maximum number of trees $(param.ntrees) has been reached with CV loss still decreasing."
         problems = problems +1
     elseif ntrees==1 && param.warnings==:On
-        @warn "Cross validation selects one tree. Reducing the learning rate lambda is recommended."
+        @warn "Cross validation selects one tree. This could be due to very low signal-to-noise, in which case reducing the learning rate lambda is recommended, or to the optimization diverging, which can be checked by using a more stable loss, like :L2."
         problems = problems +1
     end
 

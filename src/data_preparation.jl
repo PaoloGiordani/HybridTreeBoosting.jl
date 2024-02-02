@@ -250,11 +250,11 @@ function check_admissible_data(y,param)
         end
     end
 
-    if param.loss in [:gamma,:lognormal,:logt]
+    if param.loss in [:gamma,:lognormal]
         if minimum(y) <= 0
             @error "data.y must be strictly positive for loss = $(param.loss) "
         end 
-    elseif param.loss in [:L2loglink]
+    elseif param.loss in [:L2loglink,:Poisson,:gammaPoisson]
         if minimum(y) < 0 
             @error "data.y must be non-negative for loss = $(param.loss)"
         end     
@@ -339,7 +339,7 @@ function preparedataSMART(data::SMARTdata,param0::SMARTparam)
 
     param_given_data!(param,data_standardized)    # sets additional parameters that require data. 
 
-    if param0.loss in [:L2,:Huber,:t,:lognormal,:logt,:gamma,:L2loglink,:logistic,:quantile,:logvar]
+    if param0.loss in [:L2,:Huber,:t,:lognormal,:gamma,:L2loglink,:logistic,:quantile,:logvar,:Poisson,:gammaPoisson]
     else 
         @error "add the new loss to categorical.jl"
     end    
@@ -556,11 +556,11 @@ function gridmatrixμ(data::SMARTdata,param::SMARTparam,meanx,stdx;maxn::Int = 1
     w         = data.weights[ssi]     
 
     # Compute standardized y, used later to compute Kantorovic distance from standardized y if y is continuous, else distance from a Gaussian (ys=[]) ).  
-    if loss in [:L2,:Huber,:t,:quantile,:lognormal,:logt]    
+    if loss in [:L2,:Huber,:t,:quantile,:lognormal]    
         m = median(data.y[ssi])
         ys  = (data.y[ssi] .- m)/(T(1.25)*mean(abs.(data.y .- m))) # standardize similarly to how x has been de-meaned
-    elseif loss in [:gamma,:L2loglink]   # lognormal sets data.y=log, but for not for gamma. Take logs as it is log(mean) which is modeled. 
-        ys  = log.(data.y[ssi].+T(1e-5))
+    elseif loss in [:gamma,:L2loglink,:Poisson,:gammaPoisson]   # lognormal sets data.y=log, but for not for gamma. Take logs as it is log(mean) which is modeled. 
+        ys  = log.(data.y[ssi].+T(0.01))
         m   = median(ys)
         ys  = (ys .- m)/(T(1.25)*mean(abs.(ys .- m)))    # standardize similarly to how x has been de-meaned       
     elseif loss==:logistic

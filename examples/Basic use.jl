@@ -36,7 +36,7 @@ number_workers  = 8  # desired number of workers
 
 using Distributed
 nprocs()<number_workers ? addprocs( number_workers - nprocs()  ) : addprocs(0)
-@everywhere using SMARTboostPrivate
+#@everywhere using SMARTboostPrivate
 
 using Random,Plots 
 
@@ -46,7 +46,7 @@ Random.seed!(123)
 
 # Some options for SMARTboost
 loss      = :L2           # :L2 or :logistic (or :Huber or :t). 
-modality  = :fast         # ::accurate, :compromise (default), :fast, :fastest 
+modality  = :compromise    # ::accurate, :compromise (default), :fast, :fastest 
 
 priortype = :hybrid       # :hybrid (default) or :smooth to force smoothness 
 nfold     = 1             # number of cv folds. 1 faster (single validation sets), default 5 is slower, but more accurate.
@@ -57,7 +57,7 @@ verbose     = :Off
 warnings    = :On
  
 # options to generate data. y = sum of four additive nonlinear functions + Gaussian noise.
-n,p,n_test  = 10_000,4,100_000
+n,p,n_test  = 10_000,5,100_000
 stde        = 1.0
   
 f_1(x,b)    = b*x .+ 1 
@@ -85,7 +85,8 @@ data   = SMARTdata(y,x,param)
 @time output = SMARTfit(data,param)
 yf     = SMARTpredict(x_test,output,predict=:Egamma)  # predict the natural parameter
 
-avgtau,avgtau_a,dftau = SMARTweightedtau(output,data,verbose=true,plot_tau=true,best_model=false);
+avgtau,avg_explogtau,avgtau_a,dftau,x_plot,g_plot = SMARTweightedtau(output,data,verbose=true,best_model=false)
+plot(x_plot,g_plot,title="smoothness of splits",xlabel="standardized x",label=:none)
 
 println(" \n modality = $(param.modality), nfold = $nfold ")
 println(" depth = $(output.bestvalue), number of trees = $(output.ntrees), avgtau $avgtau ")

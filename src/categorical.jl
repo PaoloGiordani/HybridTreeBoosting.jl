@@ -271,7 +271,7 @@ end
 # For each category, computes posterior mean (moment 1). How this is done depends on the loss function.
 function f_posterior_1(loss)
 
-    if loss in [:L2,:Huber,:t,:lognormal,:logt,:gamma,:L2loglink]
+    if loss in [:L2,:Huber,:t,:lognormal,:gamma,:L2loglink,:Poisson,:gammaPoisson]
         f_posterior = cat_posterior_L2
     elseif loss == :logistic
         f_posterior = cat_posterior_logistic   
@@ -309,7 +309,7 @@ end
 # prior for first moment 
 function f_prior_1(loss)
 
-    if loss in [:L2,:Huber,:t,:lognormal,:logt,:gamma,:L2loglink]
+    if loss in [:L2,:Huber,:t,:lognormal,:gamma,:L2loglink,:Poisson,:gammaPoisson]
         f_prior = cat_prior_L2
     elseif loss == :logistic
         f_prior = cat_prior_logistic    

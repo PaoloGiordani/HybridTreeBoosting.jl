@@ -270,7 +270,7 @@ function lnpτ(τ0::T,param::SMARTparam,info_i,d;τmax=T(100) )::T where T<:Abst
     stdlntau   = sqrt(param.varlntau)                 # to intrepret varlntau as dispersion
     #depth = T( param.depth1+maximum([0.0, 0.5*(param.depth-param.depth1) ]) )  # matters only if prior is modified for d
     #stdlntau  = sqrt( (param.varlntau)*(param.doflntau-T(2))/param.doflntau )  # to intrepret varlntau as an actual variance.
-    if param.loss in [:L2,:gamma,:Huber,:quantile,:t,:lognormal,:logt,:L2loglink]    
+    if param.loss in [:L2,:gamma,:Huber,:quantile,:t,:lognormal,:L2loglink,:Poisson,:gammaPoisson]    
         α=1
     elseif param.loss==:logistic
         α=0.5

@@ -15,6 +15,10 @@ Purpose and main results:
   robustness parameter is calibrated once on the unconditional data. In contrast, SMARTboost re-estimates all parameters
   after each tree, so that the t loss outperforms the L2 loss for any signal-to-noise (with IID errors). 
 
+Note:
+
+LightGBM is only fitted at default parameters, since the main interest here is not the comparison with SMARTboost but 
+the performance of Huber loss and of bias correction. 
 
 paolo.giordani@bi.no
 """
@@ -86,6 +90,7 @@ estimator = LGBMRegression(
 
 estimator_huber = LGBMRegression(
     objective = "huber",
+    metric    = ["huber"],
     num_iterations = 1000,
     learning_rate = 0.1,
     early_stopping_round = 100,

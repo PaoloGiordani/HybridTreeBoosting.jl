@@ -18,7 +18,8 @@
 #   gH_gamma 
 #   
 
-# Newton minimizer of the log-likelihood or log posterior, with outer score approximation of the Hessian
+
+# Newton minimizer of minus log-likelihood or log posterior, with outer score approximation of the Hessian
 # gH() should return  g,H = gH(y,x,θ;w=..), with H (p,p) and g (p,1). θ₀ = startvalue(y,x)   
 # returns a named tuple (minimizer,niter,converge)
 function Newton_MAP(y,gH::Function,startvalue::Function; x=missing,w=1,λ=0.5,maxiter=100,tol=0.0001,max_attempts=5)
@@ -43,7 +44,7 @@ function Newton_MAP(y,gH::Function,startvalue::Function; x=missing,w=1,λ=0.5,ma
 
     end     
     
-    converge = (i<maxiter) && attempt
+    converge = i<maxiter && attempt<max_attempts
 
     sum(isnan.(θ))>0 ? θ=θ₀ : nothing     # PG facenda: switch to a more robust optimizer 
 
@@ -209,4 +210,6 @@ function gH_gamma(y,gammafit,coeff;w=1)  # w and x can be missing
 
     return -g,-H
 end
+
+
 

@@ -136,11 +136,17 @@ Parameters for SMARTboost
 
 # Inputs that are more likely to be modified by user (all inputs are keywords with default values)
 
-- `loss:Symbol`             [:L2] :L2,:L2loglink,:logistic,:t,:Huber,:gamma, are supported.
-                            :gamma and :L2loglink require y > 0
-                            Parameters such as shape for :gamma and (dispersion,dof) for :t are computed internally by MLE. Inspect them using SMARTcoeff()
+- `loss:Symbol`             [:L2] Supported distributions: :L2 (Gaussian),:logistic (binary classification),
+                            :t,:Huber,:gamma, :Poisson, :gammaPoisson (same as negative binomial), :L2loglink, :lognormal. 
+                            See ?? for explanation and ?? for examples.      
+                            MOVE ELSEWHERE !!!!    
+                            :L2loglink should be used on y>=0; givee a consistent estimate of E(y|x), (unlike taking logs of y),
+                            but is slightly more accurate than :L2 in estimating log(E(y|x)). 
+
+                            Parameters such as shape for :gamma and (dispersion,dof) for :t and overdispersion for :gammaPoisson
+                            are computed internally by MLE. Inspect them using SMARTcoeff()
                             In SMARTpredict(), predictions are for E(y) if predict=:Ey, while predict=:Egamma forecasts the relevant parameter otherwise
-                            ( E(logit(prob)) for :logistic, for :gamma and L2loglink 
+                            ( E(logit(prob)) for :logistic, for :gamma 
 
 - `modality:Symbol`         [:compromise] Options are: :accurate, :compromise, :fast, :fastest.
                             :fast runs only one model (only cv number of trees) at values defined in param = SMARTparam(). 
@@ -403,7 +409,10 @@ function param_given_data!(param::SMARTparam,data::SMARTdata)
     if param.newton_gaussian_approx == :Auto
         newton_gaussian_approx = false
         loss = param.loss
-        loss ==:gamma ? param.newton_gaussian_approx = true : nothing  # no sizable loss of fit at any n, and 30-40% faster.
+
+        if loss in [:gamma,:gammaPoisson,:Poisson,:L2loglink]    # large speed gains  
+            param.newton_gaussian_approx = true
+        end 
 
         if loss == :logistic && size(data.x,2)>20_000 && param.modality in [:fast,:fastest]
             param.newton_gaussian_approx = true
@@ -489,7 +498,7 @@ function SMARTdata(y0::Union{AbstractVector,AbstractMatrix,AbstractDataFrame},x:
 
     check_admissible_data(y,param)  # check if data is admissible given param (typically param.loss)
 
-    if param.loss in [:lognormal,:logt]
+    if param.loss in [:lognormal]
         @. y = log(y)
     end             
 

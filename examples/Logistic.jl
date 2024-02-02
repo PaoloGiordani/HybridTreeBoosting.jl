@@ -11,9 +11,10 @@ Short description:
 Extensive description: 
 
 Sketch of a comparison of SMARTboost and lightGBM on a logistic regression problem.
-The comparison is biased toward SMARTboost because the function generating the data is 
-smooth (this is easily changed by the user), and because lightGBM is run at
-default parameters (except that number of trees is set to 1000 and found by early stopping.)
+The comparison with LightGBM is biased toward SMARTboost if the function generating the data is 
+smooth in some features (this is easily changed by the user). lightGBM is cross-validated over max_depth and num_leaves,
+with the number of trees set to 1000 and found by early stopping.
+
 
 Options for SMARTboost: modality is the key parameter guiding hyperparameter tuning and learning rate.
 :fast and :fastest only fit one model at default parameters, while :compromise and :accurate perform
@@ -31,7 +32,7 @@ number_workers  = 8  # desired number of workers
 
 using Distributed
 nprocs()<number_workers ? addprocs( number_workers - nprocs()  ) : addprocs(0)
-@everywhere using SMARTboostPrivate
+#@everywhere using SMARTboostPrivate
 
 using Random,Statistics
 using LightGBM
@@ -112,10 +113,26 @@ function simul_logistic(n,p,nsimul,modality,f)
     x_train = x[1:n_train,:]; y_train = Float64.(y[1:n_train])
     x_val   = x[n_train+1:end,:]; y_val = Float64.(y[n_train+1:end])
     
-    LightGBM.fit!(estimator,x_train,y_train,(x_val,y_val),verbosity=-1)
-    
-    yf_gbm = LightGBM.predict(estimator,x_test)
-    yf_gbm = yf_gbm[:,1]    # drop the second dimension or a (n_test,1) matrix 
+   # parameter search over num_leaves and max_depth
+   splits = (collect(1:n_train),collect(1:min(n_train,100)))  # goes around the problem that at least two training sets are required by search_cv (we want the first)
+
+   params = [Dict(:num_leaves => num_leaves,
+               :max_depth => max_depth) for
+          num_leaves in (4,16,32,64,127,256),
+          max_depth in (2,3,5,6,8)]
+
+   lightcv = LightGBM.search_cv(estimator,x,y,splits,params,verbosity=-1)
+
+   loss_cv = [lightcv[i][2]["validation"][estimator.metric[1]][1] for i in eachindex(lightcv)]
+   minind = argmin(loss_cv)
+
+   estimator.num_leaves = lightcv[minind][1][:num_leaves]
+   estimator.max_depth  = lightcv[minind][1][:max_depth]
+
+   # fit at cv parameters
+   LightGBM.fit!(estimator,x_train,y_train,(x_val,y_val),verbosity=-1)
+
+    yf_gbm = LightGBM.predict(estimator,x_test)[:,1]
     yf_gbm = log.(yf_gbm./(1.0 .- yf_gbm))
 
     MSE2[simul]    = sum((yf_gbm - ftrue_test).^2)/n_test

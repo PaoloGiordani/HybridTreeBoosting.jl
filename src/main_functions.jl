@@ -17,6 +17,7 @@
 #
 #  POST-ESTIMATION ANALYSIS
 #  SMARTcoeff              provides information on constant coefficients
+#    try_loglink
 #  SMARTrelevance          computes feature importance (Breiman et al 1984 relevance)
 #  SMARTpartialplot        partial dependence plots (keeping all other features fixed, not integrating out)
 #  SMARTmarginaleffect     provisional! Numerical computation of marginal effects.
@@ -365,15 +366,13 @@ Forecasts from SMARTboost, for y or the natural parameter.
 
 # Optional inputs
 - `predict`                    [:Ey], :Ey or :Egamma. :Ey returns the forecast of y, :Egamma returns the forecast of the natural parameter.
-                               The natural parameter is logit(prob) for :logistic, and mean(log(y)) if :lognormal and :logt.
+                               The natural parameter is logit(prob) for :logistic, and mean(log(y)) if :lognormal.
 - `best_model`                 [false] true to use only the single best model, false to use stacked weighted average
 - `cutoff_paralellel`          [20_000] if x has more than these rows, a parallellized algorithm is called (which is slower for few forecasts)
 
 # Output
 - `yf`                         (n) vector of forecasts of y (or, outside regression, of the natural parameter), or scalar forecast if n = 1
 
-# Note:
-- For loss=:logt, E(y) is not available in closed form. An approximation is provided, which holds for small variance or large degrees of freedom. 
 
 # Example of use
     output = SMARTfit(data,param)
@@ -424,21 +423,24 @@ function SMARTcoeff(output;verbose=true)
     loss = output.bestparam.loss 
     coeff = output.bestparam.coeff_updated[1]
 
-    if loss == :logistic
+    if loss in [:logistic,:Poisson]
         θ    = (loss=loss,coeff="none")
     elseif loss in [:L2,:lognormal,:L2loglink] 
         θ    = (loss=loss,variance=coeff[1]^2)
-    elseif loss == :t || loss == :logt
+    elseif loss == :t
         s2,v    = exp(coeff[1]),exp(coeff[2])
         θ    = (loss=loss,scale=s2,dof=v,variance="scale*dof/(dof-2)" )
     elseif loss == :Huber
         σ2,ψ = coeff[1]^2,coeff[2] 
         θ    = (loss=loss,variance=σ2,psi=output.bestparam.coeff_user[1])
     elseif loss == :gamma 
-        k    = coeff[1][1]
-        θ    = (loss=loss,shape=k)    
+        k    = exp(coeff[1][1])
+        θ    = (loss=loss,shape=k)
+    elseif loss == :gammaPoisson
+        α    = exp(coeff[1][1])
+        θ    = (loss=loss,overdispersion=α,info="α=1/r in the negative binomial parameterization (r=number of successes). var(y)=μ(1+αμ) ")
     else 
-        @error "loss not supported or misspelled. loss must be in [:logistic,:gamma,:L2,:Huber,:t,:quantile,:lognormal,:logt,:L2loglink]. "
+        @error "loss not supported or misspelled. loss must be in [:logistic,:gamma,:L2,:Huber,:t,:quantile,:lognormal,:L2loglink,:Poisson,:gammaPoisson]. "
     end
 
     if verbose==true
@@ -481,7 +483,7 @@ end
 
 
 
-# This function is used only in SMARTfit to compute residuals for add_different_loss
+# This function is used only in SMARTfit to compute residuals for cv_different_loss
 function SMARTpredict(x0::Union{AbstractDataFrame,AbstractArray},SMARTtrees::SMARTboostTrees;cutoff_parallel=20_000,predict=:Ey)
 
     x        = preparedata_predict(x0,SMARTtrees)
@@ -524,7 +526,6 @@ end
 
 
 # from natural parameter to E(y)
-# NB: for logt, E(y) is an approximation that only holds for small s2 and/or large v. 
 function from_gamma_to_Ey(gammafit,param,predict)
 
     loss  = param.loss
@@ -539,17 +540,13 @@ function from_gamma_to_Ey(gammafit,param,predict)
         pred = @. exp(gammafit)/(1+exp(gammafit))
     elseif loss in [:L1,:L2,:Huber,:t,:quantile]
         pred  = gammafit
-    elseif loss in [:gamma,:L2loglink] 
+    elseif loss in [:gamma,:L2loglink,:Poisson,:gammaPoisson] 
         pred  = exp.(gammafit)    
     elseif loss == :lognormal
         σ    = coeff[1]
         pred = @. exp(gammafit + 0.5*σ^2)     
-    elseif loss == :logt
-        s2,v    = exp(coeff[1]),exp(coeff[2])
-        vart    = s2*v/(v-2)
-        pred = @. exp(gammafit + 0.5*vart)   # could be Inf
     else 
-        @error "loss not supported or misspelled. loss must be in [:logistic,:L2,:Huber,:t,:quantile,:lognormal,:logt]. "
+        @error "loss not supported or misspelled. loss must be in [:logistic,:L2,:Huber,:t,:quantile,:lognormal,:Poisson,:gammaPoisson]. "
     end
 
     return pred
@@ -558,19 +555,24 @@ end
 
 
 
-
 """
-    SMARTfit(data,param;cv_grid=[],add_hybrid=true,add_sparse=true,add_different_loss=false,add_sharp=false)
+    SMARTfit(data,param;cv_grid=[],cv_sparsity=true,cv_link=true)
 
 Fits SMARTboost with with k-fold cross-validation of number of trees and depth, and possibly a few more models.
 
 If param.modality is :fast or :fastest, fits one model, at param, and if needed a second where sharp splits are 
 forced on features with high average values of τ. For param.modality=:accurate or :compromise,  
-may then fit, where appropriate, a few more models, which incrementally modify the original specification.
+may then cross-validate the following hyperparamters:
 
-The additional models considered in modality=:accurate and :compromise are:
-- Rough cross-validation of parameters for categorical features, if any.
-- A penalization to encourage sparsity (fewer relevant features), unless user sets add_sparse=false.
+1) Parameters for categorical features, if any.
+2) depth in the range 1-6.
+3) A penalization to encourage sparsity (fewer relevant features), unless user sets cv_sparsity=false.
+
+These cv of these hyperparameters is de-activated by:
+
+1) Setting modality = :fast or :fastest.
+2) Setting modality = :fast or :fastest, or providing a grid cv_grid, e.g. cv_grid = [6] or cv_grid = [3,5], as in SMARTfit(data,param,cv_grid=[3,5])
+3) Setting modality = :fast or :fastest, or SMARTfit(data,param,cv_sparsity=false)
 
 If param.modality=:accurate, lambda for all models is set set min(lambda,0.1). If modality=:compromise, the default learning rate
 lambda=0.2 is used, and the best model is then refitted with lambda = 0.1. 
@@ -586,10 +588,10 @@ Finally, all the estimated models considered are stacked, with weights chosen to
 # Optional inputs
 
 - `cv_grid::Vector`         The code performs a search in the space depth in [2,3,4,5,6], trying to fit few models if possible. Provide a
-                            vector to over-ride (e.g. [2,4])   
-- `add_sharp::Bool`         [false] models with sharp splits everywhere. This is then added to the stack. There is almost nothing to be gained from this 
-                            with symmetric (obvlivious) trees; it is preferable to stack with standard trees (not implemented internally yet.)
-- `min_p_sparsity`          [10] minimum number of features for sparsity or density penalizations to be considered
+                            vector to over-ride (e.g. [2,4])
+- `cv_sparsity`             If number of features p > min_p_sparsity, cv sparsity penalization.
+- `min_p_sparsity`          [10] minimum number of features for cv of sparsity penalizations hyperparameter
+
 
 # Output (named tuple)
 
@@ -622,8 +624,8 @@ Finally, all the estimated models considered are stacked, with weights chosen to
     output = SMARTfit(data,param)
 
 """
-function SMARTfit( data::SMARTdata, param::SMARTparam; cv_grid=[],add_different_loss::Bool=false,add_sharp::Bool=false,
-    add_sparse=true,add_hybrid=true,min_p_sparsity=10,skip_full_sample=false)   # skip_full_sample enforces nofullsample even if nfold=1 (used in other functions, not by user)
+function SMARTfit( data::SMARTdata, param::SMARTparam; cv_grid=[],cv_different_loss::Bool=false,cv_sharp::Bool=false,
+    cv_sparsity=true,cv_hybrid=true,min_p_sparsity=10,skip_full_sample=false)   # skip_full_sample enforces nofullsample even if nfold=1 (used in other functions, not by user)
 
     T,I = param.T,param.I
 
@@ -646,7 +648,8 @@ function SMARTfit( data::SMARTdata, param::SMARTparam; cv_grid=[],add_different_
             user_provided_grid = true 
        end      
 
-       add_sparse = false
+       cv_sparsity = false
+
     end  
 
     if modality==:fastest
@@ -670,8 +673,8 @@ function SMARTfit( data::SMARTdata, param::SMARTparam; cv_grid=[],add_different_
 
     preliminary_cv!(param0,data,param0.nofullsample)       # preliminary cv of categorical parameters, if modality is not :fast.
 
-    cvgrid0 = deepcopy(cv_grid)
-    cvgrid  = vcat(cvgrid0,fill(cvgrid0[1],additional_models))
+    cvgrid0 = deepcopy(cv_grid)                                        # best depth is quite sensitive to link, so depth is cv separately for identity and log link
+    cvgrid  = vcat(cvgrid0,fill(cvgrid0[1],additional_models)) 
 
     treesize, lossgrid    = Array{I}(undef,length(cvgrid)), fill(T(Inf),length(cvgrid))  
     meanloss_a,stdeloss_a = Array{Array{T}}(undef,length(cvgrid)), Array{Array{T}}(undef,length(cvgrid))
@@ -683,49 +686,45 @@ function SMARTfit( data::SMARTdata, param::SMARTparam; cv_grid=[],add_different_
 
     param.randomizecv==true ? indices = shuffle(Random.MersenneTwister(param.seed_datacv),Vector(1:length(data.y))) : indices = Vector(1:length(data.y)) # done here to guarantee same allocation if randomizecv=true
 
-    # Cross-validate depths in the model described by param0, on user-defined grid  
-    if user_provided_grid==true 
-        for (i,depth) in enumerate(cvgrid0)
+    # Cross-validate depths, on user-defined grid.  
+    if user_provided_grid==true
+        for (d,depth) in enumerate(cvgrid0)
 
             param = deepcopy(param0)
             param.depth = depth
+
             param_given_data!(param,data)
             param_constraints!(param)
 
             ntrees,loss,meanloss,stdeloss,SMARTtrees1st,indtest,gammafit_test,y_test,problems = SMARTsequentialcv(data,param,indices=indices)
 
+            i = d
             treesize[i],lossgrid[i],meanloss_a[i],stdeloss_a[i],SMARTtrees_a[i],gammafit_test_a[i],indtest_a,y_test_a = ntrees,loss,meanloss,stdeloss,SMARTtrees1st,gammafit_test,indtest,y_test 
             problems_somewhere = problems_somewhere + problems
-
-        end    
+            end    
     end 
 
-    # Cross-validate depths in the model described by param0. 
+    # Cross-validate depths with no user-defined grid. NB: assumes cv_grid = [1,2,3,4,5,6]
     # option 1: if isempty(cv_grid), fits depth=3,4,5. If 3 is best, fits 2. If 4 is best, stops. If 5 is best, fits 6.
     # option 2 (faster): if isempty(cv_grid), fits depth=3,5. If 3 is best, fits 2. If 5 is best, fits 6.
-    # NB: assumes cv_grid = [1,2,3,4,5,6]
-    if user_provided_grid==false
 
-        # option 1
-        # i_a = [3,4,5]
-        # option 2 
-        i_a = [3,5]
+    if user_provided_grid==false
+ 
+        i_a = [3,5]   # option 2. option 1: i_a = [3,4,5]
 
         for _ in 1:2
-
-            for i in i_a 
+            for d in i_a 
 
                 param = deepcopy(param0)
-                param.depth = cvgrid[i]
+                param.depth = cvgrid0[d]
                 param_given_data!(param,data)
                 param_constraints!(param)
 
                 ntrees,loss,meanloss,stdeloss,SMARTtrees1st,indtest,gammafit_test,y_test,problems = SMARTsequentialcv(data,param,indices=indices)
 
+                i = d
                 treesize[i],lossgrid[i],meanloss_a[i],stdeloss_a[i],SMARTtrees_a[i],gammafit_test_a[i],indtest_a,y_test_a = ntrees,loss,meanloss,stdeloss,SMARTtrees1st,gammafit_test,indtest,y_test 
                 problems_somewhere = problems_somewhere + problems
-
-               # i==4 && lossgrid[4]>lossgrid[3] ? break : nothing   # would save time, but sensitive to noise
 
             end     
 
@@ -734,12 +733,10 @@ function SMARTfit( data::SMARTdata, param::SMARTparam; cv_grid=[],add_different_
             elseif argmin(lossgrid)==4
                 break
             else
-                i_a = [6]
-                #param.modality==:accurate ? i_a = [6] : break      
+                i_a = [6]        
             end     
  
         end 
-
     end 
 
     # Additional models: Fit model with sparsity-inducing penalization, on best model fitted so far (including hybrid)
@@ -750,7 +747,7 @@ function SMARTfit( data::SMARTdata, param::SMARTparam; cv_grid=[],add_different_
 
     sparsity_grid = T.([0.7,1.1,1.5])           
 
-    if add_sparse && p>=min_p_sparsity
+    if cv_sparsity && p>=min_p_sparsity
 
         fnames,fi,fnames_sorted,fi_sorted,sortedindx = SMARTrelevance(SMARTtrees_a[best_i],data)
         s2 = sqrt(sum(fi.^2)/p)   # L2 measure of std
@@ -771,7 +768,7 @@ function SMARTfit( data::SMARTdata, param::SMARTparam; cv_grid=[],add_different_
                 fnames,fi,fnames_sorted,fi_sorted,sortedindx = SMARTrelevance(SMARTtrees1st,data)
             end     
 
-            i = length(cvgrid0)+j
+            i = length(cvgrid0)+j                                  
             cvgrid[i]   = cvgrid[best_i]
             treesize[i],lossgrid[i],meanloss_a[i],stdeloss_a[i]     = ntrees, loss, meanloss,stdeloss
             SMARTtrees_a[i],gammafit_test_a[i]                      = SMARTtrees1st, gammafit_test
@@ -803,7 +800,7 @@ function SMARTfit( data::SMARTdata, param::SMARTparam; cv_grid=[],add_different_
 
     # Additional model: Fit hybrid model, with sharp splits forced on features with high τ. Threshold set at tau=10.
     # Only if the high τ are for features with non-trivial importance (fi).
-    if param.priortype==:hybrid && add_hybrid
+    if param.priortype==:hybrid && cv_hybrid
   
         best_i      = argmin(lossgrid)
         bestvalue   = cvgrid[best_i]
@@ -860,12 +857,12 @@ function SMARTfit( data::SMARTdata, param::SMARTparam; cv_grid=[],add_different_
     # Additional model: :sharptree, at previous best values of sparsity and depth.
     # Notes: i) INEFFICIENT IMPLEMENTATION     ii) different from a standard symmetric tree if depth>depth1
 
-    if param.priortype==:hybrid && add_sharp 
+    if param.priortype==:hybrid && cv_sharp 
 
         best_i      = argmin(lossgrid)
         param = deepcopy(SMARTtrees_a[best_i].param)
         param.priortype = :sharp
-        i = length(cvgrid0)+5
+        i = length(cvgrid0)+3+2             # 3 is length(sparsity_grid)
         cvgrid[i]  = cvgrid[best_i]        
 
         ntrees,loss,meanloss,stdeloss,SMARTtrees1st,indtest,gammafit_test,y_test,problems = SMARTsequentialcv(data,param,indices=indices)
@@ -884,7 +881,7 @@ function SMARTfit( data::SMARTdata, param::SMARTparam; cv_grid=[],add_different_
     best_i = argmin(lossgrid)
     param  = deepcopy(SMARTtrees_a[best_i].param)
 
-    if add_different_loss 
+    if cv_different_loss 
         if param.loss == :L2   # fit a t distribution to residuals, and leave :L2 unless dof<10. 
  
             yfit = SMARTpredict(data.x,SMARTtrees_a[best_i],predict=:Ey) 
@@ -898,14 +895,14 @@ function SMARTfit( data::SMARTdata, param::SMARTparam; cv_grid=[],add_different_
 
     # Experimental. Not well tested yet. 
     # NB: cv loss may NOT comparable across different distributions.
-    if add_different_loss==true && (param.loss != SMARTtrees_a[best_i].param.loss) 
+    if cv_different_loss==true && (param.loss != SMARTtrees_a[best_i].param.loss) 
  
         param_given_data!(param,data)
         param_constraints!(param)
 
         ntrees,loss,meanloss,stdeloss,SMARTtrees1st,indtest,gammafit_test,y_test,problems = SMARTsequentialcv(data,param,indices=indices)
 
-        i = length(cvgrid0)+6
+        i = length(cvgrid0)+3+3        # 3 is length(sparsity_grid)
         cvgrid[i]   = cvgrid[best_i]
         lossgrid[i],meanloss_a[i], stdeloss_a[i] = loss,meanloss,stdeloss  # The loss is NOT comparable. 
         treesize[i]     = ntrees
@@ -994,8 +991,6 @@ function SMARTfit( data::SMARTdata, param::SMARTparam; cv_grid=[],add_different_
     else
         SMARTtrees = SMARTtrees_a[best_i]
     end
-
-    param = deepcopy(param0)
 
     # Ensembles of stacked trees.
     if sum(lossgrid.<Inf)==1
@@ -1330,7 +1325,7 @@ Output fitted parameters estimated from each tree, collected in matrices.
 
 # Example of use
 output = SMARTfit(data,param)
-i,μ,τ,β,fi2 = SMARToutput(output.SMARTtrees)
+i,μ,τ,fi2 = SMARToutput(output.SMARTtrees)
 
 """
 function SMARToutput(SMARTtrees::SMARTboostTrees)
@@ -1378,7 +1373,7 @@ end
 
 """ 
 
-    SMARTweightedtau(output,data;verbose=true,plot_tau=true,best_model=false)
+    SMARTweightedtau(output,data;verbose=true,best_model=false)
 
 Computes weighted (by variance importance gain at each split) smoothing parameter τ for each
 feature, and for the entire model (features are averaged by variance importance)
@@ -1391,20 +1386,23 @@ best_model=true for single model with lowest CV loss, best_model= false for weig
 
 # Optional inputs 
 - `verbose`   [true]  prints out the results to screen as DataFrame
-- `plot_tau`  [true]  plots a sigmoid with avgtau (see below) to get a sense of function smoothness.
 
 # Output
 - `avgtau`         scalar, average importance weighted τ over all features (also weighted by variance importance) 
 - `avg_explogtau`  scalar, exponential of average importance weighted log τ over all features (also weighted by variance importance) 
 - `avgtau_a`       p-vector of avg importance weighted τ for each feature 
 - `df`             dataframe collecting avgtau_a information (only if verbose=true)
-
+- `x_plot`         x-axis to plot sigmoid for avgtau, in range [-2 2] for standardized feature 
+- `g_plot`         y-axis to plot sigmoid for avgtau 
 
 # Example of use
 output = SMARTfit(data,param)
-avgtau,avg_explogtau,avgtau_a,dftau = SMARTweightedtau(output,data)
-avgtau,avg_explogtau,avgtau_a,dftau = SMARTweightedtau(output,data,verbose=false,plot_tau=false,best_model=true)
+avgtau,avg_explogtau,avgtau_a,dftau,x_plot,g_plot = SMARTweightedtau(output,data)
+avgtau,avg_explogtau,avgtau_a,dftau,x_plot,g_plot = SMARTweightedtau(output,data,verbose=false,plot_tau=false,best_model=true)
 
+
+using Plots
+plot(x_plot,g_plot,title="avg smoothness of splits",xlabel="standardized x",label=:none,legend=:bottomright)
 """
 function SMARTweightedtau(output,data;verbose::Bool=true,plot_tau::Bool=true,best_model::Bool=false)
 
@@ -1447,22 +1445,9 @@ function SMARTweightedtau(output,data;verbose::Bool=true,plot_tau::Bool=true,bes
         df = nothing     
     end 
 
-    if plot_tau==true
-        x = range(-2,stop=2,length=100)
-        τ,μ = avgtau,0.0
-        g = @. 0.5 + 0.5*( 0.5*τ*(x-μ)/sqrt(( 1.0 + ( 0.5*τ*(x-μ) )^2  )) )
+    x_plot = collect(-2.0:0.01:2)
+    g_plot = sigmoidf(x_plot,0.0,avgtau,param.sigmoid)
 
-        display(plot(x,g,
-                title="measures of average smoothing",
-                xlabel = "standardized x",
-                label = ["avg(tau)"],
-                legend = :bottomright,
-                linecolor = :blue,
-                linestyle = :solid,
-                linewidth = 5,
-                ))
-    end
-
-    return T(avgtau),T(exp_avglogtau),T.(avgtau_a),df
+    return T(avgtau),T(exp_avglogtau),T.(avgtau_a),df,x_plot,g_plot
 
 end 
