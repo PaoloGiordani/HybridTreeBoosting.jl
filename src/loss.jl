@@ -243,7 +243,10 @@ function updatecoeff(param0,y,gammafit,weights,iter)
             @error "loss not implemented"    
         end
 
-        param.coeff_updated[2] = param.coeff_updated[1]           # update parameter used in cv (do only for iter<=1 to keep a constant parameter in cv)
+        # After the preliminary and first tree, coefficients for cv are not updated to reduce noise. 
+        if iter<2 
+            param.coeff_updated[2] = param.coeff_updated[1]           # update parameter used in cv (do only for iter<=1 to keep a constant parameter in cv)
+        end     
 
     end
 

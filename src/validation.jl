@@ -223,6 +223,7 @@ function SMARTsequentialcv( data::SMARTdata, param::SMARTparam; indices=Vector(1
         displayinfo(param.verbose,i,meanloss[i],stdeloss[i])
 
         # warn if loss jumps up by more than 5 standard errors
+        #=
         if i>5 && param.warnings==:On
             if ((meanloss[i]-meanloss[i-1])/stdeloss[i-1])>5  
                 @warn "Cross validation loss jumped at tree number $i. This typically signals a numerical problem, 
@@ -230,7 +231,7 @@ function SMARTsequentialcv( data::SMARTdata, param::SMARTparam; indices=Vector(1
                 problems = problems + 1
             end     
         end
-
+        =#
 
         # break the loop if CV loss is either increasing or decreasing too slowly in last 10% of iterations
         J = maximum([20,I(floor(i/10))])
