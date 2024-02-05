@@ -764,12 +764,13 @@ function loopfeatures_spawn(outputarray,n,p,ps,y,w,gammafit_ensemble,gammafit,r,
         # By setting gammafit_ensemble=gammafit_ensemble+gammafit, and G0=1, I fit a smooth stomp. 
         @sync for i in ps        
             @async begin # use @async to create a task that will be scheduled to run on any available worker process    
-            if Info_x[i].exclude==false  && Info_x[i].n_unique>1
-                t   = (y=y,w=w,gammafit_ensemble=gammafit_ensemble+gammafit,r=r,h=h,G0=ones(T,n,1),xi=x[:,i],infeatures=infeatures,fi=fi,info_i=Info_x[i],μgridi=μgrid[i],τgrid=τgrid,param=param)
-                future = Distributed.@spawn add_depth(t)
-                outputarray[i,:] = fetch(future)
-            end
-        end    
+               if Info_x[i].exclude==false  && Info_x[i].n_unique>1
+                   t   = (y=y,w=w,gammafit_ensemble=gammafit_ensemble+gammafit,r=r,h=h,G0=ones(T,n,1),xi=x[:,i],infeatures=infeatures,fi=fi,info_i=Info_x[i],μgridi=μgrid[i],τgrid=τgrid,param=param)
+                   future = Distributed.@spawn add_depth(t)
+                   outputarray[i,:] = fetch(future)
+                end
+            end     
+        end
 
         ps = sortperm(outputarray[:,1])[1:param.p_pvs]    # redefine ps
         outputarray[:,1] = fill(T(Inf),p)
