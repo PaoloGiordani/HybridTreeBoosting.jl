@@ -9,6 +9,10 @@ Note: The comparison with LightGBM is biased toward SMARTboost if the function g
 smooth in some features (this is easily changed by the user). lightGBM is cross-validated over max_depth and num_leaves,
 with the number of trees set to 1000 and found by early stopping.
 
+FOR UNDER-DISPERSED COUNT DATA, I HAVE NOT CODED ANYTHING.
+I WOULD SUGGEST TO FIT A GAMMAPOISSON, AND IF ALPHA IS CLOSE TO 0,
+TO THEN USE L2LOG LINK OF L2 
+
 paolo.giordani@bi.no
 """
 

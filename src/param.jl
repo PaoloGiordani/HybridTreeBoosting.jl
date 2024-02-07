@@ -5,6 +5,7 @@
 # SMARTparam    function
 # SMARTdata     function
 # SMARTdata_sharedarray  function 
+# SMARTdata_subset  function 
 #
 # param_given_data!               Sets those parameters that require having the complete data set (e.g. the total number of features...)
 #                                 Typically, those that have a default :Auto in SMARTparam()
@@ -125,8 +126,29 @@ struct SMARTdata{T<:AbstractFloat,D<:Any,I<:Int}
     dates::Vector{D}
     fnames::Vector{String}
     cat_ind::Vector{I}    # vector of indices of categorical features in matrix x, e.g. [1,3]
+    offset::Vector{T} 
 end
 
+
+
+# Creates a SMARTdata dataset by taking a subsample (indexed by ind::Vector{Bool}) of another. 
+# Example of use: data_not0 = data_take_subset(data,data.y .!= 0)
+function SMARTdata_subset(data::SMARTdata,ind)
+
+    y   = data.y[ind]
+    x   = data.x[ind,:]
+    weights = data.weights[ind]
+    dates   = data.dates[ind]
+    offset  = data.offset[ind]
+
+    fnames  = data.fnames 
+    cat_features = param.cat_features 
+
+    data_ind = SMARTdata(y,SharedMatrixErrorRobust(x,param),weights,dates,fnames,cat_features,offset)
+
+    return data_ind 
+
+end 
 
 
 
@@ -137,9 +159,11 @@ Parameters for SMARTboost
 # Inputs that are more likely to be modified by user (all inputs are keywords with default values)
 
 - `loss:Symbol`             [:L2] Supported distributions: :L2 (Gaussian),:logistic (binary classification),
-                            :t,:Huber,:gamma, :Poisson, :gammaPoisson (same as negative binomial), :L2loglink, :lognormal. 
+                            :t,:Huber,:gamma, :Poisson, :gammaPoisson (same as negative binomial), :L2loglink, :lognormal,
+                            :hurdleGamma,:hurdleL2loglink,:hurdleL2 
                             See ?? for explanation and ?? for examples.      
-                            MOVE ELSEWHERE !!!!    
+                            MOVE ELSEWHERE !!!!
+                            ADD OFFSET IF RELEVANT .... NB ITS' IN SMARTdata()     
                             :L2loglink should be used on y>=0; givee a consistent estimate of E(y|x), (unlike taking logs of y),
                             but is slightly more accurate than :L2 in estimating log(E(y|x)). 
 
@@ -463,18 +487,18 @@ Collects and pre-processes data in preparation for fitting SMARTboost
 
 # Inputs
 
-- `y::Vector`:              Vector of responses. Can be a vector of lables, or a dataframe with one column. 
-- `x`:                      Matrix of features. Can be a vector or matrix of floats, or a dataframe. Converted internally to a Matrix{T}, T as defined in SMARTparam
-- `param::SMARTparam`:
+- `y::Vector`              Vector of responses. Can be a vector of lables, or a dataframe with one column. 
+- `x`                      Matrix of features. Can be a vector or matrix of floats, or a dataframe. Converted internally to a Matrix{T}, T as defined in SMARTparam
+- `param::SMARTparam`
 
 
 # Optional Inputs
 
-- `dates::AbstractVector`:  [1:n] Typically Vector{Date} or Vector{Int}. Used in cross-validation to determine splits.
+- `dates::AbstractVector`  [1:n] Typically Vector{Date} or Vector{Int}. Used in cross-validation to determine splits.
                             If not supplied, the default 1:n assumes a cross-section of independent realizations (conditional on x) or a single time series.
-- 'weights':                [ones(T,n)] vector of floats or Floats, weights for weighted likelhood
-- `fnames::Vector{String}`: [x1, x2, ... ] feature names
-
+- 'weights'                [ones(T,n)] vector of floats or Floats, weights for weighted likelhood
+- `fnames::Vector{String}` [x1, x2, ... ] feature names
+- 'offset'                 vector of offsets (exposure), in logs if the loss adopts a loss link (:gamma,:gammaPoisson,:L2loglink,....) 
 
 # Examples of use
     data = SMARTdata(y,x,param)
@@ -486,9 +510,10 @@ Collects and pre-processes data in preparation for fitting SMARTboost
 - When dates are provided, the data will be ordered chronologically (for cross-validation functions) unless the user has provided explicit training and validation sets.
 """
 function SMARTdata(y0::Union{AbstractVector,AbstractMatrix,AbstractDataFrame},x::Union{AbstractVector,AbstractMatrix,AbstractDataFrame},
-    param::SMARTparam,dates::AbstractVector=[];weights::AbstractVector=[],fnames = Vector{String}[])  
+    param::SMARTparam,dates::AbstractVector=[];weights::AbstractVector=[],fnames = Vector{String}[],offset=[])  
 
     T    = param.T
+    n    = length(y0)
 
     if typeof(y0)<:AbstractDataFrame || eltype(y0) <: Union{Bool,Number} || typeof(y0)<:AbstractMatrix
         y = y0[:,1]
@@ -530,6 +555,8 @@ function SMARTdata(y0::Union{AbstractVector,AbstractMatrix,AbstractDataFrame},x:
         end
   
     end
+
+    isempty(offset) ? offset = zeros(T,n) : offset = T.(offset)
 
     # pre-process data
 
@@ -578,7 +605,7 @@ function SMARTdata(y0::Union{AbstractVector,AbstractMatrix,AbstractDataFrame},x:
     extended_categorical_features!(param,fnames)   # finds categorical features needing an extensive (more than one column) representation
     xp = replace_missing_with_nan(xp)   # SharedArray do not accept missing.
 
-    data = SMARTdata(T.(y),convert_df_matrix(xp,T),T.(weights),dates,fnames,param.cat_features)
+    data = SMARTdata(T.(y),convert_df_matrix(xp,T),T.(weights),dates,fnames,param.cat_features,offset)
 
     return data
 
@@ -590,9 +617,9 @@ end
 # I don't think there gains from making y and weights SharedVector. Only x.
 # SharedArray can cause a "mmap: Access is denied" error, presumably on systems shared by several users
 function SMARTdata_sharedarray(y::Union{AbstractVector,AbstractDataFrame},x::Union{AbstractVector,AbstractMatrix,AbstractDataFrame},
-   param::SMARTparam,dates::AbstractVector,weights::AbstractVector,fnames::Vector{String} )
+   param::SMARTparam,dates::AbstractVector,weights::AbstractVector,fnames::Vector{String},offset::AbstractVector)
     
-   data = SMARTdata(y,SharedMatrixErrorRobust(x,param),weights,dates,fnames,param.cat_features)
+   data = SMARTdata(y,SharedMatrixErrorRobust(x,param),weights,dates,fnames,param.cat_features,offset)
 
    return data
 

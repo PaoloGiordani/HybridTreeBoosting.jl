@@ -1,5 +1,5 @@
 #
-#  Collects most functions that are exported
+#  Collects most functions that are exported, as well as some that are not exported
 #
 #  INFORMATION about available functions   
 #  SMARTinfo               basic information about the main functions in SMARTboost
@@ -11,9 +11,13 @@
 #
 #  FITTING and FORECASTING
 #  SMARTfit                fits SMARTboost with cv (or validation/early stopping) of number of trees and, optionally, depth or other parameter
+#    SMARTfit_single       main function, building block for composite and multi-parameter models 
+#    SMARTfit_hurdle       hurdle models: y continuous, split into y=0 and y /=0   
 #  SMARTbst                fits SMART when nothing needs to be cross-validated (not even number of trees)
 #  SMARTpredict            prediction from SMARTtrees::SMARTboostTrees
+#    SMARTpredict          output is vector of tuples (composite models)
 #    preparedata_predict
+#    SMARTpredict_hurdle
 #
 #  POST-ESTIMATION ANALYSIS
 #  SMARTcoeff              provides information on constant coefficients
@@ -246,10 +250,10 @@ function SMARTbst(data0::SMARTdata, param::SMARTparam )
     τgrid,μgrid,Info_x,n,p         = preparegridsSMART(data,param,meanx,stdx)
 
     gamma0                         = initialize_gamma0(data,param)
-    gammafit                       = fill(gamma0,n)
+    gammafit                       = data0.offset + fill(gamma0,n) 
 
     param          = updatecoeff(param,data.y,gammafit,data.weights,0)
-    SMARTtrees     = SMARTboostTrees(param,gamma0,n,p,meanx,stdx,Info_x)
+    SMARTtrees     = SMARTboostTrees(param,gamma0,data0.offset,n,p,meanx,stdx,Info_x)
     rh,param       = gradient_hessian( data.y,data.weights,gammafit,param,0)
 
     # prelimiminary run to calibrate coefficients and priors
@@ -291,30 +295,13 @@ function displayinfo(verbose::Symbol,iter::Int)
 end
 
 
-#=
-    SMARTpredict_internal(x,SMARTtrees::SMARTboostTrees)
-Forecasts from SMARTboost. Expects x to be standardized, with categorical already transformed
 
-# Inputs
-- `x`                           (n,p) matrix of forecast origins (type<:real) or p vector of forecast origin
-                                 Assumes x is standardized, and all categorical have been transformed. 
-
-- `SMARTtrees::SMARTboostTrees` from previously fitted SMARTbst or SMARTfit
-
-# Optional inputs
-- `cutoff_paralellel`          [20_000] if x has more than these rows, a parallellized algorithm is called (which is slower for few forecasts)
-
-# Output
-- `yfit`                        (n) vector of forecasts of y (or, outside regression, of the natural parameter), or scalar forecast if n = 1
-
-# Example of use
-    output = SMARTfit(data,param)
-    yf     = SMARTpredict(x_oos,output.SMARTtrees)
-=#
-function SMARTpredict_internal(x::AbstractMatrix,SMARTtrees::SMARTboostTrees,predict;cutoff_parallel=20_000)
+#Forecasts from SMARTboost. Expects x to be standardized, with categorical already transformed
+function SMARTpredict_internal(x::AbstractMatrix,SMARTtrees::SMARTboostTrees,predict;cutoff_parallel=20_000,offset=[])
 
     n,p = size(x)
-
+    T   = SMARTtrees.param.T
+ 
     if p != length(SMARTtrees.meanx)
         @error "In SMARTpredict, the input matrix x has column dimension $p while SMARTfit has been estimated with $(length(SMARTtrees.meanx)) features in data.x"
     end
@@ -323,7 +310,6 @@ function SMARTpredict_internal(x::AbstractMatrix,SMARTtrees::SMARTboostTrees,pre
         gammafit = SMARTpredict_distributed(x,SMARTtrees)
     else
 
-        T       = typeof(SMARTtrees.gamma0)
         gammafit = SMARTtrees.gamma0*ones(T,size(x,1))
     
         for j in 1:length(SMARTtrees.trees)
@@ -332,7 +318,9 @@ function SMARTpredict_internal(x::AbstractMatrix,SMARTtrees::SMARTboostTrees,pre
         end
     end
 
-    pred = from_gamma_to_Ey(gammafit,SMARTtrees.param,predict) # # from natural parameter to E(y), depending on predict
+    if !isempty(offset); gammafit = T.(offset) + gammafit; end     
+
+    pred = from_gamma_to_Ey(gammafit,SMARTtrees.param,predict) # from natural parameter to E(y), depending on predict
 
     return pred
 
@@ -368,36 +356,72 @@ Forecasts from SMARTboost, for y or the natural parameter.
 - `predict`                    [:Ey], :Ey or :Egamma. :Ey returns the forecast of y, :Egamma returns the forecast of the natural parameter.
                                The natural parameter is logit(prob) for :logistic, and mean(log(y)) if :lognormal.
 - `best_model`                 [false] true to use only the single best model, false to use stacked weighted average
+- `offset`                     (n) vector, offset (or exposure), in terms of gamma (log exposure if the loss has a log-link)     
 - `cutoff_paralellel`          [20_000] if x has more than these rows, a parallellized algorithm is called (which is slower for few forecasts)
 
-# Output
+# Output for standard models
 - `yf`                         (n) vector of forecasts of y (or, outside regression, of the natural parameter), or scalar forecast if n = 1
 
+# Output for hurdle models 
+- `yf`                         (n) vector of forecasts of E(y|x) for the combined model
+- `prob0`                      (n) vector of forecasts of prob(y=0|x)
+- `prob0`                      (n) vector of forecasts of E(y|x,y /=0)
 
 # Example of use
     output = SMARTfit(data,param)
     yf     = SMARTpredict(x_oos,output)
     yf     = SMARTpredict(x_oos,output,best_model=true)
+    yf     = SMARTpredict(x_oos,output,offset = log.(exposure) )
+
+    yf,prob0,yf_not0 = SMARTpredict(x_oos,output)  # for hurdle models 
 """
-function SMARTpredict(x0::Union{AbstractDataFrame,AbstractArray},output::NamedTuple;best_model=false,cutoff_parallel=20_000,predict=:Ey)
+function SMARTpredict(x0::Union{AbstractDataFrame,AbstractArray},output::NamedTuple;best_model=false,cutoff_parallel=20_000,predict=:Ey,offset=[])
 
     x = preparedata_predict(x0,output.SMARTtrees)
 
     if best_model==true || length(output.w)==1
-        gammafit = SMARTpredict_internal(x,output.SMARTtrees,predict,cutoff_parallel=cutoff_parallel)  # SMARTtrees is for best model, SMARTtrees_a collects all
+        gammafit = SMARTpredict_internal(x,output.SMARTtrees,predict,cutoff_parallel=cutoff_parallel,offset=offset)  # SMARTtrees is for best model, SMARTtrees_a collects all
     else
-        gammafit = zeros(output.T,size(x,1))
+        gammafit = zeros(output.bestparam.T,size(x,1))
 
         for i in 1:length(output.w)
 
             if output.w[i]>0
-                gammafit += output.w[i]*SMARTpredict_internal(x,output.SMARTtrees_a[i],predict,cutoff_parallel=cutoff_parallel)
+                gammafit += output.w[i]*SMARTpredict_internal(x,output.SMARTtrees_a[i],predict,cutoff_parallel=cutoff_parallel,offset=offset)
             end
 
         end
     end
     
     return gammafit    # gammafit is actually Ey if predict = :Ey in SMARTpredict_internal
+
+end 
+
+
+# SMARTpredict when output is Vector{NamedTuples}
+function SMARTpredict(x::Union{AbstractDataFrame,AbstractArray},output::AbstractVector;best_model=false,cutoff_parallel=20_000,predict=:Ey,offset=[])
+
+    if param.loss in [:hurdleGamma,:hurdleL2loglink,:hurdleL2]
+        if predict==:Egamma; @error " prediction with hurdle models require predict=:Ey"; end 
+        yf,prob0,yf_not0 = SMARTpredict_hurdle(x,output,best_model,cutoff_parallel,predict,offset)
+        return (yf,prob0,yf_not0)
+    end 
+    
+end 
+
+
+# prediction for hurdle model, where  param.loss in [:hurdleGamma,:hurdleL2loglink,:hurdleL2]
+# The first model is logistic regression for prob, the second is :gamma of :L2 or :L2loglink.
+# yf,prob0,yf_not0 = SMARTpredict_hurdle  
+function SMARTpredict_hurdle(x,output,best_model,cutoff_parallel,predict,offset)
+
+    yf_0     = SMARTpredict(x,output[1],offset=[],best_model=best_model,cutoff_parallel=cutoff_parallel,predict=predict)   # offset is meant for 
+    yf_not0  = SMARTpredict(x,output[2],offset=offset,best_model=best_model,cutoff_parallel=cutoff_parallel,predict=predict)   # offset is meant for 
+
+    yf    = @. yf_0 * yf_not0    # E(y|x)
+    prob0  = @. 1 - yf_0          # prob(y=0)
+
+    return yf,prob0,yf_not0 
 
 end 
 
@@ -556,7 +580,7 @@ end
 
 
 """
-    SMARTfit(data,param;cv_grid=[],cv_sparsity=true,cv_link=true)
+    SMARTfit(data,param;cv_grid=[],cv_sparsity=true)
 
 Fits SMARTboost with with k-fold cross-validation of number of trees and depth, and possibly a few more models.
 
@@ -593,7 +617,7 @@ Finally, all the estimated models considered are stacked, with weights chosen to
 - `min_p_sparsity`          [10] minimum number of features for cv of sparsity penalizations hyperparameter
 
 
-# Output (named tuple)
+# Output (named tuple, or vector of named tuple for hurdle models)
 
 - `indtest::Vector{Vector{Int}}`  indexes of validation samples
 - `bestvalue::Float`              best value of depth in cv_grid
@@ -612,7 +636,6 @@ Finally, all the estimated models considered are stacked, with weights chosen to
 - `fi2`                           (ntrees,depth) matrix of feature importance, increase in R2 at each split, for best model
 - `w`                             length(cv_grid) vector of stacked weights
 - `ratio_actual_max`              ratio of actual number of candidate features over potential maximum. Relevant if sparsevs=:On: indicates sparsevs should be switched off if too high (e.g. higher than 0.5).
-- `T`                             type for floating numbers
 - `problems`                      true if there were computational problems in any of the models: NaN loss or loss jumping up
 
 # Notes
@@ -622,11 +645,35 @@ Finally, all the estimated models considered are stacked, with weights chosen to
     param = SMARTparam()
     data   = SMARTdata(y,x,param)
     output = SMARTfit(data,param)
+    ntrees = output.ntrees 
+    best_depth = output.bestvalue 
+
+    Example for hudle models (loss in [:hurdleGamma,:hurdleL2loglink,:hurdleL2])
+    ntrees_0    = output[1].ntrees   # number of trees for logistic regression, 0-not0
+    ntrees_not0 = output[2].ntrees   # number of trees for gamma or L2 loss
 
 """
-function SMARTfit( data::SMARTdata, param::SMARTparam; cv_grid=[],cv_different_loss::Bool=false,cv_sharp::Bool=false,
+function SMARTfit(data::SMARTdata, param::SMARTparam; cv_grid=[],cv_different_loss::Bool=false,cv_sharp::Bool=false,
     cv_sparsity=true,cv_hybrid=true,min_p_sparsity=10,skip_full_sample=false)   # skip_full_sample enforces nofullsample even if nfold=1 (used in other functions, not by user)
 
+    args = (cv_grid,cv_different_loss,cv_sharp,cv_sparsity,cv_hybrid,min_p_sparsity,skip_full_sample)
+
+    if param.loss in [:hurdleGamma,:hurdleL2loglink,:hurdleL2]
+        output = SMARTfit_hurdle(data,param,cv_grid=cv_grid,cv_different_loss=cv_different_loss,cv_sharp=cv_sharp,cv_sparsity=cv_sparsity,
+                      cv_hybrid=cv_hybrid,min_p_sparsity=min_p_sparsity,skip_full_sample=skip_full_sample)
+    else 
+        output = SMARTfit_single(data,param,cv_grid=cv_grid,cv_different_loss=cv_different_loss,cv_sharp=cv_sharp,cv_sparsity=cv_sparsity,
+                       cv_hybrid=cv_hybrid,min_p_sparsity=min_p_sparsity,skip_full_sample=skip_full_sample)
+    end 
+
+    return output 
+end 
+
+
+# SMARTfit for a single model.  
+function SMARTfit_single(data::SMARTdata, param::SMARTparam; cv_grid=[],cv_different_loss::Bool=false,cv_sharp::Bool=false,
+        cv_sparsity=true,cv_hybrid=true,min_p_sparsity=10,skip_full_sample=false)   # skip_full_sample enforces nofullsample even if nfold=1 (used in other functions, not by user)
+    
     T,I = param.T,param.I
 
     additional_models     = 6    # After going through cv_grid, selects best value and fits: hybrid, sparse (up to 3), sharp, different distribution
@@ -1013,9 +1060,48 @@ function SMARTfit( data::SMARTdata, param::SMARTparam; cv_grid=[],cv_different_l
     end
 
     return ( indtest=indtest_a,bestvalue=bestvalue,bestparam=SMARTtrees.param,ntrees=ntrees,loss=loss,meanloss=meanloss,stdeloss=stdeloss,lossgrid=lossgrid,SMARTtrees=SMARTtrees,
-    i=i,mu=μ,tau=τ,fi2=fi2,avglntau=avglntau,SMARTtrees_a=SMARTtrees_a,w=w,lossw=lossw,T=T,problems=(problems_somewhere>0),ratio_actual_max=ratio_actual_max)
+    i=i,mu=μ,tau=τ,fi2=fi2,avglntau=avglntau,SMARTtrees_a=SMARTtrees_a,w=w,lossw=lossw,problems=(problems_somewhere>0),ratio_actual_max=ratio_actual_max)
 
 end
+
+
+# Hurdle models for zero-inflated continuous data:
+# a logistic regression for 0-not0, coupled with :gamma, :L2loglink or :L2 loss for y /=0 data (a subset).
+# The two models can be fit separately with no loss since the continuous distribution has zero mass at 0. 
+# The cv is completely independent for the two models. 
+function SMARTfit_hurdle(data::SMARTdata, param::SMARTparam; cv_grid=[],cv_different_loss::Bool=false,cv_sharp::Bool=false,
+    cv_sparsity=true,cv_hybrid=true,min_p_sparsity=10,skip_full_sample=false)   # skip_full_sample enforces nofullsample even if nfold=1 (used in other functions, not by user)
+
+    if loss == :hurdleGamma
+        loss_not0 = :gamma
+    elseif loss == :hurdleL2loglink 
+        loss_not0 = :L2loglink
+    elseif loss == :hurdleL2 
+        loss_not0 = :L2
+    end 
+
+    # 0-not0 
+    T           = param.T 
+    data_0      = deepcopy(data)
+    @. data_0.y = data.y != 0      
+    @. data_0.offset = T(0)          # offset is intended for the y>0 part. 
+
+    param_0      = deepcopy(param)
+    param_0.loss = :logistic
+    output_0 = SMARTfit(data_0,param_0) 
+    data_0 = 0  # free memory 
+
+    # y /=0  
+    data_not0 = SMARTdata_subset(data,data.y .!= 0)
+    param_not0 = deepcopy(param)
+    param_not0.loss = loss_not0 
+    output_not0 = SMARTfit(data_not0,param_not0) 
+
+    output = [output_0,output_not0]
+
+    return output 
+end 
+
 
 
 
@@ -1057,7 +1143,7 @@ best_model=true for single model with lowest CV loss, best_model= false for weig
 """
 function SMARTrelevance(output,data::SMARTdata;verbose=true,best_model=false )
 
-    T   = output.T 
+    T   = output.bestparam.T 
     w   = output.w
 
     if best_model==true   # SMARTtrees for best model, SMARTtrees_a for all
@@ -1131,7 +1217,7 @@ function SMARTpartialplot(data::SMARTdata,output,features;best_model=false,other
     if best_model==true || length(output.SMARTtrees_a)==1
         q,pdp  = SMARTpartialplot(x,output.SMARTtrees,features,predict,other_xs=other_xs,q1st=q1st,npoints=npoints)
     else
-        T = output.T
+        T = output.bestparam.T
         pdp = zeros(T,npoints,length(features) )
 
         for i in 1:length(output.SMARTtrees_a)

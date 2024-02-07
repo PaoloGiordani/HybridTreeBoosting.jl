@@ -108,11 +108,11 @@ end
 
 
 
-function SMARTboostTrees(param,gamma0,n,p,meanx,stdx,Info_x)
+function SMARTboostTrees(param,gamma0,offset,n,p,meanx,stdx,Info_x)
 
     T,I = param.T,param.I
     trees, infeatures,R2simul,fi,fr = SMARTtree{typeof(gamma0),typeof(p)}[], fill(false,p), T[],zeros(T,p),zeros(I,p)
-    gammafit                     = fill(gamma0,n)
+    gammafit   = offset + fill(gamma0,n)
     SMARTtrees = SMARTboostTrees(param,gamma0,trees,infeatures,fi,fr,fi,meanx,stdx,gammafit,R2simul,Info_x)
 
     return SMARTtrees

@@ -34,11 +34,12 @@ PG: unless we are absolutely sure that an offset enteres exactly with coeff 1, c
 paolo.giordani@bi.no
 """
 
-number_workers  = 2  # desired number of workers
+number_workers  = 8  # desired number of workers
 
 using Distributed
 nprocs()<number_workers ? addprocs( number_workers - nprocs()  ) : addprocs(0)
 #@everywhere using SMARTboostPrivate
+#include("E:\\Users\\A1810185\\Documents\\A_Julia-scripts\\Modules\\SMARTboostPrivateLOCAL.jl") # no package
 
 using Random,Plots
 import Distributions 
@@ -51,7 +52,7 @@ Random.seed!(12)
 loss      = :gamma          
 modality  = :fast       # :accurate, :compromise (default), :fast, :fastest 
 
-priortype = :smooth        # :hybrid (default) or :smooth to force smoothness 
+priortype = :hybrid      # :hybrid (default) or :smooth to force smoothness 
 nfold     = 1             # number of cv folds. 1 faster (single validation sets), default 5 is slower, but more accurate.
 nofullsample = true       # if nfold=1 and nofullsample=true, the model is not re-fitted on the full sample after validation of the number of trees
  
@@ -60,10 +61,8 @@ verbose     = :On
 warnings    = :On
 
 # options to generate data.
-k           = 5         # shape parameter
+k           = 10         # shape parameter
 n,p,n_test  = 10_000,4,100_000
-
-offset      = zeros(n)
 
 f_1(x,b)    = b*x  
 f_2(x,b)    = -b*(x.<0.5) + b*(x.>=0.5)   
@@ -79,7 +78,9 @@ c        = -2
 f        = c .+ f_1(x[:,1],b1) + f_2(x[:,2],b2) + f_3(x[:,3],b3) + f_4(x[:,4],b4)
 f_test   = c .+ f_1(x_test[:,1],b1) + f_2(x_test[:,2],b2) + f_3(x_test[:,3],b3) + f_4(x_test[:,4],b4)
 
-μ        = exp.(f)        # conditional mean 
+offset  = 2*(randn(n)*std(f) .+ 0.2)
+
+μ        = exp.(f + offset)        # conditional mean 
 μ_test   = exp.(f_test)   # conditional mean 
 
 scale    = μ/k
@@ -98,18 +99,18 @@ histogram(y)
 # coefficient estimated internally. 
 param  = SMARTparam(loss=loss,priortype=priortype,randomizecv=randomizecv,nfold=nfold,
                    verbose=verbose,warnings=warnings,modality=modality,nofullsample=nofullsample)
-#data   = SMARTdata(y,x,param,offset=offset)
-data   = SMARTdata(y,x,param)
+data   = SMARTdata(y,x,param,offset=offset)
 
 output = SMARTfit(data,param)
 yf     = SMARTpredict(x_test,output,predict=:Ey)
+#yhat  = SMARTpredict(x,output,predict=:Ey,offset=offset)
 
 println(" \n loss = $loss, modality = $(param.modality), nfold = $nfold ")
 println(" depth = $(output.bestvalue), number of trees = $(output.ntrees) ")
 println(" out-of-sample RMSE from truth, μ     ", sqrt(sum((yf - μ_test).^2)/n_test) )
 
 println("\n true shape = $k, estimated = $(exp(output.bestparam.coeff_updated[1][1])) ")
-println("\n For more information about coefficients, use SMARTcoeff(output) ")
+println("\n For information about coefficients, use SMARTcoeff(output) ")
 SMARTcoeff(output)
 
 
@@ -150,3 +151,5 @@ for i in 1:length(pl)
 end
 
 display(plot(pl[1], pl[2], pl[3], pl[4], layout=(2,2), size=(1300,800)))  # display() will show it in Plots window.
+
+

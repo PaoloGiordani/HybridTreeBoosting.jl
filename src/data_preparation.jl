@@ -335,7 +335,7 @@ function preparedataSMART(data::SMARTdata,param0::SMARTparam)
                                         # NB: Expands x if some categorical features require an extensive (>1 column) representation
     meanx,stdx = robust_mean_std(x)     # meanx,stdx computed using target encoding values      
 
-    data_standardized = SMARTdata_sharedarray( data.y,(x .- meanx)./stdx,param,data.dates,data.weights,data.fnames) # standardize
+    data_standardized = SMARTdata_sharedarray( data.y,(x .- meanx)./stdx,param,data.dates,data.weights,data.fnames,data.offset) # standardize
 
     param_given_data!(param,data_standardized)    # sets additional parameters that require data. 
 

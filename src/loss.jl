@@ -178,21 +178,20 @@ end
 # Initializes roughly at corresponding parameter value for the unconditional distribution
 function initialize_gamma0(data::SMARTdata,param::SMARTparam)
 
-  y,weights = data.y,data.weights
+  y,weights,offset = data.y,data.weights,data.offset
   T = eltype(y)
   #meany  = sum(data.y.*data.weights)/sum(data.weights)  # not consistent if E(y|x) correlates with weights
-  meany  = mean(y)
 
   if param.loss in [:L2,:lognormal]
-      gamma0 = meany
+      gamma0 = mean(y) - mean(offset)
   elseif param.loss == :logistic
-      gamma0 = log( meany/(one(T) - meany) )
+      gamma0 = log( mean(y)/(one(T) - mean(y)) ) - mean(offset)
   elseif param.loss == :Huber
-      gamma0 = huber_mean(y,data.weights,stdw_robust(y,weights);t=param.coeff[1])
+      gamma0 = huber_mean(y-offset,data.weights,stdw_robust(y,weights);t=param.coeff[1])
   elseif param.loss == :t
-    gamma0  = student_mean(y,weights)
+    gamma0  = student_mean(y-offset,weights)
   elseif param.loss in [:gamma,:L2loglink,:Poisson,:gammaPoisson] 
-    gamma0 = log(meany)   
+    gamma0 = log(mean(y./exp.(offset)))     
  else
      @error "param.loss is misspelled or not supported."
   end

@@ -27,18 +27,18 @@ using LightGBM
 
 # USER'S OPTIONS 
 
-Random.seed!(12)
+Random.seed!(2)
 
 # Some options for SMARTboost
 loss      = :gamma         
-modality  = :fast    # :accurate, :compromise (default), :fast, :fastest 
+modality  = :compromise   # :accurate, :compromise (default), :fast, :fastest 
 
 priortype = :hybrid       # :hybrid (default) or :smooth to force smoothness 
 nfold     = 1             # number of cv folds. 1 faster (single validation sets), default 5 is slower, but more accurate.
 nofullsample = true       # if nfold=1 and nofullsample=true, the model is not re-fitted on the full sample after validation of the number of trees
  
 randomizecv = false       # false (default) to use block-cv. 
-verbose     = :On
+verbose     = :Off
 warnings    = :On
 
 # options to generate data.

@@ -150,18 +150,18 @@ function SMARTsequentialcv( data::SMARTdata, param::SMARTparam; indices=Vector(1
             indtrain,indtest         = param.indtrain_a[nf],param.indtest_a[nf]
         end
       
-        data_nf = SMARTdata(data.y[indtrain],data.x[indtrain,:],data.weights[indtrain],data.dates[indtrain],data.fnames,param_a[nf].cat_features)
+        data_nf = SMARTdata(data.y[indtrain],data.x[indtrain,:],data.weights[indtrain],data.dates[indtrain],data.fnames,param_a[nf].cat_features,data.offset[indtrain])
         param_nf,data_nf,meanx,stdx          = preparedataSMART(data_nf,param)
 
         τgrid,μgrid,info_x,n_train,p         = preparegridsSMART(data_nf,param_nf,meanx,stdx)
         gamma0                               = initialize_gamma0(data_nf,param_nf)
-        gammafit                             = fill(gamma0,length(indtrain))
+        gammafit                             = data_nf.offset + fill(gamma0,length(indtrain))
 
         param_a[nf] = updatecoeff(param_nf,data_nf.y,gammafit,data_nf.weights,0)
-        SMARTtrees_a[nf]    = SMARTboostTrees(param_a[nf],gamma0,n_train,p,meanx,stdx,info_x)
+        SMARTtrees_a[nf]    = SMARTboostTrees(param_a[nf],gamma0,data_nf.offset,n_train,p,meanx,stdx,info_x)
         rh_a[nf],param_a[nf]= gradient_hessian(data_nf.y,data_nf.weights,SMARTtrees_a[nf].gammafit,param_a[nf],0)
-        gammafit_test_a[nf] = gamma0*ones(I,length(indtest))
-        gammafit_test_ba_a[nf] = gamma0*ones(I,length(indtest))
+        gammafit_test_a[nf] = data.offset[indtest] + gamma0*ones(I,length(indtest))
+        gammafit_test_ba_a[nf] = deepcopy(gammafit_test_a[nf])
         t_a[nf]             = (indtrain,indtest,meanx,stdx,n_train,p,τgrid,μgrid,info_x,param_a[nf])
         indtest_a[nf]       = indtest
         data_a[nf]          = data_nf
@@ -205,7 +205,6 @@ function SMARTsequentialcv( data::SMARTdata, param::SMARTparam; indices=Vector(1
             gammafit_test_a[nf] = gammafit_test_a[nf] + param.lambda*SMARTtreebuild(x_test,ij,μj,τj,mj,βj,param_a[nf])
             bias,gammafit_test_ba_a[nf] = bias_correct(gammafit_test_a[nf],data_nf.y,SMARTtrees_a[nf].gammafit+Gβ,param)
  
-            #lossM[i,nf],losses  = losscv(param_a[nf],data.y[indtest],gammafit_test_a[nf],data.weights[indtest] )  # lossv is a (ntest) vector of losses. 
             lossv = vcat(lossv,losses)
             gammafit_test = vcat(gammafit_test,gammafit_test_ba_a[nf])  # bias-adjusted (used in stacking), while loss is computed on original fit
 
