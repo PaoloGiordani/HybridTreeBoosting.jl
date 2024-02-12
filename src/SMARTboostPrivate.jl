@@ -1,7 +1,7 @@
 module SMARTboostPrivate
 
 export SMARTinfo, SMARTloglikdivide, SMARTparam, SMARTdata, SMARTfit, SMARTpredict, SMARTrelevance, SMARTpartialplot,
- SMARTmarginaleffect, SMARTtree, SMARTboostTrees, SMARTindexes_from_dates, losscv, SMARTweightedtau 
+ SMARTmarginaleffect, SMARTtree, SMARTboostTrees, SMARTindexes_from_dates, losscv, SMARTweightedtau, SMARTmulticlass_loss 
 
 using Distributed, SharedArrays, LinearAlgebra,Statistics, DataFrames,Dates, Random
 using CategoricalArrays, Base.Threads

@@ -262,7 +262,7 @@ function SMARTsequentialcv( data::SMARTdata, param::SMARTparam; indices=Vector(1
         @warn "The maximum number of trees $(param.ntrees) has been reached with CV loss still decreasing."
         problems = problems +1
     elseif ntrees==1 && param.warnings==:On
-        @warn "Cross validation selects one tree. This could be due to very low signal-to-noise, in which case reducing the learning rate lambda is recommended, or to the optimization diverging, which can be checked by using a more stable loss, like :L2."
+        @warn "Cross validation selects one tree. If due to very low signal-to-noise, reducing the learning rate lambda is recommended."
         problems = problems +1
     end
 

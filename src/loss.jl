@@ -17,7 +17,7 @@
 # bound_gammafit!()
 # loglik_student()
 # g_student() 
-#
+# multiclass_loss()              used only in forecast evaluation 
 #
 # Available models:
 #
@@ -430,3 +430,20 @@ function loss_gammaPoisson(logα,y,μ)
     loss = @. -(SpecialFunctions.loggamma(y + 1/α) - SpecialFunctions.loggamma(1/α) - SpecialFunctions.loggamma(y + 1) + y*log((μ*α)/(1 + μ*α)) + (1/α)*log(1/(1 + μ*α)) )                
     return sum(loss)
 end     
+
+
+function SMARTmulticlass_loss(y,prob,class_values) # y is a vector, prob is (n,num_class), class_values is (num_class)
+
+    loss = zero(eltype(prob))
+
+    for i in eachindex(y)
+        l = 0 
+        @views for j in eachindex(class_values)
+            l += -(y[i] == class_values[j])*log(prob[i,j])
+        end 
+        loss += l 
+    end
+    
+    return loss 
+
+end 

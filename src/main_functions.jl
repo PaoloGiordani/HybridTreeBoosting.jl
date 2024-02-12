@@ -13,11 +13,13 @@
 #  SMARTfit                fits SMARTboost with cv (or validation/early stopping) of number of trees and, optionally, depth or other parameter
 #    SMARTfit_single       main function, building block for composite and multi-parameter models 
 #    SMARTfit_hurdle       hurdle models: y continuous, split into y=0 and y /=0   
+#    SMARTfit_multiclass   multiclass classicaition 
 #  SMARTbst                fits SMART when nothing needs to be cross-validated (not even number of trees)
 #  SMARTpredict            prediction from SMARTtrees::SMARTboostTrees
 #    SMARTpredict          output is vector of tuples (composite models)
 #    preparedata_predict
 #    SMARTpredict_hurdle
+#    SMARTpredict_multiclass
 #
 #  POST-ESTIMATION ANALYSIS
 #  SMARTcoeff              provides information on constant coefficients
@@ -367,6 +369,11 @@ Forecasts from SMARTboost, for y or the natural parameter.
 - `prob0`                      (n) vector of forecasts of prob(y=0|x)
 - `prob0`                      (n) vector of forecasts of E(y|x,y /=0)
 
+# Output for loss = :multiclass
+- `yf`                        (n,num_class) matrix, yf[i,j] if the probability that observation i belongs to class j
+- `class_values`              (num_clas) vector, class_value[j] is the value of y associated with class j
+- `ymax`                      (n) vector, ymax[i] is the class value with highest probability at observation i. 
+
 # Example of use
     output = SMARTfit(data,param)
     yf     = SMARTpredict(x_oos,output)
@@ -374,6 +381,8 @@ Forecasts from SMARTboost, for y or the natural parameter.
     yf     = SMARTpredict(x_oos,output,offset = log.(exposure) )
 
     yf,prob0,yf_not0 = SMARTpredict(x_oos,output)  # for hurdle models 
+    yf,class_value,ymax = SMARTpredict(x_oos,output)  # for multiclass 
+
 """
 function SMARTpredict(x0::Union{AbstractDataFrame,AbstractArray},output::NamedTuple;best_model=false,cutoff_parallel=20_000,predict=:Ey,offset=[])
 
@@ -398,13 +407,27 @@ function SMARTpredict(x0::Union{AbstractDataFrame,AbstractArray},output::NamedTu
 end 
 
 
-# SMARTpredict when output is Vector{NamedTuples}
-function SMARTpredict(x::Union{AbstractDataFrame,AbstractArray},output::AbstractVector;best_model=false,cutoff_parallel=20_000,predict=:Ey,offset=[])
+# SMARTpredict when output is not NamedTuple (will typically be a vector of NamedTuple)
+function SMARTpredict(x::Union{AbstractDataFrame,AbstractArray},output;best_model=false,cutoff_parallel=20_000,predict=:Ey,offset=[])
 
-    if param.loss in [:hurdleGamma,:hurdleL2loglink,:hurdleL2]
+    # output saves the loss functions of the component models: find the original loss
+    loss1,loss2 = output[1].bestparam.loss,output[2].bestparam.loss
+
+    if loss1==loss2==:logistic 
+        loss = :multiclass
+    elseif loss1==:logistic
+        loss = :hurdlefamily  # could be :hurdleL2,:hurdleGamma,:hurdleL2loglink   
+    end 
+
+    if loss == :hurdlefamily 
+
         if predict==:Egamma; @error " prediction with hurdle models require predict=:Ey"; end 
         yf,prob0,yf_not0 = SMARTpredict_hurdle(x,output,best_model,cutoff_parallel,predict,offset)
         return (yf,prob0,yf_not0)
+    
+    elseif loss == :multiclass 
+        yf,class_values,ymax = SMARTpredict_multiclass(x,output,best_model,cutoff_parallel,predict,offset)
+        return yf,class_values,ymax 
     end 
     
 end 
@@ -424,6 +447,34 @@ function SMARTpredict_hurdle(x,output,best_model,cutoff_parallel,predict,offset)
     return yf,prob0,yf_not0 
 
 end 
+
+
+function SMARTpredict_multiclass(x,output,best_model,cutoff_parallel,predict,offset)
+
+    if predict == :Egamma 
+        @error "predict for loss=:multiclass is only available as predict=:Ey (i.e. for probabilities) "
+    end 
+
+    class_values = output[1].bestparam.class_values 
+    num_class    = length(class_values)
+    prob = Matrix{output[1].bestparam.T}(undef,size(x,1),num_class)
+
+    for i in 1:num_class
+        prob[:,i] = SMARTpredict(x,output[i],offset=[],best_model=best_model,cutoff_parallel=cutoff_parallel,predict=predict)
+    end 
+
+    prob = prob./sum(prob,dims=2)
+    
+    ymax = Vector{eltype(class_values)}(undef,size(x,1))
+
+    for i in eachindex(ymax)
+        ymax[i] = class_values[argmax(prob[i,:])]
+    end     
+
+    return prob,class_values,ymax 
+
+end 
+
 
 
 """
@@ -656,11 +707,12 @@ Finally, all the estimated models considered are stacked, with weights chosen to
 function SMARTfit(data::SMARTdata, param::SMARTparam; cv_grid=[],cv_different_loss::Bool=false,cv_sharp::Bool=false,
     cv_sparsity=true,cv_hybrid=true,min_p_sparsity=10,skip_full_sample=false)   # skip_full_sample enforces nofullsample even if nfold=1 (used in other functions, not by user)
 
-    args = (cv_grid,cv_different_loss,cv_sharp,cv_sparsity,cv_hybrid,min_p_sparsity,skip_full_sample)
-
     if param.loss in [:hurdleGamma,:hurdleL2loglink,:hurdleL2]
         output = SMARTfit_hurdle(data,param,cv_grid=cv_grid,cv_different_loss=cv_different_loss,cv_sharp=cv_sharp,cv_sparsity=cv_sparsity,
-                      cv_hybrid=cv_hybrid,min_p_sparsity=min_p_sparsity,skip_full_sample=skip_full_sample)
+                                cv_hybrid=cv_hybrid,min_p_sparsity=min_p_sparsity,skip_full_sample=skip_full_sample)
+    elseif param.loss == :multiclass
+        output = SMARTfit_multiclass(data,param,cv_grid=cv_grid,cv_different_loss=cv_different_loss,cv_sharp=cv_sharp,cv_sparsity=cv_sparsity,
+                                cv_hybrid=cv_hybrid,min_p_sparsity=min_p_sparsity,skip_full_sample=skip_full_sample)
     else 
         output = SMARTfit_single(data,param,cv_grid=cv_grid,cv_different_loss=cv_different_loss,cv_sharp=cv_sharp,cv_sparsity=cv_sparsity,
                        cv_hybrid=cv_hybrid,min_p_sparsity=min_p_sparsity,skip_full_sample=skip_full_sample)
@@ -1059,8 +1111,10 @@ function SMARTfit_single(data::SMARTdata, param::SMARTparam; cv_grid=[],cv_diffe
         end 
     end
 
+    additional_info = [[T(NaN)]]
+
     return ( indtest=indtest_a,bestvalue=bestvalue,bestparam=SMARTtrees.param,ntrees=ntrees,loss=loss,meanloss=meanloss,stdeloss=stdeloss,lossgrid=lossgrid,SMARTtrees=SMARTtrees,
-    i=i,mu=μ,tau=τ,fi2=fi2,avglntau=avglntau,SMARTtrees_a=SMARTtrees_a,w=w,lossw=lossw,problems=(problems_somewhere>0),ratio_actual_max=ratio_actual_max)
+    i=i,mu=μ,tau=τ,fi2=fi2,avglntau=avglntau,SMARTtrees_a=SMARTtrees_a,w=w,lossw=lossw,problems=(problems_somewhere>0),ratio_actual_max=ratio_actual_max,additional_info=additional_info)
 
 end
 
@@ -1072,11 +1126,11 @@ end
 function SMARTfit_hurdle(data::SMARTdata, param::SMARTparam; cv_grid=[],cv_different_loss::Bool=false,cv_sharp::Bool=false,
     cv_sparsity=true,cv_hybrid=true,min_p_sparsity=10,skip_full_sample=false)   # skip_full_sample enforces nofullsample even if nfold=1 (used in other functions, not by user)
 
-    if loss == :hurdleGamma
+    if param.loss == :hurdleGamma
         loss_not0 = :gamma
-    elseif loss == :hurdleL2loglink 
+    elseif param.loss == :hurdleL2loglink 
         loss_not0 = :L2loglink
-    elseif loss == :hurdleL2 
+    elseif param.loss == :hurdleL2 
         loss_not0 = :L2
     end 
 
@@ -1088,20 +1142,47 @@ function SMARTfit_hurdle(data::SMARTdata, param::SMARTparam; cv_grid=[],cv_diffe
 
     param_0      = deepcopy(param)
     param_0.loss = :logistic
-    output_0 = SMARTfit(data_0,param_0) 
+    output_0 = SMARTfit(data_0,param_0,cv_grid=cv_grid,cv_different_loss=cv_different_loss,cv_sharp=cv_sharp,cv_sparsity=cv_sparsity,
+                            cv_hybrid=cv_hybrid,min_p_sparsity=min_p_sparsity,skip_full_sample=skip_full_sample) 
     data_0 = 0  # free memory 
 
     # y /=0  
     data_not0 = SMARTdata_subset(data,data.y .!= 0)
     param_not0 = deepcopy(param)
     param_not0.loss = loss_not0 
-    output_not0 = SMARTfit(data_not0,param_not0) 
+    output_not0 = SMARTfit(data_not0,param_not0,cv_grid=cv_grid,cv_different_loss=cv_different_loss,cv_sharp=cv_sharp,cv_sparsity=cv_sparsity,
+                       cv_hybrid=cv_hybrid,min_p_sparsity=min_p_sparsity,skip_full_sample=skip_full_sample) 
 
+                        
     output = [output_0,output_not0]
 
     return output 
 end 
 
+
+function SMARTfit_multiclass(data::SMARTdata, param::SMARTparam; cv_grid=[],cv_different_loss::Bool=false,cv_sharp::Bool=false,
+    cv_sparsity=true,cv_hybrid=true,min_p_sparsity=10,skip_full_sample=false)   # skip_full_sample enforces nofullsample even if nfold=1 (used in other functions, not by user)
+
+ num_classes  = length(param.class_values)
+
+ output = Vector(undef,num_classes)
+ y0     = copy(data.y) 
+ param_i = deepcopy(param)
+ param_i.loss = :logistic
+ T       = param.T
+
+ for i in eachindex(class_values)
+
+     new_class_value = T(i-1)          # original class values converted to 0,1,2...
+     @. data.y = y0 == new_class_value    
+     output[i] = SMARTfit(data,param_i,cv_grid=cv_grid,cv_different_loss=cv_different_loss,cv_sharp=cv_sharp,cv_sparsity=cv_sparsity,
+                         cv_hybrid=cv_hybrid,min_p_sparsity=min_p_sparsity,skip_full_sample=skip_full_sample)      
+ end 
+ 
+ @. data.y = y0  
+
+ return output 
+end 
 
 
 

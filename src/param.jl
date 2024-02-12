@@ -19,7 +19,7 @@
 
 
 # NOTE: several fields are redundant, reflecting early experimentation, and will disappear in later versions
-mutable struct SMARTparam{T<:AbstractFloat, I<:Int}
+mutable struct SMARTparam{T<:AbstractFloat, I<:Int,R<:Real}
 
     T::Type 
     I::Type
@@ -68,7 +68,8 @@ mutable struct SMARTparam{T<:AbstractFloat, I<:Int}
     cat_globalstats::NamedTuple
     cat_representation_dimension::I
     n0_cat::T                         # prior on number of observations for categorical data
-    mean_encoding_penalization::T     # penalization on mean encoding  
+    mean_encoding_penalization::T     # penalization on mean encoding
+    class_values::Union{Vector{String},Vector{R}} # for loss=:multiclass, stores the values of unique(y)
     delete_missing::Bool
     mask_missing::Bool 
     missing_features::Vector{I}
@@ -156,11 +157,11 @@ end
     SMARTparam(;)
 Parameters for SMARTboost
 
-# Inputs that are more likely to be modified by user (all inputs are keywords with default values)
+# Parameters that are most likely to be modified by user (all inputs are keywords with default values)
 
-- `loss:Symbol`             [:L2] Supported distributions: :L2 (Gaussian),:logistic (binary classification),
-                            :t,:Huber,:gamma, :Poisson, :gammaPoisson (same as negative binomial), :L2loglink, :lognormal,
-                            :hurdleGamma,:hurdleL2loglink,:hurdleL2 
+- `loss:Symbol`             [:L2] Supported distributions: :L2 (Gaussian),:logistic (binary classification),:multiclass
+                            (multiclass classification), :t,:Huber,:gamma, :Poisson, :gammaPoisson (same as negative binomial),
+                            :L2loglink, :lognormal,:hurdleGamma,:hurdleL2loglink,:hurdleL2 
                             See ?? for explanation and ?? for examples.      
                             MOVE ELSEWHERE !!!!
                             ADD OFFSET IF RELEVANT .... NB ITS' IN SMARTdata()     
@@ -194,27 +195,30 @@ Parameters for SMARTboost
 - `nofullsample::Bool`      [false] if true and nfold=1, SMARTboost is not re-estimated on the full sample after cross-validation.
                             Reduces computing time by roughly 60%, at the cost of a modest loss of efficiency.
                             Useful for very large datasets, in preliminary analysis, in simulations, and when instructions specify a train/validation split with no re-estimation on full sample.
+                            Activated by default when modality=:fastest.     
 - `overlap::Int`            [0] number of overlaps in time series and panels. Typically overlap = h-1, where y(t) = Y(t+h)-Y(t). Used for purged-CV.
 - `verbose::Symbol`         [:Off] verbosity :On or :Off
 - `warnings::Symbol`        [:On] or :Off
-
-- 'weights`                 NOTE: weights for weighted likelihood are set in SMARTdata, not in SMARTparam.
 - 'cat_features`            [] vector of indices of categorical features, e.g. [2,5], or vector of names in DataFrame,
                             e.g. [:wage,:age] or ["wage","age"]. If empty, categoricals are automatically detected.
                             Set cat_features=[0] to override the automatic detection and force no categorical feature.  
 
+# Parameters that may sometimes be be modified by user
+
+- 'weights`                 NOTE: weights for weighted likelihood are set in SMARTdata, not in SMARTparam.
+- 'offset`                  NOTE: offsets (or exposures) are set in SMARTdata, not in SMARTparam.      
+
 - `lambda::Float`           [0.1 or 0.2] Learning rate. 0.10 for (nearly) best performance. 0.2 is a good compromise. Default is 0.1 of modality=:accruate, and 0.2 otherwise.
 - `depth::Int`              [5] tree depth. Unless modality = :fast or :fastest, this is over-written as depth is cross-validated. See SMARTfit() for more options.
 - `sparsity_penalization`   [0.3] positive numbers encourage sparsity. The range [0.0-1.5] should cover most scenarios. 
-                            Automatically cv in modality=:compromise and :accurate. Increase to obtain a more parsimonious model.
-
-# Inputs that may sometimes be modified by user (all inputs are keyword with default values)
-
+                            Automatically cv in modality=:compromise and :accurate. Increase to obtain a more parsimonious model, set to 0 for standard boosting.
 - `ntrees::Int`             [2000] Maximum number of trees. SMARTfit will automatically stop when cv loss stops decreasing.
+
+? IS THIS STILL TRUE ABOUT SHAREVS ? WHICH CATEGORY SHOULD IT BE IN ? 
 - `sharevs`                 [1.0] row subsampling in variable selection phase (only to choose feature on which to split.)
                             :Auto sets sharevs so that the subsample size is proportional to 50k*sqrt(n/50k).
                             At high n, sharevs<1 speeds up computations, but can reduce accuracy, particularly in sparse setting with low SNR.         
-- `subsampleshare_columns`  [1.0] column subsampling (not recommended).
+- `subsampleshare_columns`  [1.0] column subsampling (aka feature subsampling) by tree. 
 - `min_unique`              [:default] sharp splits are imposed on features with less than min_unique values (default is 5 for modality=:compromise or :accurate, else 10)
 - `mixed_dc_sharp`          [false] true to force sharp splits on discrete and mixed discrete-continuous features (defined as having over 20% obs on a single value)
 - `stderulestop::Float`     [0.01] A positive number stops iterations while the loss is still decreasing. This results in faster computations at minimal loss of fit.
@@ -229,9 +233,16 @@ Parameters for SMARTboost
 - `losscv`                  [:default] loss function for cross-validation (:mse,:mae,:logistic,:sign). 
 - `n_refineOptim::Int`      [10^6] MAXIMUM number of observations to use fit μ and τ (split point and smoothness).
                             Lower numbers can provide speed-ups with very large n at some cost in terms of fit.
-- `loglikdivide::Float`     [1.0] with time series and longitudinal (or panel) data, higher numbers increase the strength or all priors. The defaults sets it internally using SMARTloglikdivide()
+- `loglikdivide::Float`     [1.0] with time series and longitudinal (or panel) data, higher numbers increase the strength or all priors. The defaults sets it internally using SMARTloglikdivide(),
+                            when it detects a dates series in SMARTdata().
 
-# Additional inputs can be set in SMARTfit(), but keeping the defaults is generally encouraged.
+
+# Parameters that should rarely require modifying 
+
+
+
+
+# Additional parameters to control the cross-validation process can be set in SMARTfit(), but keeping the defaults is generally encouraged.
 
 # Example
     param = SMARTparam()
@@ -251,7 +262,7 @@ function SMARTparam(;
     warnings=:On,
     num_warnings=0,
     randomizecv = false,        # true to scramble data for cv, false for contiguous blocks ('Block CV')
-    nfold       = 4,                 # n in n-fold cv. 1 for a single validation set (early stopping in the case of ntrees)
+    nfold       = 4,            # n in n-fold cv. 1 for a single validation set (early stopping in the case of ntrees)
     nofullsample = false,        # true to skip the full sample fit after validation (only relevant if nfold=1)
     sharevalidation = 0.30,      #[0.30] Size of the validation set (integer), last sharevalidation rows of data. Or float, share of validation set. Relevant only if nfold = 1.
     indtrain_a = Vector{Vector{I}}(undef,0), # for user's provided Vector{Vector} of indices of train data ..
@@ -285,6 +296,7 @@ function SMARTparam(;
     n0_cat = 1,                                  # leave at 1! See preliminary_cv for why (multiplier). automatically cv prior on number of observations for categorical data
                                                  # cv tries higher values but not lower than n0_cat.
     mean_encoding_penalization = 0.3,            # automatically cv. The upper bound: 0.5 applies half the penalization, since this is done for all trees
+    class_values = Vector{T}(undef,0),
     delete_missing = false,  
     mask_missing = false,                       # If true, adds a mask (dummy) for missing values. Does not seem required in any instance, and may worsen performance, although it may occasionally improve performance in small samples.
     missing_features = Vector{I}(undef,0), 
@@ -385,7 +397,8 @@ function SMARTparam(;
     end 
      
     param = SMARTparam(T,I,loss,losscv,Symbol(modality),T.(coeff),coeff_updated,Symbol(verbose),Symbol(warnings),I(num_warnings),randomizecv,I(nfold),nofullsample,T(sharevalidation),indtrain_a,indtest_a,T(stderulestop),T(lambda),I(depth),I(depth1),Symbol(sigmoid),
-        T(meanlntau),T(varlntau),T(doflntau),T(multiplier_stdtau),T(varmu),T(dofmu),Symbol(priortype),T(max_tau_smooth),I(min_unique),mixed_dc_sharp,force_sharp_splits,force_smooth_splits,exclude_features,augment_mugrid,cat_features,cat_features_extended,cat_dictionary,cat_values,cat_globalstats,I(cat_representation_dimension),T(n0_cat),T(mean_encoding_penalization),Bool(delete_missing),mask_missing,missing_features,info_date,T(sparsity_penalization),p0,sharevs,refine_obs_from_vs,finalβ_obs_from_vs,
+        T(meanlntau),T(varlntau),T(doflntau),T(multiplier_stdtau),T(varmu),T(dofmu),Symbol(priortype),T(max_tau_smooth),I(min_unique),mixed_dc_sharp,force_sharp_splits,force_smooth_splits,exclude_features,augment_mugrid,cat_features,cat_features_extended,cat_dictionary,cat_values,cat_globalstats,I(cat_representation_dimension),T(n0_cat),T(mean_encoding_penalization),
+        class_values,Bool(delete_missing),mask_missing,missing_features,info_date,T(sparsity_penalization),p0,sharevs,refine_obs_from_vs,finalβ_obs_from_vs,
         I(n_refineOptim),T(subsampleshare_columns),Symbol(sparsevs),T(frequency_update),
         I(number_best_features),best_features,Symbol(pvs),I(p_pvs),I(min_d_pvs),I(mugridpoints),I(taugridpoints),T(xtolOptim),Symbol(method_refineOptim),
         I(points_refineOptim),I(ntrees),T(theta),loglikdivide,I(overlap),T(multiply_pb),T(varGb),I(ncores),I(seed_datacv),I(seed_subsampling),newton_gaussian_approx,
@@ -516,10 +529,14 @@ function SMARTdata(y0::Union{AbstractVector,AbstractMatrix,AbstractDataFrame},x:
     n    = length(y0)
 
     if typeof(y0)<:AbstractDataFrame || eltype(y0) <: Union{Bool,Number} || typeof(y0)<:AbstractMatrix
-        y = y0[:,1]
+    elseif eltype(y0)==String && param.loss==:multiclass  # accept strings for multiclass 
     else 
-        @error "in SMARTdata, y must be of type Number or Bool (true,false)"
+        @error "in SMARTdata, y must be of type Number or Bool (true,false) or DataFrame"
     end      
+
+    y = y0[:,1]    
+
+    y = store_class_values!(param,y)   # stores class values in param, and transforms y in T, leaving missing as missing 
 
     check_admissible_data(y,param)  # check if data is admissible given param (typically param.loss)
 

@@ -4,6 +4,7 @@
 #
 # The following functions are applied once, on the first SMARTdata() 
 #  
+# store_class_values!()
 # replace_nan_with_missing()
 # replace_missing_with_nan()
 # convert_dates_to_real!()                          
@@ -21,6 +22,34 @@
 # gridmatrixμ()
 # kantorovic_distance()                   rough approximate distance between the empirical distribution of xi and y, or between xi and a Gaussian, using deciles
 #
+
+# in SMARTdata(), if loss=:multiclass, stores unique values of y as param.class_values, and then replaces y by 0,1,2... Leaves missing as missing
+function store_class_values!(param,y)
+
+    if param.loss !== :multiclass 
+        return y
+    end 
+
+    class_values       = sort(unique(skipmissing(y)))
+    eltype(class_values) <: Number ? class_values = param.T.(class_values) : nothing 
+    param.class_values = class_values
+    new_values         = param.T.(collect(0:1:length(param.class_values)-1))
+
+    n     = length(y)
+    y_new = Vector{param.T}(undef,n)
+
+    for (j,class_value) in enumerate(param.class_values)
+        new_value = new_values[j]
+
+        for i in 1:n
+            y[i] == class_value ? y_new[i] = new_value : nothing 
+        end 
+    end  
+
+    return y_new         
+
+end 
+
 
 # replace NaN by missing  
 function replace_nan_with_missing(x0)
@@ -248,6 +277,12 @@ function check_admissible_data(y,param)
         if minimum(y) < 0 || maximum(y) > 1
             @warn "data.y (label) must be in [0,1] for loss = :logistic"
         end
+        lu = length(unique(y))
+        if lu < 2
+            @error "data.y takes only one value"
+        elseif lu > 2
+            @warn "data.y takes $lu unique values, while loss=:logistic requires two. Switch to loss=:multiclass"
+        end         
     end
 
     if param.loss in [:gamma,:lognormal]
