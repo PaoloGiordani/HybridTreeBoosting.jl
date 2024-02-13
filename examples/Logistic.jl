@@ -84,7 +84,7 @@ function simul_logistic(n,p,nsimul,modality,f)
     num_class = 1,
     categorical_feature = Int[],
     num_iterations = 1000,
-    learning_rate = 0.05,
+    learning_rate = 0.1,
     early_stopping_round = 100,
     metric = ["binary_logloss"],
     num_threads = number_workers,
