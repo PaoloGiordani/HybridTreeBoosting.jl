@@ -8,7 +8,7 @@ preliminary_cv!
 preliminary_cv_categoricals!
 
 
-1) For categorical data, if modality is not :fast, runs a preliminary cv to select n0_cat and  mean_encoding_penalization.
+1) For categorical data, if modality is not :fastest, runs a preliminary cv to select n0_cat and  mean_encoding_penalization.
    This is done with a double loop. 
 
    for n0 
@@ -22,30 +22,30 @@ preliminary_cv_categoricals!
 
 
 # modifies param0.n0_cat and param0.mean_encoding_penalization
-function preliminary_cv!(param0,data,nofullsample)   
+function preliminary_cv!(param0,data)   
 
     if param0.modality in [:fast,:fastest]
         return
     end 
     
-    preliminary_cv_categoricals!(param0,data,nofullsample)
+    preliminary_cv_categoricals!(param0,data)
 
 end     
 
 
 
-function preliminary_cv_categoricals!(param0,data,nofullsample)
+function preliminary_cv_categoricals!(param0,data)
 
     if isempty(param0.cat_features)
         return
     end 
 
-    param = deepcopy(param0)
+    param_cv = deepcopy(param0)
 
-    param.modality = :fast
-    param.lambda = 0.3 
-    param.depth  = 3
-    param.verbose = :Off 
+    param_cv.modality = :fast
+    param_cv.lambda = 0.3 
+    param_cv.depth  = 3
+    param_cv.verbose = :Off 
 
     T = param.T 
 
@@ -61,9 +61,9 @@ function preliminary_cv_categoricals!(param0,data,nofullsample)
 
         for (j,mep) in enumerate(mep_a)
 
-            param.n0_cat = param0.n0_cat*n0
-            param.mean_encoding_penalization = mep
-            output = SMARTfit(data,param) 
+            param_cv.n0_cat = param0.n0_cat*n0
+            param_cv.mean_encoding_penalization = mep
+            output = SMARTfit(data,param_cv) 
             loss_a[i,j] = output.loss
 
             if output.loss < loss0

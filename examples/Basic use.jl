@@ -98,7 +98,7 @@ println(" out-of-sample RMSE from truth ", sqrt(sum((yf - f_test).^2)/n_test) )
 #@load "output.jld2" output    # Note: key must be the same, e.g. @load "output.jld2" output2 is a KeyError
 
 # feature importance, partial dependence plots and marginal effects
-fnames,fi,fnames_sorted,fi_sorted,sortedindx = SMARTrelevance(output,data,verbose=false)
+fnames,fi,fnames_sorted,fi_sorted,sortedindx = SMARTrelevance(output,data,verbose=false);
 q,pdp  = SMARTpartialplot(data,output,[1,2,3,4],predict=:Egamma)
 
 # plot partial dependence in terms of the natural parameter 

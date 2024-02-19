@@ -770,7 +770,7 @@ function SMARTfit_single(data::SMARTdata, param::SMARTparam; cv_grid=[],cv_diffe
         param0.lambda=min(T(0.1),param0.lambda)
     end
 
-    preliminary_cv!(param0,data,param0.nofullsample)       # preliminary cv of categorical parameters, if modality is not :fast.
+    preliminary_cv!(param0,data)       # preliminary cv of categorical parameters, if modality is not :fast.
 
     cvgrid0 = deepcopy(cv_grid)                                        # best depth is quite sensitive to link, so depth is cv separately for identity and log link
     cvgrid  = vcat(cvgrid0,fill(cvgrid0[1],additional_models)) 
@@ -1163,23 +1163,23 @@ end
 function SMARTfit_multiclass(data::SMARTdata, param::SMARTparam; cv_grid=[],cv_different_loss::Bool=false,cv_sharp::Bool=false,
     cv_sparsity=true,cv_hybrid=true,min_p_sparsity=10,skip_full_sample=false)   # skip_full_sample enforces nofullsample even if nfold=1 (used in other functions, not by user)
 
- num_classes  = length(param.class_values)
+    num_classes  = length(param.class_values)
 
- output = Vector(undef,num_classes)
- y0     = copy(data.y) 
- param_i = deepcopy(param)
- param_i.loss = :logistic
- T       = param.T
+    output = Vector(undef,num_classes)
+    y0     = copy(data.y) 
+    param_i = deepcopy(param)
+    param_i.loss = :logistic
+    T       = param.T
 
- for i in eachindex(class_values)
+    for i in eachindex(class_values)
 
-     new_class_value = T(i-1)          # original class values converted to 0,1,2...
-     @. data.y = y0 == new_class_value    
-     output[i] = SMARTfit(data,param_i,cv_grid=cv_grid,cv_different_loss=cv_different_loss,cv_sharp=cv_sharp,cv_sparsity=cv_sparsity,
+        new_class_value = T(i-1)          # original class values converted to 0,1,2...
+        @. data.y = y0 == new_class_value    
+        output[i] = SMARTfit(data,param_i,cv_grid=cv_grid,cv_different_loss=cv_different_loss,cv_sharp=cv_sharp,cv_sparsity=cv_sparsity,
                          cv_hybrid=cv_hybrid,min_p_sparsity=min_p_sparsity,skip_full_sample=skip_full_sample)      
- end 
+    end 
  
- @. data.y = y0  
+    @. data.y = y0  
 
  return output 
 end 

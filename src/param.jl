@@ -526,7 +526,7 @@ function SMARTdata(y0::Union{AbstractVector,AbstractMatrix,AbstractDataFrame},x:
     param::SMARTparam,dates::AbstractVector=[];weights::AbstractVector=[],fnames = Vector{String}[],offset=[])  
 
     T    = param.T
-    n    = length(y0)
+    n    = size(y0,1)
 
     if typeof(y0)<:AbstractDataFrame || eltype(y0) <: Union{Bool,Number} || typeof(y0)<:AbstractMatrix
     elseif eltype(y0)==String && param.loss==:multiclass  # accept strings for multiclass 

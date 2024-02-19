@@ -11,13 +11,11 @@ When n is very large, and it takes too long to fit SMARTboost in modality = :com
 one way to proceed is to cv on a subsample of the data (say 20%) and then fit only one model on the full sample.
 This can be accomplished as follow
 
-- set modality=:compromise or :accurate, take a subsample of the data (say 10% or 20%), and run output=SMARTfit() on that.
-- set param=output.bestparam, and then param.modality=:fast or :fastest, and run SMARTfit() on the full data.
-  
-FACENDA !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-CONSIDER THE FOLLOWING: 
-- mugridtau = 5 in preliminary ... 
-- points_refineOptim = 7 or even 4 instead of 12 ... 
+- Set modality=:compromise or :accurate, take a subsample of the data (say 10% or 20%), and run output=SMARTfit() on that.
+- Set param=output.bestparam, and then param.modality=:fast or :fastest, and run SMARTfit() on the full data.
+  For best precision (but twice the computing time) set param.lambda = 0.1, although the default 0.2 typically comes close 
+  to maximum accuracy. 
+
 
 paolo.giordani@bi.no
 """

@@ -251,7 +251,7 @@ function map_cat_convert_to_float!(x::AbstractDataFrame,param::SMARTparam;create
         elseif Tz <: Union{Missing,CategoricalValue}
             z = replace(z,missing => "missing")
         else 
-            @error "map_cat_convert_to_float!(): categorical features must be of type AbstractString,Real,Bool, or Categorical"    
+            @error "map_cat_convert_to_float!(): categorical features must be of type String,Real,Bool, or Categorical"    
         end
 
         if create_dictionary

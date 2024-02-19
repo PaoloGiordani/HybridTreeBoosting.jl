@@ -169,6 +169,8 @@ data   = SMARTdata(y,x,param)
 output = SMARTfit(data,param)
 yf     = SMARTpredict(x_test,output)  # predict
 
+yf  = SMARTpredict(x_test,output)  # predict
+
 # Evaluate predictions at a few points
 println("\n") 
 
@@ -219,6 +221,9 @@ estimator.max_depth  = lightcv[minind][1][:max_depth]
 # fit at cv parameters
 LightGBM.fit!(estimator,x_train,y_train,(x_val,y_val),verbosity=-1)
 yf_gbm = LightGBM.predict(estimator,x_test)   # (n_test,num_class) 
+
+println("@btime lightGBM")
+yf_gbm = LightGBM.predict(estimator,x_test[1:2,:])   # (n_test,num_class) 
 
 println("\n Experiment = $Experiment, missing_pattern = $missing_pattern, n = $n")
 println("\n out-of-sample RMSE from truth, SMARTboost  ", sqrt(sum((yf - f_test).^2)/n_test) )

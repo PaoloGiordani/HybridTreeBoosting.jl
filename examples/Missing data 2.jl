@@ -141,7 +141,7 @@ for f_dgp in ["linear","quadratic","mixed"]
   println("\n out-of-sample RMSE from truth, x has NO missing, SMARTboost with missing ", sqrt(sum((yf - f_test).^2)/n_test) )
   println(" out-of-sample RMSE from truth, x has NO missing, SMARTboost imputed x    ", sqrt(sum((yf_impute - f_test).^2)/n_test) )
 
-  fnames,fi,fnames_sorted,fi_sorted,sortedindx = SMARTrelevance(output,data,verbose=false)
+#  fnames,fi,fnames_sorted,fi_sorted,sortedindx = SMARTrelevance(output,data,verbose=false);
 
 end
 end  
