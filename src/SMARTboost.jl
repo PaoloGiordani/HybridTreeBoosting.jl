@@ -1,4 +1,4 @@
-module SMARTboostPrivate
+module SMARTboost
 
 export SMARTinfo, SMARTloglikdivide, SMARTparam, SMARTdata, SMARTfit, SMARTpredict, SMARTrelevance, SMARTpartialplot,
  SMARTmarginaleffect, SMARTtree, SMARTboostTrees, SMARTindexes_from_dates, losscv, SMARTweightedtau, SMARTmulticlass_loss 
