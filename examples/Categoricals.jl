@@ -60,9 +60,10 @@ It seems reasonable to assume that target encoding will generate smooth function
 number_workers  = 8  # desired number of workers
 using Distributed
 nprocs()<number_workers ? addprocs( number_workers - nprocs()  ) : addprocs(0)
-#include("E:\\Users\\A1810185\\Documents\\A_Julia-scripts\\SMARTboostNG3\\src\\SMARTboostNG3.jl") # no package
+#@everywhere using SMARTboost
 
-using Random, Statistics
+using Random
+using Statistics
 using LightGBM
 
 # USER'S OPTIONS 
