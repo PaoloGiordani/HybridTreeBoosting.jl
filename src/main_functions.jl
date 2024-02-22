@@ -197,7 +197,7 @@ function SMARTindexes_from_dates(df::DataFrame,datesymbol::Symbol,first_date,n_r
     indtest_a  = Vector{Int}[]
 
     dates   = df[:,datesymbol]
-    datesu  = unique(dates)
+    datesu  = sort(unique(dates))   # must sort
     date1   = first_date    # end date of training set
 
     N       = length(datesu)
@@ -1044,7 +1044,7 @@ function SMARTfit_single(data::SMARTdata, param::SMARTparam; cv_grid=[],cv_diffe
 
     # If there is a NaN in lossgrid, Julia takes it as the minimum, hence...
     if isnan(minimum(lossgrid))
-        @warn "In SMARTfit, some output is NaN. Switching to Float64 may solve the problem (param=SMARTparam(T=Float64)). "
+        @warn "In SMARTfit, some output is NaN. "
         problems_somewhere = problems_somewhere + 1 
     end
 
