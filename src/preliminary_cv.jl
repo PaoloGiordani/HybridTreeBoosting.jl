@@ -47,7 +47,7 @@ function preliminary_cv_categoricals!(param0,data)
     param_cv.depth  = 3
     param_cv.verbose = :Off 
 
-    T = param.T 
+    T = param0.T 
 
     n0_multiplier_a = T.([1 10 100])
     mep_a = T.([0.0, 0.25, 0.5])
