@@ -495,7 +495,7 @@ For example, error variance for :L2, dispersion and dof for :t.
 """
 function SMARTcoeff(output;verbose=true)
 
-    if output.param.loss in [:hurdleGamma, :hurdleL2loglink, :hurdleL2]
+    if output.bestparam.loss in [:hurdleGamma, :hurdleL2loglink, :hurdleL2]
         @error "SMARTcoeff not yet supported for hurdle models"
     end     
 
@@ -1228,7 +1228,7 @@ best_model=true for single model with lowest CV loss, best_model= false for weig
 """
 function SMARTrelevance(output,data::SMARTdata;verbose=true,best_model=false )
 
-    if output.param.loss in [:hurdleGamma, :hurdleL2loglink, :hurdleL2]
+    if output.bestparam.loss in [:hurdleGamma, :hurdleL2loglink, :hurdleL2]
         @error "SMARTrelevance not yet supported for hurdle models"
     end     
 
@@ -1299,7 +1299,7 @@ For feature i, computes gamma(x_i) - gamma(x_i=mean(x_i)) for x_i between q1st a
 """
 function SMARTpartialplot(data::SMARTdata,output,features;best_model=false,other_xs::Vector =[],q1st=0.01,npoints = 1000,predict=:Egamma)
 
-    if output.param.loss in [:hurdleGamma, :hurdleL2loglink, :hurdleL2]
+    if output.bestparam.loss in [:hurdleGamma, :hurdleL2loglink, :hurdleL2]
         @error "SMARTpartialplot not yet supported for hurdle models"
     end     
 
@@ -1419,7 +1419,7 @@ APPROXIMATE Computation of marginal effects using NUMERICAL derivatives (default
 """
 function SMARTmarginaleffect(data::SMARTdata,output,features;best_model=false,other_xs::Vector =[],q1st=0.01,npoints = 50,epsilon=0.02,predict=:Egamma)
 
-    if output.param.loss in [:hurdleGamma, :hurdleL2loglink, :hurdleL2]
+    if output.bestparam.loss in [:hurdleGamma, :hurdleL2loglink, :hurdleL2]
         @error "marginal effects not yet supported for hurdle models"
     end     
 
