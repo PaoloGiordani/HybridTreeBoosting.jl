@@ -1,5 +1,7 @@
 """
 
+PG: incomplete !!!!!! 
+
 Short description:
 
 offset is added to gammafit, so user should take logs if needed ... give 
@@ -31,15 +33,13 @@ PG: unless we are absolutely sure that an offset enteres exactly with coeff 1, c
     Neat solution? Model it as a standard offset, but then ALSO (could recommend to user...)
     add it to the list of features, so it can be picked if not exactly 1....
 
-paolo.giordani@bi.no
 """
 
 number_workers  = 8  # desired number of workers
 
 using Distributed
 nprocs()<number_workers ? addprocs( number_workers - nprocs()  ) : addprocs(0)
-#@everywhere using SMARTboostPrivate
-#include("E:\\Users\\A1810185\\Documents\\A_Julia-scripts\\Modules\\SMARTboostPrivateLOCAL.jl") # no package
+@everywhere using SMARTboostPrivate
 
 using Random,Plots
 import Distributions 

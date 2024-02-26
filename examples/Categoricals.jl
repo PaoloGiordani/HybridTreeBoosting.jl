@@ -71,7 +71,7 @@ using LightGBM
 
 # Options to generate data 
 
-Random.seed!(4)
+Random.seed!(1)
 
 n          =     10_000   # sample size   
 ncat       =     100     # number of categories (actual number may be lower as they are drawn with reimmission)

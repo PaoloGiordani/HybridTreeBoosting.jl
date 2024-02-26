@@ -19,7 +19,7 @@ number_workers  = 8  # desired number of workers
 
 using Distributed
 nprocs()<number_workers ? addprocs( number_workers - nprocs()  ) : addprocs(0)
-#@everywhere using SMARTboostPrivate
+@everywhere using SMARTboostPrivate
 
 using Random,Statistics
 using LightGBM

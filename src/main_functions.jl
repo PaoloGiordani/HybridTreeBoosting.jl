@@ -1151,7 +1151,7 @@ function SMARTfit_hurdle(data::SMARTdata, param::SMARTparam; cv_grid=[],cv_diffe
     data_0 = 0  # free memory 
 
     # y /=0  
-    data_not0 = SMARTdata_subset(data,data.y .!= 0)
+    data_not0 = SMARTdata_subset(data,param,data.y .!= 0)
     param_not0 = deepcopy(param)
     param_not0.loss = loss_not0 
     output_not0 = SMARTfit(data_not0,param_not0,cv_grid=cv_grid,cv_different_loss=cv_different_loss,cv_sharp=cv_sharp,cv_sparsity=cv_sparsity,

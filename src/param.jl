@@ -136,7 +136,7 @@ end
 
 # Creates a SMARTdata dataset by taking a subsample (indexed by ind::Vector{Bool}) of another. 
 # Example of use: data_not0 = data_take_subset(data,data.y .!= 0)
-function SMARTdata_subset(data::SMARTdata,ind)
+function SMARTdata_subset(data::SMARTdata,param::SMARTparam,ind)
 
     y   = data.y[ind]
     x   = data.x[ind,:]
