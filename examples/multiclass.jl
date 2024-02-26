@@ -1,38 +1,32 @@
 
 """
 
-Multiclass classification in SMARTboost. Key points: 
+**Multiclass classification in SMARTboost. Key points:**
 
-- y is a vector: only one outcome possible. (For multilabel, fit a sequence of :logistic models.)
-- Elements of y can be numerical or string. Numericals do not need to be in the format (0,1,2,...) e.g. (1,2,3,...), (22,7,48,...)
+- y is a vector: only one outcome possible. (For multilabel classification, fit a sequence of :logistic models.)
+- Elements of y can be numerical or string. Numericals do not need to be in the format (0,1,2,...). e.g. (1,2,3,...), (22,7,48,...)
     ("a","b","c",...), ("Milan","Rome","Naples",...) are all allowed.
 - num_class is detected automatically, not a user input.  
 - The output from SMARTpredict() is: 
   yf,class_values,ymax = SMARTpredict(x_test,output). yf is a (n_test,num_class) matrix of probabilities, with yf[i,j] the probability
   that observation i takes value class_value[j]. class_values is a (num_class) vector of the unique values of y, sorted from smallest to largest.
   ymax is a (n_test) vector the most likely outcome.
-- The training time is proportional to num_classes, and it can therefore be quite high. 
-
-The comparison with LightGBM is biased toward SMARTboost if the function generating the data is 
-smooth in some features (this is easily changed by the user). lightGBM is cross-validated over max_depth and num_leaves,
-with the number of trees set to 1000 and found by early stopping.
+- The training time is proportional to num_classes, and it can therefore be high. There is room for future improvements though,
+  since the one-vs-rest approach is embarassingly parallel.  
   
-paolo.giordani@bi.no
 """
-
 number_workers  = 8  # desired number of workers
 
 using Distributed
 nprocs()<number_workers ? addprocs( number_workers - nprocs()  ) : addprocs(0)
 #@everywhere using SMARTboostPrivate
-include("E:\\Users\\A1810185\\Documents\\A_Julia-scripts\\Modules\\SMARTboostPrivateLOCAL.jl") # no package
 
 using Random,Statistics
 using LightGBM
 
 # USER'S OPTIONS 
 
-Random.seed!(5)
+Random.seed!(12)
 
 # Options for data generation 
 n         = 10_000
@@ -46,23 +40,21 @@ loss      = :multiclass
 modality  = :compromise   # :accurate, :compromise (default), :fast, :fastest
 priortype = :hybrid
 
-nfold     = 1
-randomizecv = false 
+nfold     = 1             # nfold=1 and nofullsample=true for fair comparison to LightGBM
 nofullsample = true 
 
 verbose    = :Off 
 warnings   = :On
 
-# define the function f(x), where x are indendent N~(0,1), and f(x) is for the natural parameter,
-# so f(x) = log(prob/(1-prob))
+# Multinomial logistic to draw data.
 
 f_1(x,b)    = b./(1.0 .+ (exp.(2.0*(x .- 1.0) ))) .- 0.1*b 
 f_2(x,b)    = b./(1.0 .+ (exp.(4.0*(x .- 0.5) ))) .- 0.1*b 
 f_3(x,b)    = b./(1.0 .+ (exp.(8.0*(x .+ 0.0) ))) .- 0.1*b
 f_4(x,b)    = b./(1.0 .+ (exp.(16.0*(x .+ 0.5) ))) .- 0.1*b
 
-b1v = [0.0,1.0,1.0,0.3,0.3]   # first class
-b2v = [0.0,0.3,0.3,1.0,1.0]   # second class 
+b1v = [0.0,1.0,1.0,0.3,0.3]   # coefficients first class
+b2v = [0.0,0.3,0.3,1.0,1.0]   # coefficients second class 
 
 # END USER'S OPTIONS  
 
@@ -101,7 +93,7 @@ y        = rnd_3classes(x,b1v,b2v)
 y_test   = rnd_3classes(x_test,b1v,b2v)
 
 # fit SMARTboost
-param  = SMARTparam(loss=loss,priortype=priortype,randomizecv=randomizecv,nfold=nfold,
+param  = SMARTparam(loss=loss,priortype=priortype,nfold=nfold,
                    verbose=verbose,warnings=warnings,modality=modality,nofullsample=nofullsample)
     
 data   = SMARTdata(y,x,param)
@@ -109,10 +101,10 @@ data   = SMARTdata(y,x,param)
 output = SMARTfit(data,param)
 yf,class_values,ymax = SMARTpredict(x_test,output)
 hit_rate = mean(ymax .== y_test)
-#loss     = SMARTmulticlass_loss(y_test,yf,output[1].additional_info[1])
+
 loss     = SMARTmulticlass_loss(y_test,yf,param.class_values)
 
-println("\n hit rate $hit_rate and loss $loss SMARTboost")
+println("\n SMARTboost hit rate $hit_rate and loss $loss ")
 
 # lightGBM 
 estimator = LGBMClassification(   # LGBMRegression(...)
@@ -151,7 +143,6 @@ estimator.max_depth  = lightcv[minind][1][:max_depth]
 
 # fit at cv parameters
 LightGBM.fit!(estimator,x_train,y_train,(x_val,y_val),verbosity=-1)
-
 yf_gbm = LightGBM.predict(estimator,x_test)   # (n_test,num_class) 
 
 ymax_gbm = zeros(eltype(class_values),n_test)
@@ -163,6 +154,6 @@ end
 hit_rate = mean(ymax_gbm .== y_test)
 loss     = SMARTmulticlass_loss(y_test,yf_gbm,param.class_values)
 
-println("\n hit rate $hit_rate and loss $loss LightGBM")
+println("\n LightGBM hit rate $hit_rate and loss $loss ")
 
 

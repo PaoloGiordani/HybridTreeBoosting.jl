@@ -1,26 +1,19 @@
 """
 
-Short description:
+**GammaPoisson for (possibly) overdisperesed count data.**
 
-- SMARTboost with gammaPoisson (aka negative binormial) distribution on simulated data. E(y)=μ, var(y)=μ(1+αμ)
-- The overdispersion parameter α is estimated internally.
+- SMARTboost with gammaPoisson (aka negative binomial) distribution on simulated data. E(y)=μ, var(y)=μ(1+αμ)
+- The overdispersion parameter α is estimated internally. 
+- loss=:Poisson is also available (α=0)
 
-Note: The comparison with LightGBM is biased toward SMARTboost if the function generating the data is 
-smooth in some features (this is easily changed by the user). lightGBM is cross-validated over max_depth and num_leaves,
-with the number of trees set to 1000 and found by early stopping.
-
-FOR UNDER-DISPERSED COUNT DATA, I HAVE NOT CODED ANYTHING.
-I WOULD SUGGEST TO FIT A GAMMAPOISSON, AND IF ALPHA IS CLOSE TO 0,
-TO THEN USE L2LOG LINK OF L2 
-
-paolo.giordani@bi.no
+Note: LightGMB does not have a gammaPoisson option. loss = poisson is used. 
 """
 
 number_workers  = 8  # desired number of workers
 
 using Distributed
 nprocs()<number_workers ? addprocs( number_workers - nprocs()  ) : addprocs(0)
-#@everywhere using SMARTboostPrivate
+@everywhere using SMARTboostPrivate
 
 using Random,Plots,Distributions 
 using LightGBM
@@ -30,7 +23,7 @@ using LightGBM
 Random.seed!(1)
 
 # Some options for SMARTboost
-loss      = :gammaPoisson               
+loss      = :gammaPoisson      # :gammaPoisson or Poisson              
 modality  = :fast         # :accurate, :compromise (default), :fast, :fastest 
 
 priortype = :hybrid       # :hybrid (default) or :smooth to force smoothness 
@@ -43,19 +36,19 @@ warnings    = :On
 
 # options to generate data.
 α           = 0.5   # overdispersion parameter. Poisson for α -> 0 
-n,p,n_test  = 10_000,5,100_000
+n,p,n_test  = 50_000,5,100_000
 
 # no interaction terms  
-f_1(x,b)    = b./(1.0 .+ (exp.(1.0*(x .- 1.0) ))) .- 0.1*b 
-f_2(x,b)    = b./(1.0 .+ (exp.(3.0*(x .- 0.5) ))) .- 0.1*b 
-f_3(x,b)    = b./(1.0 .+ (exp.(6.0*(x .+ 0.0) ))) .- 0.1*b
+f_1(x,b)    = b./(1.0 .+ (exp.(2.0*(x .- 1.0) ))) .- 0.1*b 
+f_2(x,b)    = b./(1.0 .+ (exp.(4.0*(x .- 0.5) ))) .- 0.1*b 
+f_3(x,b)    = b./(1.0 .+ (exp.(7.0*(x .+ 0.0) ))) .- 0.1*b
 f_4(x,b)    = b./(1.0 .+ (exp.(10.0*(x .+ 0.5) ))) .- 0.1*b
 
 #b1,b2,b3,b4 = 0.2,0.2,0.2,0.2
 b1,b2,b3,b4 = 0.6,0.6,0.6,0.6
 
 # generate data
-dgp  = :gammaPoisson   # :Poisson or :gammaPoisson
+α>0 ? dgp = :gammaPoisson : dgp = :Poisson 
 x,x_test = randn(n,p), randn(n_test,p)
 
 c        = 0    #  

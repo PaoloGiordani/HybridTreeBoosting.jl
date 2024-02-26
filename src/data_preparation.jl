@@ -475,15 +475,15 @@ function gridvectorτ(meanlntau::T,varlntau::T,taugridpoints::Int;priortype::Sym
         τgrid = [Inf]  
     else
         if taugridpoints==1
-            τgrid = [3.0]
+            τgrid = [5]
         elseif taugridpoints==2
-            τgrid = [1.0, 9.0]
+            τgrid = [2,8]
         elseif taugridpoints==3
-            τgrid = [1.0, 3.0, 9.0]
+            τgrid = [2,4,8]
         elseif taugridpoints==4
-            τgrid = [1.0,2.0,4.0,9.0]
+            τgrid = [2,4,8,16]
         elseif taugridpoints==5
-            τgrid = [0.3,1.0,2.0,4.0,9.0]
+            τgrid = [2,4,8,16,Inf]
         end
     end
 

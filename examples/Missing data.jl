@@ -1,40 +1,46 @@
 """ 
 
-This example reproduces the set-up in the simulations ( i) Experiment 1 and ii) Model 2 and Model 3 in Experiment 2 ) in the paper:
+**SMARTboost handles missing values automatically. Imputation is optional.** 
+
+This example reproduces the set-up in the simulations i) Experiment 1 and ii) Model 2 and Model 3 in Experiment 2 in the paper:
 "On the consistency of supervised learning with missing values" by Josse et al., 2020. 
 Data can be missing at random, or missing not at random as a function of x only, or missing not at random as a function of E(y).
 
 - The approach to missing values in SMARTboost is Block Propagation (see Josse et al.).
 - There is a however a a key difference compared to lightGBM and other GBM when the split is soft (τ < Inf): the value
   m at which to set all missing is estimated/optimized at each node. With standard trees (sharp splits), it only matters whether
-  missing are sent left or right, but in SMARTboost the allocation of missing values is also smooth (as long as the split is smooth),
-  and the proportion to which missings are sent left AND right is decided by a new split parameter m, separate from μ. 
+  missing are sent to the left or right branch, but in SMARTboost the allocation of missing values is also smooth (as long as the split is smooth),
+  and the proportion to which missings are sent left AND right is decided by a new split parameter m, distinct from μ. 
   The result is more efficient inference with missing values. When the split is sharp or the feature takes only two values, SMARTboost
-  assigns missing in the same way as LigthGBM (by Block Propagation.)
+  assigns missing in the same way as LigthGBM (by Block Propagation).
+- The native procedure to handle missing values is Bayes consistent (see Josse et al.), i.e. efficient in large samples,
+  and is convenient in that it can handle data of mixed types (continuous, discrete, categorical).
+  When feasible, a good imputation of missing values + mask (see Josse et al. ) can perform better, particularly in small samples,
+  high predictability of missing values from non-missing values, linear or quasi-linear f(x), and missing at random (in line
+  with the results of Josse et al.)  
  
-The comparison with LightGBM is biased toward SMARTboost if the function generating the data is 
-smooth in some features (this is easily changed by the user). lightGBM is cross-validated over max_depth and num_leaves,
-with the number of trees set to 1000 and found by early stopping.
+The comparison with LightGBM is biased toward SMARTboost if the function generating the data is smooth in some features.
+LightGBM is cross-validated over max_depth and num_leaves, with the number of trees set to 1000 and found by early stopping.
     
 
 """ 
+number_workers  = 8  # desired number of workers
+
+using Distributed
+nprocs()<number_workers ? addprocs( number_workers - nprocs()  ) : addprocs(0)
+#@everywhere using SMARTboostPrivate
 
 using DataFrames, Random, Statistics, Plots, Distributions
 using LightGBM
 
-number_workers  = 8  # desired number of workers
-using Distributed
-nprocs()<number_workers ? addprocs( number_workers - nprocs()  ) : addprocs(0)
-#include("E:\\Users\\A1810185\\Documents\\A_Julia-scripts\\Modules\\SMARTboostPrivateLOCAL.jl") # no package
-
 Random.seed!(1)
 
-# Options to generate data. y = sum of four additive nonlinear functions + Gaussian noise(0,stde^2)
+# Options to generate data. y is the of four additive nonlinear functions + Gaussian noise(0,stde^2)
 
 Experiment      = "1"     # "1" or "2 Friedman" or "2 Linear"  (see Josse et al., 2020, experiment 1, and experiment 2, Friedman or Linear dgp)
 missing_pattern = 1       # Only relevant for Experiment = "1". 1 for MCAR (missing at random), 2 for Censoring MNAR (at 1), 3 for Predictive missingness 
 
-n,p,n_test  = 10_000,10,100_000  # n=1000, p= 9 or 10 in paper. Since we are only running one run, consider larger n. 
+n,p,n_test  = 10_000,10,100_000  # n=1000, p= 9 or 10 in paper. Since this is one run, consider larger n. 
 stde        = 0.1                # 0.1 in paper
 ρ           = 0.5                # 0.5 in paper, cross-correlation of features 
 
@@ -42,10 +48,10 @@ stde        = 0.1                # 0.1 in paper
 priortype = :hybrid        # :hybrid (default) or :smooth or :sharp
 modality  = :compromise    # :accurate, :compromise, :fast, :fastest 
 
-nfold           = 1        # nfold cv. 1 faster (single validation sets), default 4 is slower, but more accurate.
+nfold           = 1        # nfold cv. 1 faster (single validation sets), default 4 is slower, but more accurate. Here nfold = 1 for fair comparison with LightGBM.
 
 plot_results = false
-mask_missing    = false  # default = false. True to introduce an additional feature, a dummy with value 'true' if x is missing.
+mask_missing = false     # default = false. True to introduce an additional feature, a dummy with value 'true' if x is missing. Not necessary.
 
 # END USER'S OPTIONS
 
@@ -54,7 +60,7 @@ mask_missing    = false  # default = false. True to introduce an additional feat
 # Missing at random (MCAR)
 function model1_missingpattern1(x) 
 
-    prob = 0.2                    # probability of miss. 0.2 in their experiments 
+    prob = 0.2  # probability of miss. 0.2 in their experiments 
     α,β = 1,2  # α,β = 1,2 in their experiments
     i   = 1    # i=1 in their experiments. Which feature is x^2 (miss is for 1st)
     ind = rand(size(x,1)) .< prob
@@ -159,8 +165,8 @@ x_test = copy(rand(d,n_test)')
 f,x            = f_pattern(x)
 f_test,x_test  = f_pattern(x_test) 
 
-y      = stde*randn(n)+f
-y_test = stde*randn(n_test)+f_test
+y      = f + stde*randn(n)
+y_test = f_test + stde*randn(n_test)
 
 # set up SMARTparam and SMARTdata, then fit and predit
 param  = SMARTparam(priortype=priortype,randomizecv=true,nfold=nfold,modality=modality )
@@ -172,7 +178,7 @@ yf     = SMARTpredict(x_test,output)  # predict
 yf  = SMARTpredict(x_test,output)  # predict
 
 # Evaluate predictions at a few points
-println("\n") 
+println("\n E(y|x) with x1 = 1 or missing, and x2 = 0 or 1") 
 
 for ov in [0.0,1.0]
     x_t    = fill(ov,size(x,2),p)
@@ -222,10 +228,9 @@ estimator.max_depth  = lightcv[minind][1][:max_depth]
 LightGBM.fit!(estimator,x_train,y_train,(x_val,y_val),verbosity=-1)
 yf_gbm = LightGBM.predict(estimator,x_test)   # (n_test,num_class) 
 
-println("@btime lightGBM")
 yf_gbm = LightGBM.predict(estimator,x_test[1:2,:])   # (n_test,num_class) 
 
 println("\n Experiment = $Experiment, missing_pattern = $missing_pattern, n = $n")
-println("\n out-of-sample RMSE from truth, SMARTboost  ", sqrt(sum((yf - f_test).^2)/n_test) )
-println(" out-of-sample RMSE from truth, LigthGBM cv ", sqrt(sum((yf_gbm - f_test).^2)/n_test) )
+println("\n out-of-sample RMSE from truth, SMARTboost, modality=:modality  ", sqrt(sum((yf - f_test).^2)/n_test) )
+println(" out-of-sample RMSE from truth, LigthGBM cv                     ", sqrt(sum((yf_gbm - f_test).^2)/n_test) )
 

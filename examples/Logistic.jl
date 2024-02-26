@@ -1,20 +1,19 @@
 
 """
 
-Short description:
+**Short description:**
 
-- Comparison with lightGBM on a logistic regression problem.
+- Comparison with lightGBM on a logistic regression problem with simulated data.
 - param.modality as the most important user's choice.
 - In default modality, SMARTboost performs automatic hyperparameter tuning.
 
 
-Extensive description: 
+**Extensive description:** 
 
 Sketch of a comparison of SMARTboost and lightGBM on a logistic regression problem.
 The comparison with LightGBM is biased toward SMARTboost if the function generating the data is 
 smooth in some features (this is easily changed by the user). lightGBM is cross-validated over max_depth and num_leaves,
 with the number of trees set to 1000 and found by early stopping.
-
 
 Options for SMARTboost: modality is the key parameter guiding hyperparameter tuning and learning rate.
 :fast and :fastest only fit one model at default parameters, while :compromise and :accurate perform
@@ -24,10 +23,7 @@ hyperparameter tuning by cross-validation, because this process is done automati
 for exploratory analysis and to gauge computing time, and then switch to :compromise (default)
 or :accurate.
 
-
-paolo.giordani@bi.no
 """
-
 number_workers  = 8  # desired number of workers
 
 using Distributed
@@ -39,12 +35,12 @@ using LightGBM
 
 # USER'S OPTIONS 
 
-Random.seed!(123)
+Random.seed!(1)
 
 # Options for data generation 
 n         = 10_000
-p         = 20      # p>=4. Only the first 4 variables are used in the function f(x) below 
-nsimul    = 1       # number of simulations
+p         = 10      # mumber of features. p>=4. Only the first 4 variables are used in the function f(x) below 
+nsimul    = 1       # number of simulated datasets. 
 
 # Options for SMARTboost: modality is the key parameter guiding hyperparameter tuning and learning rate.
 # :fast and :fastest only fit one model at default parameters, while :compromise and :accurate perform
@@ -61,11 +57,9 @@ f_3(x,b)    = b*x.^3
 f_4(x,b)    = b./(1.0 .+ (exp.(10*(x .- 0.5) ))) .- 0.1*b   
 
 b1,b2,b3,b4 = 1.5,2.0,0.5,2.0
-f(x)        = f_1(x[:,1],b1) + f_2(x[:,2],b2) + f_3(x[:,3],b3) + f_4(x[:,4],b4)
+dgp(x)        = f_1(x[:,1],b1) + f_2(x[:,2],b2) + f_3(x[:,3],b3) + f_4(x[:,4],b4)
  
 # END USER'S OPTIONS  
-
-
 
 function simul_logistic(n,p,nsimul,modality,f)
 
@@ -98,8 +92,8 @@ function simul_logistic(n,p,nsimul,modality,f)
 
     # generate data
     x,x_test = randn(n,p), randn(n_test,p)
-    ftrue       = f(x)
-    ftrue_test  = f(x_test)
+    ftrue       = dgp(x)
+    ftrue_test  = dgp(x_test)
 
     y = (exp.(ftrue)./(1.0 .+ exp.(ftrue))).>rand(n) 
     data   = SMARTdata(y,x,param)
@@ -108,7 +102,8 @@ function simul_logistic(n,p,nsimul,modality,f)
     yf     = SMARTpredict(x_test,output,predict=:Egamma)  # predict the natural parameter
     MSE1[simul]    = sum((yf - ftrue_test).^2)/n_test
 
-    # lightGBM 
+    # lightGBM
+    y       = Float64.(y)                 
     n_train = Int(round((1-param.sharevalidation)*length(y)))
     x_train = x[1:n_train,:]; y_train = Float64.(y[1:n_train])
     x_val   = x[n_train+1:end,:]; y_val = Float64.(y[n_train+1:end])
@@ -141,6 +136,7 @@ function simul_logistic(n,p,nsimul,modality,f)
  end     
 
  return MSE1,MSE2
+
 end 
 
 

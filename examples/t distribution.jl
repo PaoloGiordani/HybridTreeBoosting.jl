@@ -11,7 +11,6 @@ Purpose and main results:
   are often not IID, and then the :L2 loss can outperform the :t or :Huber loss even if the errors
   are leptokurtic.
 
-paolo.giordani@bi.no
 """
 
 number_workers  = 8  # desired number of workers
@@ -20,7 +19,7 @@ using Distributed
 nprocs()<number_workers ? addprocs( number_workers - nprocs()  ) : addprocs(0)
 #@everywhere using SMARTboostPrivate
 
-using Random,Statistics,Plots
+using Random,Statistics,Plots,Distributions
 using LightGBM
 
 # USER'S OPTIONS 

@@ -2,12 +2,12 @@
 
 **How to inform SMARTboost about categorical features:** 
 
-- if cat_catures is not specified, non-numerical features (e.g. Strings) are treated as categorical.
-- if cat_features is specified, it can be a vector of Integers (positions), a vector of Strings (corresponding to 
+- If cat_features is not specified, non-numerical features (e.g. Strings) are treated as categorical
+- If cat_features is specified, it can be a vector of Integers (positions), a vector of Strings (corresponding to 
   data.fnames, which must be provided) or a vector of Symbols (the features' names in the dataframe).
 
-# Example of use: no categorical features or all categorical features are not numbers.
-    param = SMARTparam()  # if all categorical features are not numbers, e.g. if strings
+# Example of use: all categorical features are non-numerical. 
+    param = SMARTparam()  
 
 # Example of use: specify positions in data.x
 
@@ -29,13 +29,14 @@
 
 - Missing values are assigned to a new category.
 - If there are only 2 categories, a 0-1 dummy is created. For anything more than two categories, it uses a variation of target encoding.
-- Smooth splits are particularly promising with target encoding. 
+- Smooth splits are particularly promising with target encoding, particularly in high dimensions (lots of categories). 
 - One-hot-encoding with more than 2 categories is not supported, but is easily implemented as data preprocessing.
 - If modality is :accurate or :compromise, a quick and rough cross-validation is performed over two parameters:
   - The prior sample size n0 for target encoding.
   - The penalization attached to categorical features, which mitigates the over-representation of categorical features
     in the final model due to data leakage. (This seems to be a new approach to the problem: it has the advantage of
-    being fast and using the entire sample.) 
+    being fast and using the entire sample. Data leakage remains, and implies that train set loss is lower than validation loss). 
+
 
 **An example with simulated data**
 
@@ -44,23 +45,23 @@ Each category of x2 is assigned its own coefficient drawn from a distribution ("
 The user can specify the form of f(x1,x2).
 
 LightGBM does not use target encoding, and can completely break down (very poor in-sample and oos fit) when the number of categories
-is high in relation to n (e.g. n=10k,n=1k)
-(The LightGBM manual https://lightgbm.readthedocs.io/en/latest/Advanced-Topics.html suggests treating high dimensional categorical features
-as numerical or embedding them in a lower-dimensional space.)
+is high in relation to n (e.g. n=10k,n=1k). (The LightGBM manual https://lightgbm.readthedocs.io/en/latest/Advanced-Topics.html suggests
+treating high dimensional categorical features as numerical or embedding them in a lower-dimensional space.)
 
-CatBoost (note: code in separate Python file) in contrast, adopts target encodign as default, can handle very high dimensionality and
+CatBoost (note: code in separate Python file), in contrast, adopts target encoding as default, can handle very high dimensionality and
 has a sophisticated approach to avoiding data leakage which SMARTboost is missing.
-In spite of the lack of data leakage (which would presumably benefit SMARTboost as well), in this simple simulation set-up
-SMARTboost substantially outperforms CatBoost when n/n_cat is low and the categorical feature interacts with the continuous feature,
+In spite of the absence of data leakage (which would presumably benefit SMARTboost as well), in this simple simulation set-up
+SMARTboost substantially outperforms CatBoost if n_cat is high and the categorical feature interacts with the continuous feature,
 presumably because target encoding generates smooth functions in this set-up.   
-It seems reasonable to assume that target encoding will generate smooth functions in most real settings. 
+It seems reasonable to assume that target encoding, by its very nature, will generate smooth functions in most settings, making 
+SMARTboost a promising tool for high dimensional categorical features. The current treatment of categorical features is however quite
+crude compared to CatBoost, so some of these gains are not yet realized. 
 
 """
-
 number_workers  = 8  # desired number of workers
 using Distributed
 nprocs()<number_workers ? addprocs( number_workers - nprocs()  ) : addprocs(0)
-#@everywhere using SMARTboost
+@everywhere using SMARTboostPrivate
 
 using Random
 using Statistics
@@ -74,7 +75,8 @@ Random.seed!(4)
 
 n          =     10_000   # sample size   
 ncat       =     100     # number of categories (actual number may be lower as they are drawn with reimmission)
-bcat       =     1.0      # coeff of categorical feature
+
+bcat       =     1.0      # coeff of categorical feature (if 0, categories are not predictive)
 b1         =     1.0      # coeff of continuous feature 
 stde       =     1.0      # error std
 
@@ -82,20 +84,21 @@ cat_distrib =   "chi"  # distribution for categorical effects: "uniform", "norma
 
 # specify the function f(x1,x2), with the type of interaction (if any) between x1 (continuous) and x2 (categorical)
 function yhat_x1xcat(b1,b2,x1)
+
     #yhat[r] = b2 + b1*x[r,1]    # no interaction 
     #yhat = b2 + b1*b2*x1        # multiplicative interaction
     yhat = b2 + b1*b2*(x1>0)    # step interaction 
     #yhat = b2 + (b1-b2)*x1
+
     return yhat
 end 
-
 
 # SMARTboost parameters 
 loss         = :L2
 modality     = :compromise  
 depth        = 3           # fix depth to speed up estimation  
-nfold        = 1           # number of folds in cross-validation. Leave at 1 for fair comparison with LightGBM 
-nofullsample = true        # true to speed up execution when nfold=1.  Leave true for fair comparison with LightGBM 
+nfold        = 1           # number of folds in cross-validation. 1 for fair comparison with LightGBM 
+nofullsample = true        # true to speed up execution when nfold=1. true for fair comparison with LightGBM 
 verbose      = :Off
 
 cat_features = [2]       # The second feature is categorical. Needs to be an input in param (see below) since it is numerical.  
@@ -107,14 +110,14 @@ cat_features = [2]       # The second feature is categorical. Needs to be an inp
 
 ignore_cat_lightgbm = false  # true to ignore the categorical nature and treat as numerical in lightGBM 
 
-#           END USER'S INPUT   
+# END USER'S OPTIONS   
 
 # create data 
 n_test  = 100_000 
-cate    = collect(1:ncat)[randperm(ncat)]   # create numerical categories (integers) 
-xcat,xcat_test  = rand(cate,n),rand(cate,n_test)
-x,x_test       = hcat(randn(n),xcat),hcat(randn(n_test),xcat_test)
-yhat,yhat_test = zeros(n),zeros(n_test)
+cate            = collect(1:ncat)[randperm(ncat)]   # create numerical categories (integers) 
+xcat,xcat_test  = rand(cate,n),rand(cate,n_test)    # draw element of categorical features from the list of categories
+x,x_test        = hcat(randn(n),xcat),hcat(randn(n_test),xcat_test)
+yhat,yhat_test  = zeros(n),zeros(n_test)
 
 if cat_distrib=="uniform"
     b = bcat*rand(ncat)   # uniform fixed-effects
@@ -142,9 +145,10 @@ y = yhat + stde*randn(n)
 y_test = yhat_test + stde*randn(n_test)
 
 # Fit SMARTboost 
-param = SMARTparam(loss=loss,modality=modality,depth=depth,nfold=nfold,nofullsample=nofullsample,verbose=verbose,cat_features=cat_features)
-data = SMARTdata(y,x,param)
+param  = SMARTparam(loss=loss,modality=modality,depth=depth,nfold=nfold,nofullsample=nofullsample,verbose=verbose,cat_features=cat_features)
+data   = SMARTdata(y,x,param)
 output = SMARTfit(data,param,cv_grid=[depth])
+
 ntrain = Int(round(n*(1-param.sharevalidation)))
 yhat   = SMARTpredict(x[1:ntrain,:],output) 
 yf     = SMARTpredict(x_test,output) 
@@ -155,20 +159,20 @@ println("\n in-sample R2           ", 1 - mean((yhat - y[1:ntrain]).^2)/var(y[1:
 println(" validation  R2         ", 1 - output.loss/var(y[ntrain+1:end]) )
 println(" out-of-samplesample R2 ", 1 - mean((yf - y_test).^2)/var(y_test) )
 
-println(" avg τ on categorical feature is low, suggesting gains from smoothness ")
+println(" Average τ on categorical feature is low, suggesting gains from smoothness. ")
 avgtau,avg_explogtau,avgtau_a,dftau,x_plot,g_plot = SMARTweightedtau(output,data,verbose=true,best_model=false)
 
 # LightGBM
 if ignore_cat_lightgbm == true
-    estimator = LGBMRegression(objective = "regression",num_iterations = 1000,early_stopping_round = 100,max_depth=6)
+    estimator = LGBMRegression(objective = "regression",num_iterations = 1000,early_stopping_round = 100,max_depth=4)
 else 
-    estimator = LGBMRegression(objective = "regression",num_iterations = 1000,early_stopping_round = 100,max_depth=6,
+    estimator = LGBMRegression(objective = "regression",num_iterations = 1000,early_stopping_round = 100,max_depth=4,
             categorical_feature = cat_features)
 end 
 
-n_train = Int(round((1-param.sharevalidation)*length(y)))
-x_train = x[1:n_train,:]; y_train = Float64.(y[1:n_train])
-x_val   = x[n_train+1:end,:]; y_val = Float64.(y[n_train+1:end])
+n_train         = Int(round((1-param.sharevalidation)*length(y)))
+x_train,y_train = x[1:n_train,:], Float64.(y[1:n_train])
+x_val,y_val     = x[n_train+1:end,:], Float64.(y[n_train+1:end])
 
 println(" \n Running LightGBM, which is usually lightning fast, but can be quite slow with high-dimensional categorical features.")
 LightGBM.fit!(estimator,x_train,y_train,(x_val,y_val),verbosity=-1)

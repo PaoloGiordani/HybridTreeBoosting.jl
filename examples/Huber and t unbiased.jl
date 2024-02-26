@@ -1,16 +1,16 @@
 
 """
 
-Purpose and main results:
+**Purpose and main results:**
 
 - Show how Huber loss functions leads to biased fitted and predicted values when the errors have a skewed distribution,
-  and the resulting MSE can be much higher than for L2 loss.
+  and the resulting mse can be much higher than for L2 loss even if the errors are fat-tailed.
 - In contrast, if the errors are fat-tailed but symmetric, the lightGBM Huber loss tends to outperform L2 loss.
-- SMARTboost with loss = :t and loss=:Huber corrects for biases due to skewed errors. (t recommended over Huber)
+- SMARTboost with loss = :t and loss=:Huber automatically corrects for biases due to skewed errors. (t recommended over Huber)
 - In SMARTboost, the t loss (plus de-biasing) improves on the L2 loss in this settings (due to IID errors) 
-- Correcting the bias improves the MSE of lightGBM predictions compared to the original version, but
-  the RMSE is often inferior to L2 loss. 
-- The impact of the bias is stronger if the signal-to-noise is low. 
+- Correcting the bias improves the mse of lightGBM predictions compared to the original version, but
+  the rmse is often inferior to L2 loss. 
+- The impact of the bias is stronger if signal-to-noise is low. 
 - With high signal-to-noise, the lightGBM Huber loss gives, after de-biasing, nearly identical results to the L2 loss, because the 
   robustness parameter is calibrated once on the unconditional data. In contrast, SMARTboost re-estimates all parameters
   after each tree, so that the t loss outperforms the L2 loss for any signal-to-noise (with IID errors). 
@@ -20,27 +20,24 @@ Note:
 LightGBM is only fitted at default parameters, since the main interest here is not the comparison with SMARTboost but 
 the performance of Huber loss and of bias correction. 
 
-paolo.giordani@bi.no
 """
-
 number_workers  = 8  # desired number of workers
 
 using Distributed
 nprocs()<number_workers ? addprocs( number_workers - nprocs()  ) : addprocs(0)
 #@everywhere using SMARTboostPrivate
-#include("E:\\Users\\A1810185\\Documents\\A_Julia-scripts\\Modules\\SMARTboostPrivateLOCAL.jl") # no package
 
 using Random,Statistics,Plots
 using LightGBM
 
 # USER'S OPTIONS 
 
-Random.seed!(123)
+Random.seed!(1)
 
-# Options for data generation 
+# Options for data generation (from Friedman function plus errors drawn from a mixture of two Gaussian) 
 n         = 10_000
-p         = 5      # p>=5. Only the first 4 variables are used in the function f(x) below 
-stde      = 5     # e.g. 1 for high SNR, 5 for lowish, 10 for low (R2 around 4%) 
+p         = 5      # p>=5. Number of features. Only the first 4 variables are used in the function f(x) below 
+stde      = 5      # e.g. 1 for high SNR, 5 for lowish, 10 for low (R2 around 4%) 
 
 m2        = 3*stde  # mean of second component of mixture of normal. 0 for symmetric fat tails, 3*stde for skewed
 
@@ -58,6 +55,7 @@ dgp(x) = 10.0*sin.(π*x[:,1].*x[:,2]) + 20.0*(x[:,3].-0.5).^2 + 10.0*x[:,4] + 5.
 # End user's options 
 
 # generate data. x is standard uniform, and errors are a mixture of two normals, with right skew
+n_test     = 200_000
 x,x_test   = rand(n,p), rand(n_test,p)
 ftrue      = dgp(x)
 ftrue_test = dgp(x_test)

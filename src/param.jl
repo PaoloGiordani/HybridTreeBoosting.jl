@@ -93,6 +93,8 @@ mutable struct SMARTparam{T<:AbstractFloat, I<:Int,R<:Real}
     # grid and optimization parameters
     mugridpoints::I  # points at which to evaluate μ during variable selection. 5 is sufficient on simulated data, but actual data can benefit from more (due to with highly non-Gaussian (and non-uniform))
     taugridpoints::I  # points at which to evaluate τ during variable selection. 1-5 are supported. If less than 3, refinement is then on a grid with more points
+    depth_coarse_grid::I # at this depth and higher, vs uses every second point in mugrid. 
+    depth_coarse_grid2::I # at this depth and higher, vs uses only τ=5 and every third point in mugrid. 
     xtolOptim::T
     method_refineOptim::Symbol  # which method for refineOptim, e.g. pmap, @distributed, .... 
     points_refineOptim::I      # number of values of tau for refineOptim. Default 12. Other values allowed are 4,7.
@@ -177,9 +179,9 @@ Parameters for SMARTboost
                             :fast runs only one model (only cv number of trees) at values defined in param = SMARTparam(). 
                             :fastest runs only one model, setting nfold=1 and nofullsample=true (does not re-estimate on the full sample after cv).
                             Recommended for faster preliminary analysis only.
-                            For loss=:logistic, :fast and :fastest also use the quadratic approximation to the loss for large samples.
+                            In most cases, :fast and :fastest also use the quadratic approximation to the loss for large samples.
                             :accurate cross-validates several models (see SMARTfit() for more info).
-                            :compromise cross-validates fewer models than :accurate. It is roughly 5 times slower than :fast, and 10 time slower than :fastest,
+                            :compromise cross-validates fewer models than :accurate.
                                         
 - `priortype`               [:hybrid] :hybrid encourages smoothness, but allows both smooth and sharp splits, :smooth forces smooth splits, :sharp forces sharp splits, :disperse has no prior on smoothness.
                             Set to :smooth if you want to force derivatives to be defined everywhere. 
@@ -225,7 +227,7 @@ Parameters for SMARTboost
 - `delete_missing`          [false] true to delete rows with missing values in any feature, false to handle missing internally (recommended).
 - `theta`                   [1]  numbers larger than 1 imply tighter penalization on β (final leaf values) compared to default.
 - `meanlntau::Float`        [1.0] prior mean of log(τ). Set to higher numbers to suggest less smooth functions.        
-- `mugridpoints::Int`       [10] number of points at which to evaluate μ during variable selection. 5 is sufficient on simulated data with normal or uniform distributions, but actual data may benefit from more (due to with highly non-Gaussian features).
+- `mugridpoints::Int`       [11] number of points at which to evaluate μ during variable selection. 5 is sufficient on simulated data with normal or uniform distributions, but actual data may benefit from more (due to with highly non-Gaussian features).
                             For extremely complex and nonlinear features, more than 10 may be needed.        
 - `force_sharp_splits`      [] optionally, a p vector of Bool, with j-th value set to true if the j-th feature is forced to enter with a sharp split.
 - `force_smooth_splits`     [] optionally, a p vector of Bool, with j-th value set to true if the j-th feature is forced to enter with a smooth split (high values of τ not allowed).
@@ -303,7 +305,7 @@ function SMARTparam(;
     info_date = (date_column=0,date_first=0,date_last=0),
     sparsity_penalization = 0.3,
     p0       = :Auto,
-    sharevs  = 1.0,             # if <1, adds noise to vs, in vs phase takes a random subset. :Auto is 0.5 if n>=250k     
+    sharevs  = 1.0,             # if <1, adds noise to vs, in vs phase takes a random subset. :Auto is 0.5 if n>=250k. ? Speed gains are surprisingly small, maybe because of the need to slices large matrices ?      
     refine_obs_from_vs = false,  # true to add randomization to (μ,τ), assuming sharevs<1
     finalβ_obs_from_vs  = false,  # true to add randomization to final β
     n_refineOptim = 10_000_000,   # Subsample size fore refineOptim. beta is always computed on the full sample.
@@ -316,12 +318,14 @@ function SMARTparam(;
     p_pvs = 100,           # number of features taken to second stage (i.e. when actual G0 is used). 100 chosen by experimentation. No gains to set it lower. 
     min_d_pvs = 4,        # minimum depth at which to start preliminary vs. >=2. 
     # grid and optimization parameters
-    mugridpoints = 10,  # points at which to evaluate μ during variable selection. 5 is sufficient on simulated data, but actual data can benefit from more (due to with highly non-Gaussian features
-    taugridpoints = 3,  # points at which to evaluate τ during variable selection. 1-5 are supported. If less than 3, refinement is then on a grid with more points
-    xtolOptim = 0.02,  # tolerance in the optimization e.g. 0.02 (measured in dμ). It is automatically reduced if tau is large 
+    mugridpoints = 11,  # points at which to evaluate μ during variable selection. 5 is sufficient on simulated data, but actual data can benefit from more (due to with highly non-Gaussian features. 11 so that at d>=depth_coarse_grid, it takes [2,4,6,8,10] so symmetric.
+    taugridpoints = 2,  # points at which to evaluate τ during variable selection. 1-5 are supported. If less than 3, refinement is then on a grid with more points
+    depth_coarse_grid = 5, # at this depth and higher, vs uses only τ=5 and every other second point in mugrid. 
+    depth_coarse_grid2 = 7, # at this depth and higher, vs uses only τ=5 and every third second point in mugrid. 
+    xtolOptim = 0.01,  # tolerance in the optimization e.g. 0.01 (measured in dμ). It is automatically reduced if tau is large 
     method_refineOptim = :pmap, #  :pmap, :distributed 
     points_refineOptim = 12,    # number of values of tau for refineOptim. Default 12. Other values allowed are 4,7.
-    # miscel
+    # miscel                    # becomes 7 once coarse_grid kicks in, unless ncores>12.
     ntrees = 2000, # number of trees. 1000 is CatBoost default, but in SMARTboost trees are shallow.  
     theta = 1.0,   # numbers larger than 1 imply tighter penalization on β compared to default. 
     loglikdivide = :Auto,   # the log-likelhood is divided by this scalar. Used to improve inference when observations are correlated.
@@ -386,10 +390,9 @@ function SMARTparam(;
 
     nfold_user = length(indtrain_a)
 
-    if nfold_user>0           # over-write randomizecv and nfold_user
+    if nfold_user>0           # over-write randomizecv and nfold
         nfold = nfold_user
         randomizecv = false
-        indtrain_a,indtest_a = Vector{Vector{I}}(undef,nfold),Vector{Vector{I}}(undef,nfold)    
         for i in 1:nfold_user  # ensure indices are integers (for R, Python etc..)
             indtrain_a[i] = I.(round.(indtrain_a[i]))
             indtest_a[i]  = I.(round.(indtest_a[i]))
@@ -400,7 +403,8 @@ function SMARTparam(;
         T(meanlntau),T(varlntau),T(doflntau),T(multiplier_stdtau),T(varmu),T(dofmu),Symbol(priortype),T(max_tau_smooth),I(min_unique),mixed_dc_sharp,force_sharp_splits,force_smooth_splits,exclude_features,augment_mugrid,cat_features,cat_features_extended,cat_dictionary,cat_values,cat_globalstats,I(cat_representation_dimension),T(n0_cat),T(mean_encoding_penalization),
         class_values,Bool(delete_missing),mask_missing,missing_features,info_date,T(sparsity_penalization),p0,sharevs,refine_obs_from_vs,finalβ_obs_from_vs,
         I(n_refineOptim),T(subsampleshare_columns),Symbol(sparsevs),T(frequency_update),
-        I(number_best_features),best_features,Symbol(pvs),I(p_pvs),I(min_d_pvs),I(mugridpoints),I(taugridpoints),T(xtolOptim),Symbol(method_refineOptim),
+        I(number_best_features),best_features,Symbol(pvs),I(p_pvs),I(min_d_pvs),I(mugridpoints),I(taugridpoints),
+        I(depth_coarse_grid),I(depth_coarse_grid2),T(xtolOptim),Symbol(method_refineOptim),
         I(points_refineOptim),I(ntrees),T(theta),loglikdivide,I(overlap),T(multiply_pb),T(varGb),I(ncores),I(seed_datacv),I(seed_subsampling),newton_gaussian_approx,
         I(newton_max_steps),I(newton_max_steps_final),T(newton_tol),T(newton_tol_final),I(newton_max_steps_refineOptim),linesearch)
 
@@ -568,7 +572,7 @@ function SMARTdata(y0::Union{AbstractVector,AbstractMatrix,AbstractDataFrame},x:
         # if dates are not in chronological order, sort y,x,weights by date (done below for xp) UNLESS user has provided indtrain_a 
         # (cross-validation obs), in which case issue a warning 
         if !ordered_dates && !isempty(param.indtrain_a)
-            @warn " Dates are not in chronological order, but user has provided explicity training and validation sets, so data will be left unordered."
+            @warn " Dates are not in chronological order, but the user has provided training and validation sets, so data will not be sorted by date."
         end
   
     end

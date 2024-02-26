@@ -1,25 +1,24 @@
 
 """
 
-Short description:
+**Short description:**
 
 - Illustrates basic use on a regression problem.
-- param.modality as the most important user's choice.
+- param.modality as the most important user's choice, depending on time budget. 
 - In default modality, SMARTboost performs automatic hyperparameter tuning.
 
-
-Extensive description: 
+**Extensive description:** 
 
 Simulated iid data, additively nonlinear dgp.
 
-- loss can be :L2 or :logistic or :Huber or :t (recommended in place of :Huber).
-   If :logistic, the fitted and forecast values are for the log odds ratio
+- default loss is :L2. Other options for continuous y are :Huber, :t (recommended in place of :Huber), :gamma,
+  :L2loglink. For zero-inflated continuous y, options are :hurdleGamma, :hurdleL2loglink, :hurdleL2 (see examples/Zero inflated y.jl)   
+- default is block cross-validation: use randomizecv = true to scramble the data.
 - fit, with automatic hyperparameter tuning if modality is :compromise or :accurate
 - save fitted model (upload fitted model)
 - feature importance
-- average τ (smoothness parameter), which is also plotted
+- average τ (smoothness parameter), which is also plotted. (Smoother functions ==> larger gains compared to other GBM)
 - partial effects plots
-
 
 Options for SMARTboost: modality is the key parameter guiding hyperparameter tuning and learning rate.
 :fast and :fastest only fit one model at default parameters, while :compromise and :accurate perform
@@ -29,14 +28,18 @@ hyperparameter tuning by cross-validation, because this process is done automati
 for exploratory analysis and to gauge computing time, and then switch to :compromise (default)
 or :accurate.
 
-paolo.giordani@bi.no
-"""
+Block cross-validation:
+While the default in other GBM is to randomize the allocation to train and validation sets,
+the default in SMARTboost is block cv, which is suitable for time series and panels.
+Set randomizecv=true to bypass this default. 
+See examples/Global equity Panel.jl for further options on cross-validation (e.g. sequential cv).
 
+"""
 number_workers  = 8  # desired number of workers
 
 using Distributed
 nprocs()<number_workers ? addprocs( number_workers - nprocs()  ) : addprocs(0)
-#@everywhere using SMARTboost
+@everywhere using SMARTboostPrivate
 
 using Random,Plots 
 
@@ -46,10 +49,10 @@ Random.seed!(123)
 
 # Some options for SMARTboost
 loss      = :L2           # :L2 or :logistic (or :Huber or :t). 
-modality  = :compromise    # ::accurate, :compromise (default), :fast, :fastest 
+modality  = :fast         # :accurate, :compromise (default), :fast, :fastest 
 
 priortype = :hybrid       # :hybrid (default) or :smooth to force smoothness 
-nfold     = 1             # number of cv folds. 1 faster (single validation sets), default 5 is slower, but more accurate.
+nfold     = 1             # number of cv folds. 1 faster (single validation sets), default 4 is slower, but more accurate.
 nofullsample = true       # if nfold=1 and nofullsample=true, the model is not re-fitted on the full sample after validation of the number of trees
 
 randomizecv = false       # false (default) to use block-cv. 
@@ -61,7 +64,7 @@ n,p,n_test  = 10_000,5,100_000
 stde        = 1.0
   
 f_1(x,b)    = b*x .+ 1 
-f_2(x,b)    = sin.(b*x)  # for higher nonlinearities, try #f_2(x,b) = 2*sin.(2.5*b*x)
+f_2(x,b)    = 2*sin.(2.5*b*x)  # for higher nonlinearities, try #f_2(x,b) = 2*sin.(2.5*b*x)
 f_3(x,b)    = b*x.^3
 f_4(x,b)    = b./(1.0 .+ (exp.(40.0*(x .- 0.5) ))) .- 0.1*b
 
@@ -75,11 +78,12 @@ x,x_test = randn(n,p), randn(n_test,p)
 f        = f_1(x[:,1],b1) + f_2(x[:,2],b2) + f_3(x[:,3],b3) + f_4(x[:,4],b4)
 f_test   = f_1(x_test[:,1],b1) + f_2(x_test[:,2],b2) + f_3(x_test[:,3],b3) + f_4(x_test[:,4],b4)
 
-loss==:logistic ? y = (exp.(f)./(1.0 .+ exp.(f))).>rand(n) : y=stde*randn(n)+f
+y = f + stde*randn(n)
 
 # set up SMARTparam and SMARTdata, then fit and predit
 param  = SMARTparam(loss=loss,priortype=priortype,randomizecv=randomizecv,nfold=nfold,verbose=verbose,warnings=warnings,
            modality=modality,nofullsample=nofullsample)
+
 data   = SMARTdata(y,x,param)
 
 @time output = SMARTfit(data,param)

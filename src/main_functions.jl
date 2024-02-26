@@ -495,6 +495,10 @@ For example, error variance for :L2, dispersion and dof for :t.
 """
 function SMARTcoeff(output;verbose=true)
 
+    if output.param.loss in [:hurdleGamma, :hurdleL2loglink, :hurdleL2]
+        @error "SMARTcoeff not yet supported for hurdle models"
+    end     
+
     loss = output.bestparam.loss 
     coeff = output.bestparam.coeff_updated[1]
 
@@ -828,7 +832,7 @@ function SMARTfit_single(data::SMARTdata, param::SMARTparam; cv_grid=[],cv_diffe
             end     
 
             if argmin(lossgrid)==3
-                i_a = [2]
+                i_a = [1,2]
             elseif argmin(lossgrid)==4
                 break
             else
@@ -939,7 +943,7 @@ function SMARTfit_single(data::SMARTdata, param::SMARTparam; cv_grid=[],cv_diffe
             cvgrid[i]  = bestvalue        
             param      = deepcopy(SMARTtrees_a[best_i].param)
             param.force_sharp_splits = force_sharp_splits
-            #param.force_smooth_splits = force_smooth_splits
+            param.force_smooth_splits = force_smooth_splits
 
             param_given_data!(param,data)
             param_constraints!(param)
@@ -1171,7 +1175,7 @@ function SMARTfit_multiclass(data::SMARTdata, param::SMARTparam; cv_grid=[],cv_d
     param_i.loss = :logistic
     T       = param.T
 
-    for i in eachindex(class_values)
+    for i in eachindex(param.class_values)
 
         new_class_value = T(i-1)          # original class values converted to 0,1,2...
         @. data.y = y0 == new_class_value    
@@ -1223,6 +1227,10 @@ best_model=true for single model with lowest CV loss, best_model= false for weig
 
 """
 function SMARTrelevance(output,data::SMARTdata;verbose=true,best_model=false )
+
+    if output.param.loss in [:hurdleGamma, :hurdleL2loglink, :hurdleL2]
+        @error "SMARTrelevance not yet supported for hurdle models"
+    end     
 
     T   = output.bestparam.T 
     w   = output.w
@@ -1290,6 +1298,10 @@ For feature i, computes gamma(x_i) - gamma(x_i=mean(x_i)) for x_i between q1st a
     q,pdp  = SMARTpartialplot(data,output.SMARTtrees,sortedindx[1,2],q1st=0.001)
 """
 function SMARTpartialplot(data::SMARTdata,output,features;best_model=false,other_xs::Vector =[],q1st=0.01,npoints = 1000,predict=:Egamma)
+
+    if output.param.loss in [:hurdleGamma, :hurdleL2loglink, :hurdleL2]
+        @error "SMARTpartialplot not yet supported for hurdle models"
+    end     
 
     # data.x is SharedMatrix, not standardized, categoricals are 0,1,2 .... dates are [0,1]
     # replace categoricals with target encoding values, and standardize all features
@@ -1406,6 +1418,10 @@ APPROXIMATE Computation of marginal effects using NUMERICAL derivatives (default
 
 """
 function SMARTmarginaleffect(data::SMARTdata,output,features;best_model=false,other_xs::Vector =[],q1st=0.01,npoints = 50,epsilon=0.02,predict=:Egamma)
+
+    if output.param.loss in [:hurdleGamma, :hurdleL2loglink, :hurdleL2]
+        @error "marginal effects not yet supported for hurdle models"
+    end     
 
     if output.SMARTtrees.param.priortype !== :smooth
         @warn "Derivatives computed in SMARTmarginaleffects may not be defined unless param.priortype=:smooth"
@@ -1613,7 +1629,7 @@ function SMARTweightedtau(output,data;verbose::Bool=true,plot_tau::Bool=true,bes
     end 
 
     x_plot = collect(-2.0:0.01:2)
-    g_plot = sigmoidf(x_plot,0.0,avgtau,param.sigmoid)
+    g_plot = sigmoidf(x_plot,0.0,avgtau,output.bestparam.sigmoid)
 
     return T(avgtau),T(exp_avglogtau),T.(avgtau_a),df,x_plot,g_plot
 

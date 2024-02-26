@@ -463,7 +463,7 @@ end
 # To reduce the danger of near-singularity associated with empty leaves, bound elements on the diagonal of GGh, here at 0.001% of the largest element.
 function Δβ(GGh,Gr,d,Pb,param,n,p,T)
 
-    Δβ = zeros(T,p)
+    Δβ = zeros(T,p) 
 
     # GGh is a vector (sharp splits)
     if size(GGh,2)==1
@@ -634,11 +634,27 @@ function best_μτ_excluding_nan(t)
     end
 
     param,info_i,fi,τgrid,μgridi,infeatures = t.param,t.info_i,t.fi,t.τgrid,t.μgridi,t.infeatures
+    n,p = size(G0)
+    T,I = param.T,param.I
 
-    T = param.T
+    # If d >= depth_coarse_grid, μgridi takes every other element.
+    # If d >= depth_coarse_grid2, τgrid = [5] (unless it already had just one element) and every third element.   
+    d = 1 + I(round(log(p)/log(2)))  # current depth (for G)
+
+    (d >= param.depth_coarse_grid2 && length(τgrid)>1) ? τgrid = T.([2]) : nothing
+
+    if d >= param.depth_coarse_grid
+        l = length(μgridi)
+        if l>=8
+            d>= param.depth_coarse_grid2 ? s = 3 : s = 2
+            v = [s*i for i in 1:Int(floor(l/s))]
+            μgridi = μgridi[v]
+        end 
+    end
+
+    # prepare matrices for the double loop over (τgrid,μgridi) 
     lossmatrix = fill(T(Inf64),length(τgrid),length(μgridi))
 
-    n,p = size(G0)
     G   = Matrix{T}(undef,n,2*p)
     Gh  = similar(G)                # pre-allocate for fast computation of G'(G.*h)
 
@@ -941,15 +957,20 @@ function refineOptim_μτ_excluding_nan(y,w,gammafit_ensemble,r::AbstractVector{
        return T(Inf),τ0,μ0,nan_present
     end
 
+    d = 1 + param.I(round(log(size(G0,2))/log(2)))  # current depth (for G)
+    coarse_grid = d>=min(param.depth_coarse_grid,param.depth_coarse_grid2)
+
     if param.priortype==:sharp || info_i.force_sharp==true
         τgrid = T[Inf]
     else
         if param.points_refineOptim==4  # in some cases, 4 and then 4 again may be more efficient
             τgrid = T[1,3,9,Inf]           
-        elseif param.points_refineOptim==7
+        elseif param.points_refineOptim==7 || (param.points_refineOptim==12 && coarse_grid && param.ncores<13) 
             τgrid = T[0.5,1,2,4,8,16,Inf]           
+        elseif param.points_refineOptim==12 
+            τgrid = T[0.4,0.66,1,1.5,2.2,3.3,5,7.5,12,18,27,Inf]    
         else
-            τgrid = T[0.4,0.66,1,1.5,2.2,3.3,5,7.5,12,18,27,Inf]   # 12 
+            @error "points_refineOptim must be 4 or 7 or 12"     
         end           
     end    
 
@@ -1006,9 +1027,13 @@ end
 function optimize_μτ(y,w,gammafit_ensemble,r,h,G0,xi,param,infeatures,fi,info_i,τ,μ0,T,llik0)
 
     n,p = size(G0)
+    d   = 1 + param.I(round(log(p)/log(2)))  # current depth
     G   = Matrix{T}(undef,n,p*2)
     Gh  = similar(G)
-    res  = Optim.optimize( μ -> Gfitβ2(y,w,gammafit_ensemble,r,h,G0,xi,param,infeatures,fi,info_i,μ,τ,T(0),G,Gh,llik0),[μ0],Optim.BFGS(linesearch = LineSearches.BackTracking()), Optim.Options(iterations = 100,x_tol = param.xtolOptim/T(1+(τ>=10)+(τ>=20)+5*(τ>100))  ))
+
+    x_tol = param.xtolOptim/T(1+(τ>=5)+2*(τ>=10)+4*(τ>100))
+
+    res  = Optim.optimize( μ -> Gfitβ2(y,w,gammafit_ensemble,r,h,G0,xi,param,infeatures,fi,info_i,μ,τ,T(0),G,Gh,llik0),[μ0],Optim.BFGS(linesearch = LineSearches.BackTracking()), Optim.Options(iterations = 100,x_tol = x_tol  ))
 
     return res
 

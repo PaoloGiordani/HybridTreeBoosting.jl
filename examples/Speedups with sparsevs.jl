@@ -1,7 +1,7 @@
 
 """
 
-Short description:
+**Short description:**
 
 - Explore how sparsevs affects speed and accuracy.
 
@@ -10,7 +10,7 @@ Extensive description:
 Sparsevs can be used to speed up SMARTboost with large number of features (p>>100).
 The idea is to to store, at predetermined intervals (a Fibonacci sequence in default), the 
 ten (or other number: param.number_best_features) features that had the lowest loss in each
-split of the treed. For example, for a tree of depth 4, between 10 and 40 features will be stored
+split of the tree. For example, for a tree of depth 4, between 10 and 40 features will be stored
 in this group of best_features at the first update (10 if the same features have the lowest loss
 at each split). In the next tree, only the features in this group will be
 considered as candidates for splitting, saving time for large p. At the next predetermined
@@ -28,7 +28,6 @@ becomes more efficient for larger p*/number_workers (where p* is the number of c
 a given split, and p*<p if sparsevs = :On ), and ii) there is a fixed cost for refineOptim 
 (refine otimization of μ,τ,m given i). Speed-ups are larger for very large p (e.g. p=2000)
 
-paolo.giordani@bi.no
 """
 
 number_workers  = 8  # desired number of workers
