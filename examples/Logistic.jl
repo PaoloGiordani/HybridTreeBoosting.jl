@@ -61,7 +61,7 @@ dgp(x)        = f_1(x[:,1],b1) + f_2(x[:,2],b2) + f_3(x[:,3],b3) + f_4(x[:,4],b4
  
 # END USER'S OPTIONS  
 
-function simul_logistic(n,p,nsimul,modality,f)
+function simul_logistic(n,p,nsimul,modality,dgp)
 
  n_test = 100_000
  loss = :logistic
@@ -140,7 +140,7 @@ function simul_logistic(n,p,nsimul,modality,f)
 end 
 
 
-MSE1,MSE2 = simul_logistic(n,p,nsimul,modality,f)
+MSE1,MSE2 = simul_logistic(n,p,nsimul,modality,dgp)
 
 println("\n n = $n, p = $p, number of simulations = $nsimul, modality = $modality")
 println(" avg out-of-sample RMSE from true natural parameter, SMARTboost    ", sqrt(mean(MSE1)) )

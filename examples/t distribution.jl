@@ -1,18 +1,17 @@
 
 """
 
-Purpose and main results:
+**Purpose and main results:**
 
 - Generates synthetic data with t-distributed errors.
 - Show how to use the option loss = :t for leptokurtic (fat tailed) data, which is recommended over 
   the Huber loss since the degrees of freedom of the t distribution are estimated internally, thus
-  providing the "righ" amount of robustness.
+  providing the "right" amount of robustness (in the sense of maximizing the likelihood.)
 - IF the errors are IID, the :t loss will generally outperform the :L2 loss. However, errors
-  are often not IID, and then the :L2 loss can outperform the :t or :Huber loss even if the errors
-  are leptokurtic.
+  are often not IID, and then the :L2 loss can outperform the :t or :Huber loss even with
+  leptokurtic errors. 
 
 """
-
 number_workers  = 8  # desired number of workers
 
 using Distributed
@@ -45,7 +44,7 @@ dgp(x) = 10.0*sin.(π*x[:,1].*x[:,2]) + 20.0*(x[:,3].-0.5).^2 + 10.0*x[:,4] + 5.
 # End user's options 
 
 # generate data. x is standard uniform, and errors are a mixture of two normals, with right skew
-x,x_test   = rand(n,p), rand(n_test,p)
+x,x_test   = rand(n,p),rand(n_test,p)
 ftrue      = dgp(x)
 ftrue_test = dgp(x_test)
 
@@ -102,7 +101,6 @@ yf_gbm = LightGBM.predict(estimator_huber,x_test)
 yf_gbm = yf_gbm[:,1]    # drop the second dimension or a (n_test,1) matrix 
 MSE3    = sum((yf_gbm - ftrue_test).^2)/n_test
 
-
 println("\n oos RMSE from true f(x), lightGBM, Huber loss                    ", sqrt(MSE3) )
 println(" oos RMSE from true f(x), lightGBM, L2 loss                       ", sqrt(MSE2) )
 
@@ -111,7 +109,7 @@ output = SMARTfit(data,param)
 yf     = SMARTpredict(x_test,output)  
 MSE1    = sum((yf - ftrue_test).^2)/n_test
 
-println(" oos RMSE from true f(x) parameter, SMARTboost, loss = $loss            ", sqrt(MSE1) )
+println(" oos RMSE from true f(x) parameter, SMARTboost, loss = $loss          ", sqrt(MSE1) )
 
 # Fit SMARTboost, :L2 
 param.loss = :L2 
@@ -119,7 +117,7 @@ output_L2 = SMARTfit(data,param)
 yf     = SMARTpredict(x_test,output_L2)  
 MSE0    = sum((yf - ftrue_test).^2)/n_test
 
-println(" oos RMSE from true f(x) parameter, SMARTboost, loss = L2           ", sqrt(MSE0) )
+println(" oos RMSE from true f(x) parameter, SMARTboost, loss = L2         ", sqrt(MSE0) )
 
 println("\n true dof = $dof and estimated dof = $(exp(output.bestparam.coeff_updated[1][2])) ")
 println("\n For more information about coefficients, use SMARTcoeff(output) ")

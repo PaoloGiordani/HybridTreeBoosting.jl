@@ -2,6 +2,9 @@
 
 PG: incomplete !!!!!! 
 
+! CATEGORICALS WITH MORE THAN 2 CATEGORIES WILL NOT WORK PROPERLY WITH OFFSET.
+! Fix it ! 
+
 Short description:
 
 offset is added to gammafit, so user should take logs if needed ... give 
@@ -21,7 +24,7 @@ instructions
 
 Notice that the offset vector is in terms of E(y|x), not in terms of the natural parameters (e.g. it is not logged.)
 
-CATEGORICALS WITH MORE THAN 2 CATEGORIES WILL NOT WORK PROPERLY WITH OFFSET.
+! CATEGORICALS WITH MORE THAN 2 CATEGORIES WILL NOT WORK PROPERLY WITH OFFSET.
 
 offset for ytest 
 

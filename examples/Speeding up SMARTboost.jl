@@ -6,7 +6,7 @@
 ## 1) Modality = :fast 
 
 The safest way to speed up training is by setting modality=:fast. If nfold=1, setting nofullsample=true
-(or, equivalently, modality=:fastest) further reduces computing time by 60% at the cost of fitting the model
+further reduces computing time by 60% at the cost of fitting the model
 on a smaller sample. 
 
 ## 2) Use a coarser grid for feature selection at deeper levels of the tree. (Can be combined with any value of modality) 
@@ -78,8 +78,7 @@ Friedman_function(x) = 10.0*sin.(π*x[:,1].*x[:,2]) + 20.0*(x[:,3].-0.5).^2 + 10
 
 p_star    = 10       # number of relevant features 
 β = randn(p_star)    # draw linear coefficients from a Gaussian distribution
-Linear_function_Gaussian(x)   = x[:,1:length(β)]*β
-f_dgp    = Linear_function_Gaussian
+dgp(x)  = x[:,1:length(β)]*β
 
 # END USER'S INPUTS 
 
@@ -90,10 +89,10 @@ else
     x,x_test = randn(n,p), randn(200_000,p)    
 end     
 
-y       = f_dgp(x) + stde*randn(n)
-f_test  = f_dgp(x_test)
+y       = dgp(x) + stde*randn(n)
+f_test  = dgp(x_test)
 
-# SMARtboost
+# SMARtboost on a sub-sample 
 
 param_subs   = SMARTparam(modality=modality_subs,nfold=nfold_subs,
                 verbose=verbose,warnings=warnings)
@@ -108,8 +107,7 @@ param       = output_subs.bestparam        # sets param at best configuration in
 param.modality = modality_full 
 param.nfold    = nfold_full
 
-
-# ************
+# SMARTboost on full sample 
 param = SMARTparam(modality=:fast,nfold=1,nofullsample=true,priortype=:smooth,
                    verbose=:Off)
 data  = SMARTdata(y,x,param)

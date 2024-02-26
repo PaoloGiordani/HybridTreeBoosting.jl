@@ -48,7 +48,7 @@ f_4(x,b)    = b./(1.0 .+ (exp.(10.0*(x .+ 0.5) ))) .- 0.1*b
 b1,b2,b3,b4 = 0.6,0.6,0.6,0.6
 
 # generate data
-α>0 ? dgp = :gammaPoisson : dgp = :Poisson 
+α>0 ? ddgp = :gammaPoisson : ddgp = :Poisson 
 x,x_test = randn(n,p), randn(n_test,p)
 
 c        = 0    #  
@@ -61,7 +61,7 @@ f_test   = c .+ f_1(x_test[:,1],b1) + f_2(x_test[:,2],b2) + f_3(x_test[:,3],b3) 
 y        = zeros(n)
 y_test   = zeros(n_test)
 
-if dgp==:gammaPoisson
+if ddgp==:gammaPoisson
     for i in eachindex(y)
         r = 1/α                    # gammaPoisson is negative binomial with r=1\α, and p = r./(μ .+ r)
         pg = r./(μ .+ r)

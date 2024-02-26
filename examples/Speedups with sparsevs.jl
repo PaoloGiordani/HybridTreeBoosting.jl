@@ -7,7 +7,7 @@
 
 Extensive description: 
 
-Sparsevs can be used to speed up SMARTboost with large number of features (p>>100).
+Sparsevs is used by SMARTboost to speed up SMARTboost with large number of features (p>>100).
 The idea is to to store, at predetermined intervals (a Fibonacci sequence in default), the 
 ten (or other number: param.number_best_features) features that had the lowest loss in each
 split of the tree. For example, for a tree of depth 4, between 10 and 40 features will be stored
@@ -29,7 +29,6 @@ a given split, and p*<p if sparsevs = :On ), and ii) there is a fixed cost for r
 (refine otimization of μ,τ,m given i). Speed-ups are larger for very large p (e.g. p=2000)
 
 """
-
 number_workers  = 8  # desired number of workers
 
 using Distributed
@@ -73,24 +72,19 @@ Friedman_function(x) = 10.0*sin.(π*x[:,1].*x[:,2]) + 20.0*(x[:,3].-0.5).^2 + 10
 
 p_star    = 10       # number of relevant features 
 β = randn(p_star)
-Linear_function_Gaussian(x)   = x[:,1:length(β)]*β
-
-#f_dgp     = Friedman_function     
-f_dgp    = Linear_function_Gaussian
+dgp(x)  = x[:,1:length(β)]*β
 
 # END USER'S INPUTS 
 
-
-if f_dgp==Friedman_function
+if dgp==Friedman_function
     x,x_test = rand(n,p), rand(200_000,p)    # Friedman function on U(0,1)
 else 
     x,x_test = randn(n,p), randn(200_000,p)    
 end     
 
-
-f       = f_dgp(x)
+f       = dgp(x)
 y      = f + stde*randn(n)
-f_true = f_dgp(x_test)
+f_true = dgp(x_test)
 
 # LightGBM
 

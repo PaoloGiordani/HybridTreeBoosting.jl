@@ -48,8 +48,8 @@ using Random,Plots
 Random.seed!(123)
 
 # Some options for SMARTboost
-loss      = :L2           # :L2 or :logistic (or :Huber or :t). 
-modality  = :fast         # :accurate, :compromise (default), :fast, :fastest 
+loss      = :L2            # :L2 or :logistic (or :Huber or :t). 
+modality  = :fast    # :accurate, :compromise (default), :fast, :fastest 
 
 priortype = :hybrid       # :hybrid (default) or :smooth to force smoothness 
 nfold     = 1             # number of cv folds. 1 faster (single validation sets), default 4 is slower, but more accurate.
@@ -59,24 +59,26 @@ randomizecv = false       # false (default) to use block-cv.
 verbose     = :Off
 warnings    = :On
  
-# options to generate data. y = sum of four additive nonlinear functions + Gaussian noise.
-n,p,n_test  = 10_000,5,100_000
+# options to generate data. y = sum of six additive nonlinear functions + Gaussian noise.
+n,p,n_test  = 10_000,6,100_000
 stde        = 1.0
   
 f_1(x,b)    = b*x .+ 1 
 f_2(x,b)    = 2*sin.(2.5*b*x)  # for higher nonlinearities, try #f_2(x,b) = 2*sin.(2.5*b*x)
 f_3(x,b)    = b*x.^3
 f_4(x,b)    = b./(1.0 .+ (exp.(40.0*(x .- 0.5) ))) .- 0.1*b
+f_5(x,b)    = 1.0./(1.0 .+ (exp.(4.0*(x .- 0.5) ))) .- 0.1*b
+f_6(x,b)    =  (-0.25 .< x .< 0.25) 
 
-b1,b2,b3,b4 = 1.5,2.0,0.5,2.0
+b1,b2,b3,b4,b5,b6 = 1.5,2.0,0.5,2.0,2.0,4.0
 
 # END USER'S OPTIONS
 
 # generate data
 x,x_test = randn(n,p), randn(n_test,p)
 
-f        = f_1(x[:,1],b1) + f_2(x[:,2],b2) + f_3(x[:,3],b3) + f_4(x[:,4],b4)
-f_test   = f_1(x_test[:,1],b1) + f_2(x_test[:,2],b2) + f_3(x_test[:,3],b3) + f_4(x_test[:,4],b4)
+f        = f_1(x[:,1],b1) + f_2(x[:,2],b2) + f_3(x[:,3],b3) + f_4(x[:,4],b4) + f_5(x[:,5],b5) + + f_6(x[:,6],b6)
+f_test   = f_1(x_test[:,1],b1) + f_2(x_test[:,2],b2) + f_3(x_test[:,3],b3) + f_4(x_test[:,4],b4) + f_5(x_test[:,5],b5) + f_6(x_test[:,6],b6)
 
 y = f + stde*randn(n)
 
@@ -86,7 +88,7 @@ param  = SMARTparam(loss=loss,priortype=priortype,randomizecv=randomizecv,nfold=
 
 data   = SMARTdata(y,x,param)
 
-@time output = SMARTfit(data,param)
+output = SMARTfit(data,param)
 yf     = SMARTpredict(x_test,output,predict=:Egamma)  # predict the natural parameter
 
 avgtau,avg_explogtau,avgtau_a,dftau,x_plot,g_plot = SMARTweightedtau(output,data,verbose=true,best_model=false)
@@ -103,11 +105,11 @@ println(" out-of-sample RMSE from truth ", sqrt(sum((yf - f_test).^2)/n_test) )
 
 # feature importance, partial dependence plots and marginal effects
 fnames,fi,fnames_sorted,fi_sorted,sortedindx = SMARTrelevance(output,data,verbose=false);
-q,pdp  = SMARTpartialplot(data,output,[1,2,3,4],predict=:Egamma)
+q,pdp  = SMARTpartialplot(data,output,[1,2,3,4,5,6],predict=:Egamma)
 
 # plot partial dependence in terms of the natural parameter 
-pl   = Vector(undef,4)
-f,b  = [f_1,f_2,f_3,f_4],[b1,b2,b3,b4]
+pl   = Vector(undef,6)
+f,b  = [f_1,f_2,f_3,f_4,f_5,f_6],[b1,b2,b3,b4,b5,b6]
 
 for i in 1:length(pl)
     pl[i]   = plot( [q[:,i]],[pdp[:,i] f[i](q[:,i],b[i]) - f[i](q[:,i]*0,b[i])],
@@ -124,6 +126,6 @@ for i in 1:length(pl)
            )
 end
 
-display(plot(pl[1], pl[2], pl[3], pl[4], layout=(2,2), size=(1300,800)))  # display() will show it in Plots window.
+display(plot(pl[1],pl[2],pl[3],pl[4],pl[5],pl[6],layout=(3,2), size=(1300,800)))  # display() will show it in Plots window.
 
 

@@ -30,7 +30,8 @@ using Distributed
 nprocs()<number_workers ? addprocs( number_workers - nprocs()  ) : addprocs(0)
 @everywhere using SMARTboostPrivate
 
-using DataFrames, Random, Statistics, Plots, Distributions
+using DataFrames, Random, Statistics
+using LinearAlgebra,Plots, Distributions
 using LightGBM
 
 Random.seed!(1)
@@ -227,8 +228,6 @@ estimator.max_depth  = lightcv[minind][1][:max_depth]
 # fit at cv parameters
 LightGBM.fit!(estimator,x_train,y_train,(x_val,y_val),verbosity=-1)
 yf_gbm = LightGBM.predict(estimator,x_test)   # (n_test,num_class) 
-
-yf_gbm = LightGBM.predict(estimator,x_test[1:2,:])   # (n_test,num_class) 
 
 println("\n Experiment = $Experiment, missing_pattern = $missing_pattern, n = $n")
 println("\n out-of-sample RMSE from truth, SMARTboost, modality=:modality  ", sqrt(sum((yf - f_test).^2)/n_test) )

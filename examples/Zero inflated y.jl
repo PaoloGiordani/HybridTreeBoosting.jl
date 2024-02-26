@@ -34,7 +34,6 @@ a Poisson or GammaPoisson.
 where yf = E(y|x) = (1-prob0)*yf_not0
 
 """
-
 number_workers  = 8  # desired number of workers
 
 using Distributed
@@ -83,7 +82,7 @@ f_test   = c .+ f_1(x_test[:,1],b1) + f_2(x_test[:,2],b2) + f_3(x_test[:,3],b3) 
 μ        = exp.(f)        # conditional mean 
 μ_test   = exp.(f_test)   # conditional mean 
 
-# k can depend on features for a /= 1
+# k can depend on features for a ≠ 1
 a        = -0   
 logk     = log(true_k)
 logk     = logk .+ a*(b1*x[:,1] + b2*x[:,2] + b4*x[:,4])
@@ -168,7 +167,7 @@ LightGBM.fit!(estimator,x_train,y_train,(x_val,y_val),verbosity=-1)
 yf_gbm = LightGBM.predict(estimator,x_test)
 yf_gbm = yf_gbm[:,1]    # drop the second dimension or a (n_test,1) matrix 
 
-println("\n out-of-sample RMSE (y-yf), LightGBM cv      ", sqrt(sum((yf_gbm_default - y_test).^2)/n_test) )
+println("\n out-of-sample RMSE (y-yf), LightGBM cv      ", sqrt(sum((yf_gbm - y_test).^2)/n_test) )
 
 
 

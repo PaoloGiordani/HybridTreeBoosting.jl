@@ -1,12 +1,5 @@
 """
 
-** USE A DIFFERENT EXAMPLE OF TIME SERIES THAT IS MORE RELEVANT TO ML? OR ADD ONE AT LEAST? 
-   make sure this works though .... 
-
-CHANGE THIS?
-- ADD CATEGORICAL ? 
-
-
 **Working with time series and longitudinal data (panels).**
 
 - The user only needs to provide features and a vector of dates in SMARTdata() and, if there is overlapping, the overlap parameter in SMARTparam().
