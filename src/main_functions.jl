@@ -943,7 +943,7 @@ function SMARTfit_single(data::SMARTdata, param::SMARTparam; cv_grid=[],cv_diffe
             cvgrid[i]  = bestvalue        
             param      = deepcopy(SMARTtrees_a[best_i].param)
             param.force_sharp_splits = force_sharp_splits
-            param.force_smooth_splits = force_smooth_splits
+            #param.force_smooth_splits = force_smooth_splits
 
             param_given_data!(param,data)
             param_constraints!(param)
