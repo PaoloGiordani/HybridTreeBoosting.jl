@@ -644,7 +644,7 @@ function gridmatrixμ(data::SMARTdata,param::SMARTparam,meanx,stdx;maxn::Int = 1
 
     # Info_x collects information on the feature: dichotomous, number of unique values, mixed discrete-continuous etc...
     # Information that is not needed for forecasting.
-    Info_x = Vector{Info_xi}(undef,p)
+    Info_x = Vector{Info_xi}(undef,p+1)   # p features + projection pursuit
     total_sharp = 0
  
     for i in 1:p
@@ -667,11 +667,14 @@ function gridmatrixμ(data::SMARTdata,param::SMARTparam,meanx,stdx;maxn::Int = 1
             n_cat = 1    
         end     
 
-        Info_x[i] = Info_xi( i,exclude_feature,dichotomous[i],n,n_cat,force_sharp,force_smooth,
+        Info_x[i] = Info_xi( i,exclude_feature,dichotomous[i],false,n,n_cat,force_sharp,force_smooth,
         n_unique_a[i],mixed_dc[i],T(kd[i]),meanx[i],stdx[i],minimum(x[:,i]),maximum(x[:,i]) )
 
     end
     
+    # projection pursuit Info_xi 
+    Info_x[p+1] = Info_xi(p+1,false,false,true,1,1,false,false,1,false,T(0),T(0),T(1),T(0),T(0) )
+
     return mugrid,Info_x
 end
 

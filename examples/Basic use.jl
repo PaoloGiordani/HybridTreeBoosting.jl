@@ -62,7 +62,7 @@ warnings    = :On
 # options to generate data. y = sum of six additive nonlinear functions + Gaussian noise.
 n,p,n_test  = 10_000,6,100_000
 stde        = 1.0
-  
+
 f_1(x,b)    = b*x .+ 1 
 f_2(x,b)    = 2*sin.(2.5*b*x)  # for higher nonlinearities, try #f_2(x,b) = 2*sin.(2.5*b*x)
 f_3(x,b)    = b*x.^3

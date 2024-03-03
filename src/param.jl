@@ -46,6 +46,7 @@ mutable struct SMARTparam{T<:AbstractFloat, I<:Int,R<:Real}
     # Tree structure, priors, categorical data, missing
     depth::I
     depth1::I
+    depthpp::I        # projection pursuit depth. 0 to disactivate
     sigmoid::Symbol  # which simoid function. :sigmoidsqrt or :sigmoidlogistic. sqrt x/sqrt(1+x^2) 10 times faster than exp.
     meanlntau::T              # Assume a mixture of two student-t for log(tau).
     varlntau::T               #
@@ -53,6 +54,9 @@ mutable struct SMARTparam{T<:AbstractFloat, I<:Int,R<:Real}
     multiplier_stdtau::T
     varmu::T                # Helps in preventing very large mu, which otherwise can happen in final trees. 1.0 or even 2.0
     dofmu::T
+    meanlntau_pp::T         # for projection pursuit 
+    varlntau_pp::T 
+    doflntau_pp::T 
     priortype::Symbol
     max_tau_smooth::T         # maximum value of tau allowed when :smooth. 10 can still capture very steep functions in boosting
     min_unique::I         # sharp thresholds are imposed on features with less than min_unique unique values
@@ -274,6 +278,7 @@ function SMARTparam(;
     # Tree structure and priors
     depth  = 5,        # 3 allows 2nd degree interaction and is fast. 4 takes almost twice as much per tree on average. 5 can be 8-10 times slower per tree. However, fewer deeper trees are required, so the actual increase in computing costs is smaller.
     depth1 = 10,
+    depthpp = 0,      # projection pursuit depth. 0 to disactive.
     sigmoid = :sigmoidsqrt,  # :sigmoidsqrt or :sigmoidlogistic
     meanlntau= 1.0,    # Assume a Gaussian for log(tau).
     varlntau = 0.5^2,  # NB see loss.jl/multiplier_stdlogtau_y(). Centers toward quasi-linearity. This is the dispersion of the student-t distribution (not the variance unless dof is high).
@@ -281,6 +286,9 @@ function SMARTparam(;
     multiplier_stdtau = 5.0,
     varmu   = 2.0^2,    # smaller number make it increasingly unlikely to have nonlinear behavior in the tails. DISPERSION, not variance
     dofmu   = 10.0,
+    meanlntau_pp = log(0.5),  # for projection pursuit. Center on quasi-linearity 
+    varlntau_pp = 0.5^2, 
+    doflntau_pp = 10,        # stronger prior to smoothness 
     priortype = :hybrid,
     max_tau_smooth = 20,         # maximum value of tau allowed when :smooth. 10 can still capture very steep functions in boosting
     min_unique  = :Auto,         # Note: over-writes force_sharp_splits unless set to a large number. minimum number of unique values to consider a feature as continuous
@@ -399,8 +407,9 @@ function SMARTparam(;
         end
     end 
      
-    param = SMARTparam(T,I,loss,losscv,Symbol(modality),T.(coeff),coeff_updated,Symbol(verbose),Symbol(warnings),I(num_warnings),randomizecv,I(nfold),nofullsample,T(sharevalidation),indtrain_a,indtest_a,T(stderulestop),T(lambda),I(depth),I(depth1),Symbol(sigmoid),
-        T(meanlntau),T(varlntau),T(doflntau),T(multiplier_stdtau),T(varmu),T(dofmu),Symbol(priortype),T(max_tau_smooth),I(min_unique),mixed_dc_sharp,force_sharp_splits,force_smooth_splits,exclude_features,augment_mugrid,cat_features,cat_features_extended,cat_dictionary,cat_values,cat_globalstats,I(cat_representation_dimension),T(n0_cat),T(mean_encoding_penalization),
+    param = SMARTparam(T,I,loss,losscv,Symbol(modality),T.(coeff),coeff_updated,Symbol(verbose),Symbol(warnings),I(num_warnings),randomizecv,I(nfold),nofullsample,T(sharevalidation),indtrain_a,indtest_a,T(stderulestop),T(lambda),I(depth),I(depth1),I(depthpp),Symbol(sigmoid),
+        T(meanlntau),T(varlntau),T(doflntau),T(multiplier_stdtau),T(varmu),T(dofmu),
+        T(meanlntau_pp),T(varlntau_pp),T(doflntau_pp),Symbol(priortype),T(max_tau_smooth),I(min_unique),mixed_dc_sharp,force_sharp_splits,force_smooth_splits,exclude_features,augment_mugrid,cat_features,cat_features_extended,cat_dictionary,cat_values,cat_globalstats,I(cat_representation_dimension),T(n0_cat),T(mean_encoding_penalization),
         class_values,Bool(delete_missing),mask_missing,missing_features,info_date,T(sparsity_penalization),p0,sharevs,refine_obs_from_vs,finalβ_obs_from_vs,
         I(n_refineOptim),T(subsampleshare_columns),Symbol(sparsevs),T(frequency_update),
         I(number_best_features),best_features,Symbol(pvs),I(p_pvs),I(min_d_pvs),I(mugridpoints),I(taugridpoints),

@@ -265,9 +265,9 @@ function SMARTbst(data0::SMARTdata, param::SMARTparam )
 
     for iter in 1:param.ntrees
         displayinfo(param.verbose,iter)
-        Gβ,i,μ,τ,m,β,fi2  = fit_one_tree(data.y,data.weights,SMARTtrees,rh.r,rh.h,data.x,μgrid,Info_x,τgrid,param)
+        Gβ,i,μ,τ,m,β,fi2,σᵧ  = fit_one_tree(data.y,data.weights,SMARTtrees,rh.r,rh.h,data.x,μgrid,Info_x,τgrid,param)
         param = updatecoeff(param,data.y,SMARTtrees.gammafit+Gβ,data.weights,iter) # +Gβ, NOT +λGβ
-        updateSMARTtrees!(SMARTtrees,Gβ,SMARTtree(i,μ,τ,m,β,fi2),iter,param)          # updates gammafit=gammafit_old+λGβ
+        updateSMARTtrees!(SMARTtrees,Gβ,SMARTtree(i,μ,τ,m,β,fi2,σᵧ),iter,param)          # updates gammafit=gammafit_old+λGβ
         rh,param = gradient_hessian( data.y,data.weights,SMARTtrees.gammafit,param,2)
     end
 
@@ -316,7 +316,7 @@ function SMARTpredict_internal(x::AbstractMatrix,SMARTtrees::SMARTboostTrees,pre
     
         for j in 1:length(SMARTtrees.trees)
             tree     =  SMARTtrees.trees[j]          
-            gammafit += SMARTtrees.param.lambda*SMARTtreebuild(x,tree.i,tree.μ,tree.τ,tree.m,tree.β,SMARTtrees.param)    
+            gammafit += SMARTtrees.param.lambda*SMARTtreebuild(x,tree.i,tree.μ,tree.τ,tree.m,tree.β,tree.σᵧ,SMARTtrees.param)    
         end
     end
 
@@ -336,7 +336,7 @@ function SMARTpredict_distributed(x::AbstractMatrix,SMARTtrees::SMARTboostTrees)
     x       = SharedMatrixErrorRobust(x,SMARTtrees.param)
 
     gammafit = @distributed (+) for j = 1:length(SMARTtrees.trees)
-        SMARTtrees.param.lambda*SMARTtreebuild(x,SMARTtrees.trees[j].i,SMARTtrees.trees[j].μ,SMARTtrees.trees[j].τ,SMARTtrees.trees[j].m,SMARTtrees.trees[j].β,SMARTtrees.param)
+        SMARTtrees.param.lambda*SMARTtreebuild(x,SMARTtrees.trees[j].i,SMARTtrees.trees[j].μ,SMARTtrees.trees[j].τ,SMARTtrees.trees[j].m,SMARTtrees.trees[j].β,SMARTtrees.trees[j].σᵧ,SMARTtrees.param)
     end
 
     return gammafit + SMARTtrees.gamma0*ones(T,size(x,1))
@@ -1516,7 +1516,7 @@ function SMARToutput(SMARTtrees::SMARTboostTrees)
     I = typeof(SMARTtrees.param.depth)
     T = typeof(SMARTtrees.param.lambda)
     ntrees = length(SMARTtrees.trees)
-    d = length(SMARTtrees.trees[1].i)
+    d = length(SMARTtrees.trees[1].τ)
 
     i   = Matrix{I}(undef,ntrees,d)
     μ   = Matrix{T}(undef,ntrees,d)
