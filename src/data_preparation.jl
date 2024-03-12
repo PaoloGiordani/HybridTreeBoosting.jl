@@ -646,7 +646,7 @@ function gridmatrixμ(data::SMARTdata,param::SMARTparam,meanx,stdx;maxn::Int = 1
     # Information that is not needed for forecasting.
     Info_x = Vector{Info_xi}(undef,p+1)   # p features + projection pursuit
     total_sharp = 0
- 
+
     for i in 1:p
         isempty(param.force_sharp_splits) ? force_sharp=false : force_sharp=param.force_sharp_splits[i] 
         n_unique_a[i]<param.min_unique ? force_sharp=true : nothing

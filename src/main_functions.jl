@@ -30,6 +30,7 @@
 #  SMARToutput             collects fitted parameters in matrices
 #  tight_sparsevs          warns if sparsevs seems to compromise fit 
 #  SMARTweightedtau        computes weighted smoothing parameter
+#  SMARTplotppr            plots projection pursuit regression 
 
 "
     SMARTinfo()
@@ -635,7 +636,7 @@ end
 
 
 """
-    SMARTfit(data,param;cv_grid=[],cv_sparsity=true)
+    SMARTfit(data,param;cv_grid=[],cv_sparsity=:Auto,cv_depthppr=:Auto)
 
 Fits SMARTboost with with k-fold cross-validation of number of trees and depth, and possibly a few more models.
 
@@ -666,10 +667,11 @@ Finally, all the estimated models considered are stacked, with weights chosen to
 
 # Optional inputs
 
-- `cv_grid::Vector`         The code performs a search in the space depth in [2,3,4,5,6], trying to fit few models if possible. Provide a
+- `cv_grid::Vector`         Defaul [2,3,5,6]. The code performs a search in the space depth in [2,3,5,6], trying to fit few models if possible. Provide a
                             vector to over-ride (e.g. [2,4])
-- `cv_sparsity`             If number of features p > min_p_sparsity, cv sparsity penalization.
-- `min_p_sparsity`          [10] minimum number of features for cv of sparsity penalizations hyperparameter
+- `cv_sparsity`             Default :Auto. Set to true to guarantee search over sparsity penalization or false to disactivate (and save computing time.)
+                            In :Auto, whether the cv is performed or not depends on :modality, on the n/p ratio and on the signal-to-noise ratio. 
+- `cv_depthppr`             true to cv whether to add projection pursuit regression. Default is true for modality=:accurate, else false.
 
 
 # Output (named tuple, or vector of named tuple for hurdle models)
@@ -709,17 +711,17 @@ Finally, all the estimated models considered are stacked, with weights chosen to
 
 """
 function SMARTfit(data::SMARTdata, param::SMARTparam; cv_grid=[],cv_different_loss::Bool=false,cv_sharp::Bool=false,
-    cv_sparsity=true,cv_hybrid=true,min_p_sparsity=10,skip_full_sample=false)   # skip_full_sample enforces nofullsample even if nfold=1 (used in other functions, not by user)
+    cv_sparsity=:Auto,cv_hybrid=true,cv_depthppr=:Auto,skip_full_sample=false)   # skip_full_sample enforces nofullsample even if nfold=1 (used in other functions, not by user)
 
     if param.loss in [:hurdleGamma,:hurdleL2loglink,:hurdleL2]
         output = SMARTfit_hurdle(data,param,cv_grid=cv_grid,cv_different_loss=cv_different_loss,cv_sharp=cv_sharp,cv_sparsity=cv_sparsity,
-                                cv_hybrid=cv_hybrid,min_p_sparsity=min_p_sparsity,skip_full_sample=skip_full_sample)
+                                cv_hybrid=cv_hybrid,cv_depthppr=cv_depthppr,skip_full_sample=skip_full_sample)
     elseif param.loss == :multiclass
         output = SMARTfit_multiclass(data,param,cv_grid=cv_grid,cv_different_loss=cv_different_loss,cv_sharp=cv_sharp,cv_sparsity=cv_sparsity,
-                                cv_hybrid=cv_hybrid,min_p_sparsity=min_p_sparsity,skip_full_sample=skip_full_sample)
+                                cv_hybrid=cv_hybrid,cv_depthppr=cv_depthppr,skip_full_sample=skip_full_sample)
     else 
         output = SMARTfit_single(data,param,cv_grid=cv_grid,cv_different_loss=cv_different_loss,cv_sharp=cv_sharp,cv_sparsity=cv_sparsity,
-                       cv_hybrid=cv_hybrid,min_p_sparsity=min_p_sparsity,skip_full_sample=skip_full_sample)
+                       cv_hybrid=cv_hybrid,cv_depthppr=cv_depthppr,skip_full_sample=skip_full_sample)
     end 
 
     return output 
@@ -728,11 +730,11 @@ end
 
 # SMARTfit for a single model.  
 function SMARTfit_single(data::SMARTdata, param::SMARTparam; cv_grid=[],cv_different_loss::Bool=false,cv_sharp::Bool=false,
-        cv_sparsity=true,cv_hybrid=true,min_p_sparsity=10,skip_full_sample=false)   # skip_full_sample enforces nofullsample even if nfold=1 (used in other functions, not by user)
+        cv_sparsity=:Auto,cv_hybrid=true,cv_depthppr=false,skip_full_sample=false)   # skip_full_sample enforces nofullsample even if nfold=1 (used in other functions, not by user)
     
     T,I = param.T,param.I
 
-    additional_models     = 6    # After going through cv_grid, selects best value and fits: hybrid, sparse (up to 3), sharp, different distribution
+    additional_models     = 7    # After going through cv_grid, selects best value and fits: hybrid, depthppr=0, sparse (up to 3), sharp, different distribution
     modality              = param.modality
     param0                = deepcopy(param)
 
@@ -750,8 +752,6 @@ function SMARTfit_single(data::SMARTdata, param::SMARTparam; cv_grid=[],cv_diffe
             cv_grid = [param0.depth]
             user_provided_grid = true 
        end      
-
-       cv_sparsity = false
 
     end  
 
@@ -832,7 +832,7 @@ function SMARTfit_single(data::SMARTdata, param::SMARTparam; cv_grid=[],cv_diffe
             end     
 
             if argmin(lossgrid)==3
-                i_a = [1,2]
+                i_a = [1,2]                         
             elseif argmin(lossgrid)==4
                 break
             else
@@ -842,26 +842,43 @@ function SMARTfit_single(data::SMARTdata, param::SMARTparam; cv_grid=[],cv_diffe
         end 
     end 
 
-    # Additional models: Fit model with sparsity-inducing penalization, on best model fitted so far (including hybrid)
+    # Additional models: Fit model with sparsity-inducing penalization, on best model fitted so far 
 
     best_i      = argmin(lossgrid)
     param       = deepcopy(SMARTtrees_a[best_i].param)
-    p           = size(data.x,2)
+    n,p         = size(data.x)   # not quite the correct #var if, as for categoricals, more are created by SMARTdata, but good enough 
 
     sparsity_grid = T.([0.7,1.1,1.5])           
 
-    if cv_sparsity && p>=min_p_sparsity
+    if cv_sparsity == :Auto      
+
+        yfit = SMARTpredict(data.x,SMARTtrees_a[best_i],predict=:Ey)    
+        R2   = var(yfit)/var(data.y)
+        ess50 = (n/param.loglikdivide)*(R2/(1-R2))       # approximate effective sample size corresponding to R2 at 50%.
+        np_ratio = ess50/p 
+
+        if modality in [:fastest,:fast]
+            cv_sparsity = false 
+        elseif modality == :accurate
+            np_ratio>5_000 ? cv_sparsity = false : cv_sparsity = true  
+        elseif modality == :compromise   # rule of thumb to decide whether it is worth searching over sparsity penalizations. Could be improved.
+            np_ratio>1_000 ? cv_sparsity = false : cv_sparsity = true  
+        end           
+
+    end  
+
+    if cv_sparsity==true 
 
         fnames,fi,fnames_sorted,fi_sorted,sortedindx = SMARTrelevance(SMARTtrees_a[best_i],data)
-        s2 = sqrt(sum(fi.^2)/p)   # L2 measure of std
-        s1 = 1.25*mean(fi)        # L1 measure of std, here just 125/p
+        #s2 = sqrt(sum(fi.^2)/p)   # L2 measure of std
+        #s1 = 1.25*mean(fi)        # L1 measure of std, here just 125/p
         # s2/s1= 1 for Gaussian, <1 is playtokurtic, and >1 if leptokurtic, suggesting sparsity
         
         for (j,sparsity_penalization) in enumerate(sparsity_grid)
 
             param.sparsity_penalization = sparsity_penalization
-            param.exclude_features = fi .< (0.01/p)       # increase speed by excluding features that are irrelevant even without penalization  
- 
+            param.exclude_features = fi .< (0.01/p)       # increase speed by excluding features that are irrelevant (even at default)  
+
             param_given_data!(param,data)
             param_constraints!(param)
 
@@ -881,7 +898,7 @@ function SMARTfit_single(data::SMARTdata, param::SMARTparam; cv_grid=[],cv_diffe
             if j>1 && min(lossgrid[i],lossgrid[i-1])>lossgrid[best_i]   # break (no need for more sparsity)
 
                 param.sparsity_penalization = T(0)
-                param.exclude_features = fill(false,p)
+                param.exclude_features = Vector{Bool}(undef,0)
 
                 param_given_data!(param,data)
                 param_constraints!(param)
@@ -956,6 +973,26 @@ function SMARTfit_single(data::SMARTdata, param::SMARTparam; cv_grid=[],cv_diffe
 
     end        
 
+    # Additional model: no projection pursuit regression
+    if cv_depthppr==:Auto
+        modality==:accurate ? cv_depthppr = true : cv_depthppr = false 
+    end     
+ 
+    if cv_depthppr 
+        i = length(cvgrid0)+3+2                         # 3 is length(sparsity_grid)
+        cvgrid[i]  = bestvalue        
+        param      = deepcopy(SMARTtrees_a[best_i].param)
+        param.depthppr = param.I(0)
+
+        param_given_data!(param,data)
+        param_constraints!(param)
+
+        ntrees,loss,meanloss,stdeloss,SMARTtrees1st,indtest,gammafit_test,y_test,problems = SMARTsequentialcv(data,param,indices=indices)
+        treesize[i],lossgrid[i],meanloss_a[i],stdeloss_a[i]   = ntrees,loss,meanloss,stdeloss
+        SMARTtrees_a[i],gammafit_test_a[i]                    = SMARTtrees1st,gammafit_test
+        problems_somewhere = problems_somewhere + problems
+    end 
+
 
     # Additional model: :sharptree, at previous best values of sparsity and depth.
     # Notes: i) INEFFICIENT IMPLEMENTATION     ii) different from a standard symmetric tree if depth>depth1
@@ -965,7 +1002,7 @@ function SMARTfit_single(data::SMARTdata, param::SMARTparam; cv_grid=[],cv_diffe
         best_i      = argmin(lossgrid)
         param = deepcopy(SMARTtrees_a[best_i].param)
         param.priortype = :sharp
-        i = length(cvgrid0)+3+2             # 3 is length(sparsity_grid)
+        i = length(cvgrid0)+3+3             # 3 is length(sparsity_grid)
         cvgrid[i]  = cvgrid[best_i]        
 
         ntrees,loss,meanloss,stdeloss,SMARTtrees1st,indtest,gammafit_test,y_test,problems = SMARTsequentialcv(data,param,indices=indices)
@@ -980,7 +1017,7 @@ function SMARTfit_single(data::SMARTdata, param::SMARTparam; cv_grid=[],cv_diffe
     # needs values of these coefficients, which param0 does not have.
     bestparam_original_loss = SMARTtrees_a[argmin(lossgrid)].param
 
-    # Additional model 6: try a different distribution (loss), at previous best values of depth and sparsity
+    # Additional model: try a different distribution (loss), at previous best values of depth and sparsity
     best_i = argmin(lossgrid)
     param  = deepcopy(SMARTtrees_a[best_i].param)
 
@@ -1005,7 +1042,7 @@ function SMARTfit_single(data::SMARTdata, param::SMARTparam; cv_grid=[],cv_diffe
 
         ntrees,loss,meanloss,stdeloss,SMARTtrees1st,indtest,gammafit_test,y_test,problems = SMARTsequentialcv(data,param,indices=indices)
 
-        i = length(cvgrid0)+3+3        # 3 is length(sparsity_grid)
+        i = length(cvgrid0)+3+4        # 3 is length(sparsity_grid)
         cvgrid[i]   = cvgrid[best_i]
         lossgrid[i],meanloss_a[i], stdeloss_a[i] = loss,meanloss,stdeloss  # The loss is NOT comparable. 
         treesize[i]     = ntrees
@@ -1128,7 +1165,7 @@ end
 # The two models can be fit separately with no loss since the continuous distribution has zero mass at 0. 
 # The cv is completely independent for the two models. 
 function SMARTfit_hurdle(data::SMARTdata, param::SMARTparam; cv_grid=[],cv_different_loss::Bool=false,cv_sharp::Bool=false,
-    cv_sparsity=true,cv_hybrid=true,min_p_sparsity=10,skip_full_sample=false)   # skip_full_sample enforces nofullsample even if nfold=1 (used in other functions, not by user)
+    cv_sparsity=true,cv_hybrid=true,cv_depthppr=false,skip_full_sample=false)   # skip_full_sample enforces nofullsample even if nfold=1 (used in other functions, not by user)
 
     if param.loss == :hurdleGamma
         loss_not0 = :gamma
@@ -1146,16 +1183,16 @@ function SMARTfit_hurdle(data::SMARTdata, param::SMARTparam; cv_grid=[],cv_diffe
 
     param_0      = deepcopy(param)
     param_0.loss = :logistic
-    output_0 = SMARTfit(data_0,param_0,cv_grid=cv_grid,cv_different_loss=cv_different_loss,cv_sharp=cv_sharp,cv_sparsity=cv_sparsity,
-                            cv_hybrid=cv_hybrid,min_p_sparsity=min_p_sparsity,skip_full_sample=skip_full_sample) 
+    output_0 = SMARTfit_single(data_0,param_0,cv_grid=cv_grid,cv_different_loss=cv_different_loss,cv_sharp=cv_sharp,cv_sparsity=cv_sparsity,
+                            cv_hybrid=cv_hybrid,skip_full_sample=skip_full_sample) 
     data_0 = 0  # free memory 
 
     # y /=0  
     data_not0 = SMARTdata_subset(data,param,data.y .!= 0)
     param_not0 = deepcopy(param)
     param_not0.loss = loss_not0 
-    output_not0 = SMARTfit(data_not0,param_not0,cv_grid=cv_grid,cv_different_loss=cv_different_loss,cv_sharp=cv_sharp,cv_sparsity=cv_sparsity,
-                       cv_hybrid=cv_hybrid,min_p_sparsity=min_p_sparsity,skip_full_sample=skip_full_sample) 
+    output_not0 = SMARTfit_single(data_not0,param_not0,cv_grid=cv_grid,cv_different_loss=cv_different_loss,cv_sharp=cv_sharp,cv_sparsity=cv_sparsity,
+                       cv_hybrid=cv_hybrid,cv_depthppr=cv_depthppr,skip_full_sample=skip_full_sample) 
 
                         
     output = [output_0,output_not0]
@@ -1165,7 +1202,7 @@ end
 
 
 function SMARTfit_multiclass(data::SMARTdata, param::SMARTparam; cv_grid=[],cv_different_loss::Bool=false,cv_sharp::Bool=false,
-    cv_sparsity=true,cv_hybrid=true,min_p_sparsity=10,skip_full_sample=false)   # skip_full_sample enforces nofullsample even if nfold=1 (used in other functions, not by user)
+    cv_sparsity=true,cv_hybrid=true,cv_depthppr=false,skip_full_sample=false)   # skip_full_sample enforces nofullsample even if nfold=1 (used in other functions, not by user)
 
     num_classes  = length(param.class_values)
 
@@ -1179,8 +1216,8 @@ function SMARTfit_multiclass(data::SMARTdata, param::SMARTparam; cv_grid=[],cv_d
 
         new_class_value = T(i-1)          # original class values converted to 0,1,2...
         @. data.y = y0 == new_class_value    
-        output[i] = SMARTfit(data,param_i,cv_grid=cv_grid,cv_different_loss=cv_different_loss,cv_sharp=cv_sharp,cv_sparsity=cv_sparsity,
-                         cv_hybrid=cv_hybrid,min_p_sparsity=min_p_sparsity,skip_full_sample=skip_full_sample)      
+        output[i] = SMARTfit_single(data,param_i,cv_grid=cv_grid,cv_different_loss=cv_different_loss,cv_sharp=cv_sharp,cv_sparsity=cv_sparsity,
+                         cv_hybrid=cv_hybrid,cv_depthppr=cv_depthppr,skip_full_sample=skip_full_sample)      
     end 
  
     @. data.y = y0  
@@ -1496,9 +1533,12 @@ end
 
 """
 
-    SMARToutput(SMARTtrees::SMARTboostTrees)
+    SMARToutput(SMARTtrees::SMARTboostTrees;exclude_pp = true)
 
-Output fitted parameters estimated from each tree, collected in matrices.
+Output fitted parameters estimated from each tree, collected in matrices. Excluded projection pursuit regression parameters.
+
+# Inputs 
+- The default exclude_pp does not give μ and τ for projection pursuit regression. 
 
 # Output
 - `i`         (ntrees,depth) matrix of threshold features
@@ -1511,7 +1551,7 @@ output = SMARTfit(data,param)
 i,μ,τ,fi2 = SMARToutput(output.SMARTtrees)
 
 """
-function SMARToutput(SMARTtrees::SMARTboostTrees)
+function SMARToutput(SMARTtrees::SMARTboostTrees;exclude_pp = true)
 
     I = typeof(SMARTtrees.param.depth)
     T = typeof(SMARTtrees.param.lambda)
@@ -1527,6 +1567,17 @@ function SMARToutput(SMARTtrees::SMARTboostTrees)
         tree = SMARTtrees.trees[j]
         i[j,:],μ[j,:],τ[j,:],fi2[j,:] = tree.i,tree.μ,tree.τ,tree.fi2
     end
+
+    # delete the columns that refer to projection pursuit regression
+    depthppr = SMARTtrees.param.depthppr 
+    depth   = SMARTtrees.param.depth
+
+    if depthppr>0 && exclude_pp
+        i = i[:,1:depth]
+        μ = μ[:,1:depth]
+        τ = τ[:,1:depth]
+        fi2 = fi2[:,1:depth]
+    end  
 
     return i,μ,τ,fi2
 end
@@ -1619,8 +1670,8 @@ function SMARTweightedtau(output,data;verbose::Bool=true,plot_tau::Bool=true,bes
         sorted_feature = fnames_sorted, sorted_importance = fi_sorted, sorted_avgtau = avgtau_a[sortedindx])
         display(df)
         println("\n Average smoothing parameter τ is $(round(avgtau,digits=1)).")
-        println("\n In sufficiently large samples, and if modality=:compromise or :accurate:")
-        println("\n - Values above 20-25 suggest little smoothness in important features. SMARTboost may slightly outperform or slightly underperform other gradient boosting machines.")
+        println("\n In sufficiently large samples, and if modality=:compromise or :accurate")
+        println("\n - Values above 20-25 suggest little smoothness in important features. SMARTboost's performance may slightly outperform or slightly underperform other gradient boosting machines.")
         println(" - At 10-15 or lower, SMARTboost should outperform other gradient boosting machines, or at least be worth including in an ensemble.")
         println(" - At 5-7 or lower, SMARTboost should strongly outperform other gradient boosting machines.")
 
@@ -1633,4 +1684,40 @@ function SMARTweightedtau(output,data;verbose::Bool=true,plot_tau::Bool=true,bes
 
     return T(avgtau),T(exp_avglogtau),T.(avgtau_a),df,x_plot,g_plot
 
+end 
+
+
+# Visualize impact of projection pursuit.
+# Use: 
+# if depthppr>0
+#    yf1,yf0 = SMARTplot_ppr(output,which_tree=1)
+#    plot(yf0,yf1,title="depthppr=$(param.depthppr)")
+# end
+# 
+# where yf0 is the standardized prediction from the tree, and yf1 is the (non-standardized) prediction after ppr      
+function SMARTplot_ppr(output;which_tree=1)
+
+    t = output.SMARTtrees.trees[which_tree]
+    param = output.bestparam
+    depthppr = param.depthppr
+
+    T  = Float32
+    xi = T.([0.01*i for i in -300:300])
+
+    n  = length(xi)
+    G0 = ones(T,n)
+    G   = Matrix{T}(undef,n,2*param.depthppr)
+
+    for d in 1:depthppr 
+        μ  = t.μ[param.depth+d]
+        τ =  t.τ[param.depth+d]
+        G   = Matrix{T}(undef,n,2*size(G0,2))
+        gL  = sigmoidf(xi,μ,τ,param.sigmoid)
+        updateG!(G,G0,gL)
+        G0 = copy(G) 
+    end
+
+    β =  t.β[end]
+
+    return G*β,xi
 end 

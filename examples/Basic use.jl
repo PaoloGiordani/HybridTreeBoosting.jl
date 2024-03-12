@@ -39,13 +39,13 @@ number_workers  = 8  # desired number of workers
 
 using Distributed
 nprocs()<number_workers ? addprocs( number_workers - nprocs()  ) : addprocs(0)
-@everywhere using SMARTboostPrivate
+#@everywhere using SMARTboostPrivate
 
 using Random,Plots 
 
 # USER'S OPTIONS 
 
-Random.seed!(123)
+Random.seed!(1)
 
 # Some options for SMARTboost
 loss      = :L2            # :L2 or :logistic (or :Huber or :t). 
@@ -67,10 +67,10 @@ f_1(x,b)    = b*x .+ 1
 f_2(x,b)    = 2*sin.(2.5*b*x)  # for higher nonlinearities, try #f_2(x,b) = 2*sin.(2.5*b*x)
 f_3(x,b)    = b*x.^3
 f_4(x,b)    = b./(1.0 .+ (exp.(40.0*(x .- 0.5) ))) .- 0.1*b
-f_5(x,b)    = 1.0./(1.0 .+ (exp.(4.0*(x .- 0.5) ))) .- 0.1*b
-f_6(x,b)    =  (-0.25 .< x .< 0.25) 
+f_5(x,b)    = b./(1.0 .+ (exp.(4.0*(x .- 0.5) ))) .- 0.1*b
+f_6(x,b)    = b*(-0.25 .< x .< 0.25) 
 
-b1,b2,b3,b4,b5,b6 = 1.5,2.0,0.5,2.0,2.0,4.0
+b1,b2,b3,b4,b5,b6 = 1.5,2.0,0.5,4.0,5.0,5.0
 
 # END USER'S OPTIONS
 
@@ -127,5 +127,4 @@ for i in 1:length(pl)
 end
 
 display(plot(pl[1],pl[2],pl[3],pl[4],pl[5],pl[6],layout=(3,2), size=(1300,800)))  # display() will show it in Plots window.
-
 
