@@ -35,6 +35,8 @@
 #  refineOptim_m_given_μτ
 #  optimize_μτ     called in refineOptim
 #  fit_one_tree
+#   fit_one_tree_inner 
+#   fit_one_tree_ppr
 #  updateSMARTtrees!
 #  SMARTtreebuild
 #  median_weighted_tau  a weighted median value of τ for each feature
@@ -181,10 +183,10 @@ function sigmoidf(x::AbstractVector{T},μ::T,τ::T,sigmoid::Symbol;dichotomous::
         return g
     end
 
-    if sigmoid==:sigmoidsqrt
+    if sigmoid == :sigmoidsqrt
          g = @. T(0.5) + T(0.5)*( T(0.5)*τ*(x-μ)/sqrt(( T(1.0) + ( T(0.5)*τ*(x-μ) )^2  )) )
-    elseif sigmoid==:sigmoidlogistic
-        g = @. T(1.0) - T(1.0)/(T(1.0) + (exp(τ * (x - μ))))
+    elseif sigmoid == :sigmoidlogistic
+        g = @. T(1) - T(1)/(T(1) + (exp(τ * (x - μ))))
     end
 
     return g
@@ -232,7 +234,7 @@ end
 
 
 # NOTE: for the purpose of evaluating the density, μ is truncated at μmax (e.g. 5). (Some extremely non-Gaussian features may have very large values even when standardized)
-function lnpμ(μ0::Union{T,Vector{T}},varmu::T,dofmu::T;μmax =T(5)) where T<:AbstractFloat
+function lnpμ(μ0::Union{T,Vector{T}},varmu::T,dofmu::T,info_i,d;μmax =T(5)) where T<:AbstractFloat
 
     μ = @. T( (abs(μ0)<=μmax)*μ0 +  (abs(μ0)>μmax)*μmax )
     #s  = sqrt(varmu*(dofmu-T(2))/dofmu)  # to intrepret varmu as an actual variance.
@@ -262,11 +264,17 @@ end
 # function lnpτ(τ0::Union{T,Vector{T}},param::SMARTparam,info_i,d;τmax=T(100) )::T where T<:AbstractFloat     # NOTE: modifications required for τ0 a vector.
 function lnpτ(τ0::T,param::SMARTparam,info_i,d;τmax=T(100) )::T where T<:AbstractFloat
 
+    τ = @.  (abs(τ0)<=τmax)*τ0 +  (τ0>τmax)*τmax 
+
     if param.priortype==:sharp || info_i.force_sharp==true
         return T(0)
     end
 
-    τ = @.  (abs(τ0)<=τmax)*τ0 +  (τ0>τmax)*τmax 
+    if info_i.pp == true   # prior on projection pursuit (not standardized)
+        lnp = sum(logpdft.(log.(τ),param.meanlntau_ppr,sqrt(param.varlntau_ppr),param.doflntau_ppr ))
+        return T(lnp)
+    end      
+
     stdlntau   = sqrt(param.varlntau)                 # to intrepret varlntau as dispersion
     #depth = T( param.depth1+maximum([0.0, 0.5*(param.depth-param.depth1) ]) )  # matters only if prior is modified for d
     #stdlntau  = sqrt( (param.varlntau)*(param.doflntau-T(2))/param.doflntau )  # to intrepret varlntau as an actual variance.
@@ -384,12 +392,12 @@ function logpdfpriors(β,μ,τ,m,d,p,pb,param,info_i,infeatures,fi,T)
         logpdfμ,logpdfτ,logpdfm = 0,0,0
     elseif param.priortype==:sharp
         logpdfτ = 0
-        logpdfμ = lnpμ(μ,param.varmu,param.dofmu)
+        logpdfμ = lnpμ(μ,param.varmu,param.dofmu,info_i,d)
         logpdfm = lnpμ(m,param.varmu,param.dofmu)     # prior for missing value same as for μ
     else
-        logpdfμ = lnpμ(μ,param.varmu,param.dofmu)
+        logpdfμ = lnpμ(μ,param.varmu,param.dofmu,info_i,d)
         logpdfτ = lnpτ(τ,param,info_i,d)
-        logpdfm = lnpμ(m,param.varmu,param.dofmu)     # prior for missing value same as for μ
+        logpdfm = lnpμ(m,param.varmu,param.dofmu,info_i,d)     # prior for missing value same as for μ
     end
 
     logpdfM   = lnpM(param,info_i,infeatures,fi,T)   # sparsity prior
@@ -438,6 +446,10 @@ end
 # number of candidate splits, what type of tree (smooth or sharp), at what level it comes in (first, second ...).
 # However, trying the values {0,1} seems a good choice param.sparsity_penalization, and the range [0-1.5] sensible for full cv.
 function lnpAIC(param::SMARTparam,info_i::Info_xi,infeatures,fi,T)
+
+    if info_i.pp == true 
+        return T(0)
+    end    
 
     isnew=(infeatures[info_i.i]==false)  # feature not currently in model? (to be penalized)
 
@@ -959,20 +971,31 @@ function refineOptim_μτ_excluding_nan(y,w,gammafit_ensemble,r::AbstractVector{
 
     d = 1 + param.I(round(log(size(G0,2))/log(2)))  # current depth (for G)
     coarse_grid = d>=min(param.depth_coarse_grid,param.depth_coarse_grid2)
+    points_refineOptim = param.points_refineOptim
 
     if param.priortype==:sharp || info_i.force_sharp==true
         τgrid = T[Inf]
     else
-        if param.points_refineOptim==4  # in some cases, 4 and then 4 again may be more efficient
+        if points_refineOptim==4  # in some cases, 4 and then 4 again may be more efficient
             τgrid = T[1,3,9,Inf]           
-        elseif param.points_refineOptim==7 || (param.points_refineOptim==12 && coarse_grid && param.ncores<13) 
+        elseif points_refineOptim==7 || (param.points_refineOptim==12 && coarse_grid && param.ncores<13) 
             τgrid = T[0.5,1,2,4,8,16,Inf]           
-        elseif param.points_refineOptim==12 
+        elseif points_refineOptim==12 
             τgrid = T[0.4,0.66,1,1.5,2.2,3.3,5,7.5,12,18,27,Inf]    
         else
             @error "points_refineOptim must be 4 or 7 or 12"     
         end           
     end    
+
+    if info_i.pp == true # for projection pursuit, exclude jumps, include pure linearity
+        if points_refineOptim==4  # in some cases, 4 and then 4 again may be more efficient
+            τgrid = T[0.1,1,3,9]           
+        elseif points_refineOptim==7 
+            τgrid = T[0.1,0.5,1,2,4,8,16]           
+        elseif points_refineOptim==12 
+            τgrid = T[0.1,0.4,0.66,1,1.5,2.2,3.3,5,7.5,12,18,27]    
+        end    
+    end 
 
     if (param.priortype == :smooth) || (info_i.force_smooth==true)
         τgrid = τgrid[τgrid .<= param.max_tau_smooth]
@@ -1144,7 +1167,7 @@ function fit_one_tree_inner(y::AbstractVector{T},w,SMARTtrees::SMARTboostTrees,r
         end
 
         # store values and update matrices and param.best_features
-        ifit, μfit, τfit, mfit, βfit  = vcat(ifit,i),vcat(μfit,μ),vcat(τfit,τ),vcat(mfit,m), β
+        ifit, μfit, τfit, mfit, βfit  = vcat(ifit,i),vcat(μfit,μ),vcat(τfit,τ),vcat(mfit,m),β
         fi2 =vcat(fi2,( sum(gammafit.^2) - sum(gammafit0.^2) )/n)  # compute feature importance: decrease in mse
         G0, loss0, gammafit0 = G, loss, gammafit
 
@@ -1160,6 +1183,44 @@ function fit_one_tree_inner(y::AbstractVector{T},w,SMARTtrees::SMARTboostTrees,r
     end
 
     return gammafit0,ifit,μfit,τfit,mfit,βfit,fi2
+
+end
+
+
+
+# projection pursuit. xi = gammafit/std. info_xi = Info_x[end]. Always fitted on full sample.   
+function fit_one_tree_ppr(y::AbstractVector{T},w,SMARTtrees::SMARTboostTrees,r::AbstractVector{T},h::AbstractVector{T},xi::AbstractVector{T},info_xi,τgrid,param::SMARTparam) where T<:AbstractFloat
+
+    gammafit_ensemble,infeatures,fi = SMARTtrees.gammafit,SMARTtrees.infeatures,SMARTtrees.fi
+
+    n   = length(xi)
+    G0 = ones(T,n,1)
+ 
+    loss0,gammafit0,μfit,τfit,infeatures,fi2,βfit = T(Inf),zeros(T,n),T[],T[],copy(infeatures),T[],T[]
+    maxdepth = param.depthppr
+
+    for depth in 1:maxdepth 
+
+        μ0,τ0,m0 = T(0),T(1),T(0)
+        loss,τ,μ,m = refineOptim(y,w,gammafit_ensemble,r,h,G0,xi,infeatures,fi,info_xi,μ0,τ0,m0,param,τgrid)
+
+        # compute β on the full sample, at selected (ι,τ,μ,m) and update G0
+        G   = Matrix{T}(undef,n,2^depth)
+        Gh  = similar(G)
+        gL  = sigmoidf(xi,μ,τ,param.sigmoid,dichotomous=info_xi.dichotomous)
+        updateG!(G,G0,gL)
+
+        depth==maxdepth ? finalβ="true" : finalβ="false"
+        loss,gammafit,β = fitβ(y,w,gammafit_ensemble,r,h,G,Gh,param,infeatures,fi,info_xi,μ,τ,m,T(-Inf),finalβ=finalβ)
+ 
+        # store values and update matrices
+        μfit,τfit,βfit  = vcat(μfit,μ),vcat(τfit,τ),β
+        fi2 = vcat(fi2,( sum(gammafit.^2) - sum(gammafit0.^2) )/n)  # compute feature importance: decrease in mse
+        G0,loss0,gammafit0 = G,loss,gammafit
+
+    end
+
+    return gammafit0,μfit,τfit,βfit,fi2
 
 end
 
@@ -1212,7 +1273,17 @@ function fit_one_tree(y::AbstractVector{T},w,SMARTtrees::SMARTboostTrees,r::Abst
         βfit[round]=β2;ifit=vcat(ifit,ifit_2); μfit=vcat(μfit,μfit_2); τfit=vcat(τfit,τfit_2); mfit=vcat(mfit,mfit_2); fi2=vcat(fi2,fi2_2)
     end
 
-    return gammafit0,ifit,μfit,τfit,mfit,βfit,fi2
+    if param.depthppr>0
+        σᵧ = std(gammafit0)
+        xi = gammafit0/σᵧ    # !!! must standardize gammafit0 and save std 
+        gammafit0,μfit_pp,τfit_pp,β_pp,fi2_pp = fit_one_tree_ppr(y,w,SMARTtrees,r,h,xi,Info_x[end],τgrid,param)
+        ifit_pp,mfit_pp = fill(-999,param.depthppr),fill(T(NaN),param.depthppr)
+        push!(βfit,β_pp); μfit=vcat(μfit,μfit_pp); τfit=vcat(τfit,τfit_pp); ifit=vcat(ifit,ifit_pp); mfit=vcat(mfit,mfit_pp); fi2=vcat(fi2,fi2_pp)
+    else 
+        σᵧ = T(0)    
+    end     
+
+    return gammafit0,ifit,μfit,τfit,mfit,βfit,fi2,σᵧ
 
 end
 
@@ -1221,7 +1292,7 @@ end
 function updateSMARTtrees!(SMARTtrees,Gβ,tree,ntree,param)
 
   T   = typeof(Gβ[1])
-  n, depth = length(Gβ), length(tree.i)
+  n, depth = length(Gβ),param.depth
 
   SMARTtrees.gammafit   = SMARTtrees.gammafit + SMARTtrees.param.lambda*Gβ
   push!(SMARTtrees.trees,tree)
@@ -1241,24 +1312,26 @@ end
 
 
 
-function SMARTtreebuild(x::AbstractMatrix{T},ij,μj::AbstractVector{T},τj::AbstractVector{T},mj::AbstractVector{T},βj,param::SMARTparam)::AbstractVector{T} where T<:AbstractFloat
+function SMARTtreebuild(x::AbstractMatrix{T},ij,μj::AbstractVector{T},τj::AbstractVector{T},mj::AbstractVector{T},βj,σᵧ::T,param::SMARTparam)::AbstractVector{T} where T<:AbstractFloat
 
     sigmoid = param.sigmoid
-    depth1   = param.depth1
     missing_features = param.missing_features
+    depth = param.depth
+    depth1   = param.depth1
+    depthppr = param.depthppr
 
-    n,p   = size(x)
-    depth = length(ij)
+    n   = size(x,1)
     gammafit = ones(T,n)
 
-    I = typeof(depth1)
-    nrounds = I(ceil( 1+(depth-depth1)/depth1 ))
+    nrounds = typeof(depth)(ceil( 1+(depth-depth1)/depth1 ))
     G   = Matrix{T}(undef,n,2^depth)
 
     for round in 1:nrounds
         G0 = copy(gammafit)
+        d1 = depth1*(round-1)+1
+        d2 = minimum([depth1*round,depth])
 
-        for d in depth1*(round-1)+1:minimum([depth1*round,depth])
+        for d in d1:d2
 
             i,μ,τ,m = ij[d], μj[d], τj[d], mj[d]
 
@@ -1271,13 +1344,28 @@ function SMARTtreebuild(x::AbstractMatrix{T},ij,μj::AbstractVector{T},τj::Abst
 
             G   = Matrix{T}(undef,n,2*size(G0,2))
             gL  = sigmoidf(xi,μ,τ,sigmoid)
-            updateG!(G,G0,gL)
-            G0    = copy(G)
+            updateG!(G,G0,gL)                
+            if d<d2; G0 = copy(G); end;               
         end
 
         gammafit = G*βj[round]
     end
 
+    if depthppr > 0
+        xi = gammafit/σᵧ
+        G0 = ones(T,n) 
+
+        for d in depth+1:depth+depthppr       
+            μ,τ = μj[d],τj[d]
+            G   = Matrix{T}(undef,n,2*size(G0,2))
+            gL  = sigmoidf(xi,μ,τ,sigmoid)
+            updateG!(G,G0,gL)
+            if d<(depth+depthppr); G0 = copy(G); end;         
+        end
+
+        gammafit = G*βj[end]
+    end
+            
     return gammafit
 
 end
@@ -1293,15 +1381,19 @@ end
 function mean_weighted_tau(SMARTtrees)
 
     i,μ,τ,fi2 = SMARToutput(SMARTtrees)
-
+    
     T = eltype(τ)
-    p = max(length(SMARTtrees.infeatures),length(SMARTtrees.meanx))  # they should be the same ...
+    p = length(SMARTtrees.meanx)  
     avgtau = fill(T(0),p)
     Info_x = SMARTtrees.Info_x
-    depth  = length(SMARTtrees.trees[1].i)
+    depth  = SMARTtrees.param.depth
+
+    # ? Why is this producing an error ? Is it only with 1 tree? 
+    #fi2 = fi2[:,1:depth]   # don't count pp
+    #τ   = τ[:,1:depth]
 
     @. fi2 = fi2*(fi2>0) + T(0)*(fi2<0)  # there can be some tiny negative values
-
+    
     for j in 1:p
 
       τj = τ[i.==j]

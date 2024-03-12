@@ -24,6 +24,7 @@ Miscellanea
 
   * `Offset or exposure` (how to add an offset, common in e.g. insurance, biology ...)
   * `Sparsity penalization` (how SMARTboost improves forecasting by feature selection when p is large)
+  * `Projection pursuit regression` (an example where adding a single index model to each tree (the default in SMARTboost) improves forecasting)
   * `Speedups with sparsevs` (how SMARTboost speeds up feature selection when p is large)
 
 # When is SMARTboost likely to outperform (underperform) other GBM like XGB and LightGBM?

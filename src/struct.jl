@@ -20,6 +20,7 @@ Collects information about a single SMART tree of depth d
 - `m`:             vector, d values of m (NaN => m) at each split. NaN if no missing in the feature.
 - `β`:             vector of dimension p (number of features), leaf values
 - `fi2`:           vector, d values of feature importance squared: increase in R2 at each split.
+- `σᵧ`:            std of gammafit for projection pursuit
 """
 struct SMARTtree{T<:AbstractFloat,I<:Int}
     i::AbstractVector{I}                           # selected feature
@@ -28,6 +29,7 @@ struct SMARTtree{T<:AbstractFloat,I<:Int}
     m::AbstractVector{T}
     β::Vector{AbstractVector{T}}  # β from first and second phase
     fi2::AbstractVector{T}    # feature importance squared: increase in R2 at each split, a (depth,1) vector.
+    σᵧ::T 
 end
 
 
@@ -40,6 +42,7 @@ Collects information about a feature that is used only in estimation (not needed
 - `i`:             I, position of feature in data.x
 - `exclude`:       Bool, feature not to be considered for splitting
 - `dichotomous`:   Bool, feature with two values
+- `pp`:            Bool, true if it is a projection pursuit feature
 - `n`:             I, full sample size (may be required for priors when subsampling) 
 - `n_cat`:         I, number of categories. 1 if non-categorical or if dichotomous. 
 - `force_sharp`:   Bool, true if the split is forced to be sharp
@@ -56,6 +59,7 @@ struct Info_xi{T<:AbstractFloat,I<:Int}
     i::I                                        
     exclude::Bool 
     dichotomous::Bool
+    pp::Bool
     n::I            
     n_cat::I
     force_sharp::Bool           
