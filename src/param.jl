@@ -46,6 +46,7 @@ mutable struct SMARTparam{T<:AbstractFloat, I<:Int,R<:Real}
     # Tree structure, priors, categorical data, missing
     depth::I
     depth1::I
+    depthppr::I        # projection pursuit depth. 0 to disactivate
     sigmoid::Symbol  # which simoid function. :sigmoidsqrt or :sigmoidlogistic. sqrt x/sqrt(1+x^2) 10 times faster than exp.
     meanlntau::T              # Assume a mixture of two student-t for log(tau).
     varlntau::T               #
@@ -53,6 +54,9 @@ mutable struct SMARTparam{T<:AbstractFloat, I<:Int,R<:Real}
     multiplier_stdtau::T
     varmu::T                # Helps in preventing very large mu, which otherwise can happen in final trees. 1.0 or even 2.0
     dofmu::T
+    meanlntau_ppr::T         # for projection pursuit 
+    varlntau_ppr::T 
+    doflntau_ppr::T 
     priortype::Symbol
     max_tau_smooth::T         # maximum value of tau allowed when :smooth. 10 can still capture very steep functions in boosting
     min_unique::I         # sharp thresholds are imposed on features with less than min_unique unique values
@@ -274,6 +278,7 @@ function SMARTparam(;
     # Tree structure and priors
     depth  = 5,        # 3 allows 2nd degree interaction and is fast. 4 takes almost twice as much per tree on average. 5 can be 8-10 times slower per tree. However, fewer deeper trees are required, so the actual increase in computing costs is smaller.
     depth1 = 10,
+    depthppr = 2,      # projection pursuit depth. 0 to disactive.
     sigmoid = :sigmoidsqrt,  # :sigmoidsqrt or :sigmoidlogistic
     meanlntau= 1.0,    # Assume a Gaussian for log(tau).
     varlntau = 0.5^2,  # NB see loss.jl/multiplier_stdlogtau_y(). Centers toward quasi-linearity. This is the dispersion of the student-t distribution (not the variance unless dof is high).
@@ -281,6 +286,9 @@ function SMARTparam(;
     multiplier_stdtau = 5.0,
     varmu   = 2.0^2,    # smaller number make it increasingly unlikely to have nonlinear behavior in the tails. DISPERSION, not variance
     dofmu   = 10.0,
+    meanlntau_ppr = log(0.2),  # for projection pursuit regression. Center on quasi-linearity. log(0.2) ≈ -1.6.  
+    varlntau_ppr = 1^2,        # one-sided 
+    doflntau_ppr = 5,        
     priortype = :hybrid,
     max_tau_smooth = 20,         # maximum value of tau allowed when :smooth. 10 can still capture very steep functions in boosting
     min_unique  = :Auto,         # Note: over-writes force_sharp_splits unless set to a large number. minimum number of unique values to consider a feature as continuous
@@ -399,8 +407,9 @@ function SMARTparam(;
         end
     end 
      
-    param = SMARTparam(T,I,loss,losscv,Symbol(modality),T.(coeff),coeff_updated,Symbol(verbose),Symbol(warnings),I(num_warnings),randomizecv,I(nfold),nofullsample,T(sharevalidation),indtrain_a,indtest_a,T(stderulestop),T(lambda),I(depth),I(depth1),Symbol(sigmoid),
-        T(meanlntau),T(varlntau),T(doflntau),T(multiplier_stdtau),T(varmu),T(dofmu),Symbol(priortype),T(max_tau_smooth),I(min_unique),mixed_dc_sharp,force_sharp_splits,force_smooth_splits,exclude_features,augment_mugrid,cat_features,cat_features_extended,cat_dictionary,cat_values,cat_globalstats,I(cat_representation_dimension),T(n0_cat),T(mean_encoding_penalization),
+    param = SMARTparam(T,I,loss,losscv,Symbol(modality),T.(coeff),coeff_updated,Symbol(verbose),Symbol(warnings),I(num_warnings),randomizecv,I(nfold),nofullsample,T(sharevalidation),indtrain_a,indtest_a,T(stderulestop),T(lambda),I(depth),I(depth1),I(depthppr),Symbol(sigmoid),
+        T(meanlntau),T(varlntau),T(doflntau),T(multiplier_stdtau),T(varmu),T(dofmu),
+        T(meanlntau_ppr),T(varlntau_ppr),T(doflntau_ppr),Symbol(priortype),T(max_tau_smooth),I(min_unique),mixed_dc_sharp,force_sharp_splits,force_smooth_splits,exclude_features,augment_mugrid,cat_features,cat_features_extended,cat_dictionary,cat_values,cat_globalstats,I(cat_representation_dimension),T(n0_cat),T(mean_encoding_penalization),
         class_values,Bool(delete_missing),mask_missing,missing_features,info_date,T(sparsity_penalization),p0,sharevs,refine_obs_from_vs,finalβ_obs_from_vs,
         I(n_refineOptim),T(subsampleshare_columns),Symbol(sparsevs),T(frequency_update),
         I(number_best_features),best_features,Symbol(pvs),I(p_pvs),I(min_d_pvs),I(mugridpoints),I(taugridpoints),
@@ -519,8 +528,8 @@ Collects and pre-processes data in preparation for fitting SMARTboost
 
 # Examples of use
     data = SMARTdata(y,x,param)
-    data = SMARTdata(y,x,param,dates=dates,fnames=names)
-    data = SMARTdata(y,df[:,[:CAPE, :momentum ]],param,dates=df.dates,fnames=df.names)
+    data = SMARTdata(y,x,param,dates,fnames=names)
+    data = SMARTdata(y,df[:,[:CAPE, :momentum ]],param,df.dates,fnames=df.names)
     data = SMARTdata(y,df[:,3:end],param)
 
 # Notes
@@ -554,12 +563,14 @@ function SMARTdata(y0::Union{AbstractVector,AbstractMatrix,AbstractDataFrame},x:
         @assert(minimum(weights)>0.0, " weights in SMARTdata() must be strictly positive ")
     end    
 
-    if isempty(fnames) && typeof(x)<:AbstractDataFrame
-        fnames = names(x)
-    elseif !isempty(fnames) && typeof(x)<:AbstractDataFrame
-        rename!(x, fnames)
-    elseif isempty(fnames)
-        fnames = ["x$i" for i in 1:size(x,2)]    
+    fnames1 = copy(fnames)
+
+    if isempty(fnames1) && typeof(x)<:AbstractDataFrame
+        fnames1 = names(x)
+    elseif !isempty(fnames1) && typeof(x)<:AbstractDataFrame
+        rename!(x, fnames1)
+    elseif isempty(fnames1)
+        fnames1 = ["x$i" for i in 1:size(x,2)]    
     end 
 
     if isempty(dates)
@@ -585,9 +596,9 @@ function SMARTdata(y0::Union{AbstractVector,AbstractMatrix,AbstractDataFrame},x:
     if typeof(x) <: AbstractDataFrame
         xp = deepcopy(x)    
     elseif typeof(x) <: AbstractVector    
-        xp = DataFrame(hcat(x),Symbol.(fnames))
+        xp = DataFrame(hcat(x),Symbol.(fnames1))
     else 
-        xp = DataFrame(x,Symbol.(fnames))    
+        xp = DataFrame(x,Symbol.(fnames1))    
     end
 
     if !ordered_dates && isempty(param.indtrain_a)
@@ -620,13 +631,13 @@ function SMARTdata(y0::Union{AbstractVector,AbstractMatrix,AbstractDataFrame},x:
     categorical_features!(param,xp)    # updates param.cat_features_bool and param.cat_features
     missing_features!(param,xp)        # updates param.missing_features
     if param.mask_missing == true 
-        xp,fnames = missing_features_extend_x(param,xp)       #  adds columns to xp 
+        xp,fnames1 = missing_features_extend_x(param,xp)       #  adds columns to xp 
     end
     map_cat_convert_to_float!(xp,param,create_dictionary=true)  # map cat to Dictionary, converts to float 0,1,....
-    extended_categorical_features!(param,fnames)   # finds categorical features needing an extensive (more than one column) representation
+    extended_categorical_features!(param,fnames1)   # finds categorical features needing an extensive (more than one column) representation
     xp = replace_missing_with_nan(xp)   # SharedArray do not accept missing.
 
-    data = SMARTdata(T.(y),convert_df_matrix(xp,T),T.(weights),dates,fnames,param.cat_features,offset)
+    data = SMARTdata(T.(y),convert_df_matrix(xp,T),T.(weights),dates,fnames1,param.cat_features,offset)
 
     return data
 

@@ -7,6 +7,8 @@ SMARTboost has an in-built penalization encouraging a sparse representation.
 This penalization is very mild in modality = :fast, which is close to standard boosting. 
 When modality=:compromise or modality=:accurate, the amount of penalization is automatically cross-validated, ranging
 from none (standard boosting) to quite strong (to capture very sparse representations.)
+Note: this cv is not performed if the effective sample size (which depends on n, loglikvide, and var(yhat)/var(y))
+is large compared to the number of features p.
 
 Our approach to sparsity is builds on Xu et al. 2019, "Gradient Boosted Feature Selection", designed for the n>>p case, 
 implemented by penalizing the introduction of any feature not previously selected, with some important innovations. 
