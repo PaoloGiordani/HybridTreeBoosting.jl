@@ -126,5 +126,5 @@ for i in 1:length(pl)
            )
 end
 
-display(plot(pl[1],pl[2],pl[3],pl[4],pl[5],pl[6],layout=(3,2), size=(1300,800)))  # display() will show it in Plots window.
+display(plot(pl[1],pl[2],pl[3],pl[4],pl[5],pl[6],layout=(3,2), size=(1300,800)))  
 
