@@ -588,8 +588,6 @@ function HTBdata(y0::Union{AbstractVector,AbstractMatrix,AbstractDataFrame},x::U
   
     end
 
-    isempty(offset) ? offset = zeros(T,n) : offset = T.(offset)
-
     # pre-process data
 
     # if x is Float, transform to dataframe for convenient data manipulation
@@ -630,12 +628,23 @@ function HTBdata(y0::Union{AbstractVector,AbstractMatrix,AbstractDataFrame},x::U
     convert_dates_to_real!(xp,param)   # modifies both param and x: updates info_date in param
     categorical_features!(param,xp)    # updates param.cat_features_bool and param.cat_features
     missing_features!(param,xp)        # updates param.missing_features
+
     if param.mask_missing == true 
         xp,fnames1 = missing_features_extend_x(param,xp)       #  adds columns to xp 
     end
+
     map_cat_convert_to_float!(xp,param,create_dictionary=true)  # map cat to Dictionary, converts to float 0,1,....
     extended_categorical_features!(param,fnames1)   # finds categorical features needing an extensive (more than one column) representation
     xp = replace_missing_with_nan(xp)   # SharedArray do not accept missing.
+
+    if !isempty(param.cat_features) && !isempty(offset)
+        @warn "Categorical features with more than two categories are not currently handled correctly (by the mean targeting transformation)
+        with offsets. The program will run but categorical information will be used sub-optimally, particularly if the
+        average offset differs across categories. If categorical features are important, it may be better
+        to omit the offset from HTBdata(), and instead model y/offset with a :L2loglink loss instead of a :gamma, :Poisson or :gammaPoisson."
+    end 
+
+    isempty(offset) ? offset = zeros(T,n) : offset = T.(offset)
 
     data = HTBdata(T.(y),convert_df_matrix(xp,T),T.(weights),dates,fnames1,param.cat_features,offset)
 

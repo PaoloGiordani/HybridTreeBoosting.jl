@@ -256,7 +256,7 @@ function HTBbst(data0::HTBdata, param::HTBparam )
     gammafit                       = data0.offset + fill(gamma0,n) 
 
     param          = updatecoeff(param,data.y,gammafit,data.weights,0)
-    HTBtrees     = HTBoostTrees(param,gamma0,data0.offset,n,p,meanx,stdx,Info_x)
+    HTBtrees       = HTBoostTrees(param,gamma0,data0.offset,n,p,meanx,stdx,Info_x)
     rh,param       = gradient_hessian( data.y,data.weights,gammafit,param,0)
 
     # prelimiminary run to calibrate coefficients and priors
@@ -321,7 +321,9 @@ function HTBpredict_internal(x::AbstractMatrix,HTBtrees::HTBoostTrees,predict;cu
         end
     end
 
-    if !isempty(offset); gammafit = T.(offset) + gammafit; end     
+    if !isempty(offset)
+        gammafit = T.(offset) + gammafit
+    end     
 
     pred = from_gamma_to_Ey(gammafit,HTBtrees.param,predict) # from natural parameter to E(y), depending on predict
 
@@ -547,10 +549,12 @@ function preparedata_predict(x0::Union{AbstractDataFrame,AbstractArray},HTBtrees
     end
 
     x = nan_and_missing_predict(x,param)  # for categorical, replaces nan with missing. For non-categorical, does the contrary 
-    convert_dates_to_real!(x,param,predict=true)   
+    convert_dates_to_real!(x,param,predict=true)
+
     if param.mask_missing == true
         x,fnames = missing_features_extend_x(param,x)      # extend x with dummy features if there were missing in the original dataset
     end 
+
     replace_nan_meanx!(x,param,HTBtrees.meanx)  # only for features NOT in categorical or missing_features
     
     x = prepares_categorical_predict(x,param)  # categoricals are mapped to target encoding values; new categories allowed 

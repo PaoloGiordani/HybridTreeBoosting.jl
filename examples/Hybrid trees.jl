@@ -1,19 +1,20 @@
 
 """
 
-WITH THESE ADDITIVE FUNCTIONS, SKIPPING THE HYBRID CV
-ACTUALLY RESULTS IN ALMOST AS GOOD FIT IF TAU=INF IS ALLOWED. IT'S THE INTERACTION
-THAT IS DIFFICULT, AS IN CALIFORNIA, I.E. PLUCKING "SQUARES" FROM A BOX. THAT'S 
-WHAT I HAVE TO SHOW. 
-
-**Hybrid trees: why smooth trees are not enough.**
+**Hybrid trees: why smooth trees are not always good enough.**
 
 When the smoothness parameter τ is estimated for each split and allowed to take high values,
 including τ=Inf (which corresponds to a sharp split), it's perhaps intuitive to think that a
 smooth tree can capture both smooth and sharp functions. However, this is not necessarily true
-in a boosting context, as illustrated in this script.  
+in a boosting context, as illustrated in this script. 
 
-TRY WITH ONE TREE LAMBDA = 1 TO ILLUSTRATE WHAT HAPPENS THEN. 
+Consider the following example:
+If we are trying to approximate a step function with a single step (second column in the plot),
+a smooth tree which can take high values of τ performs asymptotically as well as a sharp split.
+However, if the step functions has multiple steps (third column in the plot), the fitting function
+is initially smooth, and it is then impossible for the subsequent trees to fully recover a sharp function.
+A hybrid tree attempts to recognize such cases from a preliminary run, and, if necessary, imposes
+sharp splits on some features.
 
 """
 number_workers  = 8  # desired number of workers
@@ -32,7 +33,7 @@ Random.seed!(1)
 loss      = :L2            # :L2 or :logistic (or :Huber or :t). 
 modality  = :fast          # :accurate, :compromise (default), :fast, :fastest 
 
-ntrees    = 1000
+ntrees    = 1000          # maximum number of trees  
 nfold     = 1             # number of cv folds. 1 faster (single validation sets), default 4 is slower, but more accurate.
 
 verbose     = :Off
@@ -63,11 +64,7 @@ f_test   = f_interact(x_test[:,5],x_test[:,6],b_interact) + f_1(x_test[:,1],b1) 
 y = f + stde*randn(n)
 
 # set up HTBparam and HTBdata, then fit and predit
-if ntrees == 1
-    lambda = 1
-else
-    lambda = 0.2 
-end 
+ntrees == 1 ? lambda = 1 : lambda = 0.2
 
 param  = HTBparam(loss=loss,nfold=nfold,verbose=verbose,warnings=warnings,
            modality=modality,nofullsample=true,lambda=lambda,ntrees=ntrees)
@@ -86,15 +83,36 @@ yf     = HTBpredict(x_test,output_s)  # predict the natural parameter
 
 println(" out-of-sample RMSE from truth ", sqrt(sum((yf - f_test).^2)/n_test) )
 
+# After 1 tree, with lambda = 1
+param.ntrees=1 
+param.lambda=param.T(1)
+
+output1 = HTBfit(data,param)
+
 # partial plots 
 q_s,pdp_s  = HTBpartialplot(data,output_s,[1,2,3,4])
 q,pdp  = HTBpartialplot(data,output,[1,2,3,4])
+q,pdp_1  = HTBpartialplot(data,output1,[1,2,3,4])
 
-pl   = Vector(undef,8)
+pl   = Vector(undef,12)
 f,b  = [f_1,f_2,f_3,f_4],[b1,b2,b3,b4]
 
 for i in 1:4
-    pl[i]   = plot( [q_s[:,i]],[pdp_s[:,i] f[i](q_s[:,i],b[i]) - f[i](q_s[:,i]*0,b[i])],
+    pl[i]   = plot( [q_s[:,i]],[pdp_1[:,i] f[i](q_s[:,i],b[i]) - f[i](q_s[:,i]*0,b[i])],
+           label = ["1st tree λ=1" "dgp"],
+           legend = :bottomright,
+           linecolor = [:blue :red],
+           linestyle = [:solid :dot],
+           linewidth = [5 2],
+           titlefont = font(15),
+           legendfont = font(12),
+           xlabel = "x",
+           ylabel = "f(x)",
+           )
+end
+
+for i in 1:4
+    pl[i+4]   = plot( [q_s[:,i]],[pdp_s[:,i] f[i](q_s[:,i],b[i]) - f[i](q_s[:,i]*0,b[i])],
            label = ["smooth" "dgp"],
            legend = :bottomright,
            linecolor = [:blue :red],
@@ -108,7 +126,7 @@ for i in 1:4
 end
 
 for i in 1:4
-    pl[i+4]  = plot( [q[:,i]],[pdp[:,i] f[i](q[:,i],b[i]) - f[i](q[:,i]*0,b[i])],
+    pl[i+8]  = plot( [q[:,i]],[pdp[:,i] f[i](q[:,i],b[i]) - f[i](q[:,i]*0,b[i])],
            label = ["hybrid" "dgp"],
            legend = :bottomright,
            linecolor = [:blue :red],
@@ -121,4 +139,4 @@ for i in 1:4
            )
 end
 
-display(plot(pl[1],pl[2],pl[3],pl[4],pl[5],pl[6],pl[7],pl[8],layout=(2,4), size=(1300,800)))  # display() will show it in Plots window.
+display(plot(pl[1],pl[2],pl[3],pl[4],pl[5],pl[6],pl[7],pl[8],pl[9],pl[10],pl[11],pl[12],layout=(3,4), size=(1300,800)))  # display() will show it in Plots window.

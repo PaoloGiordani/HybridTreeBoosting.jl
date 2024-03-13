@@ -29,7 +29,7 @@
 # -f_posteriors_list()               Creates a vector of functions, each computing the posterior mean of a representation dimension for target encoding (e.g. mean,frequency)
 # -f_priors_list()                   Creates a vector of functions, each computing the prior mean (for forecasting) of a representation dimension for target encoding (e.g. mean,frequency)
 #                                    Not all representation are always used: how many depends on param.cat_representation_dimension
-# - target_encoding_values!()         Computes/draws target encoding values for categorical features. Done once for each training set. 
+# - target_encoding_values!()         Computes target encoding values for categorical features. Done once for each training set. 
 #   - global_stats()                  computes mean,variance,quantile (if :quantile) etc... for all  data
 #   - draw_categoricals
 #     - f_posterior_1                 function to compute the appropriate mean target encoding (first moment) depending on loss 
@@ -73,7 +73,6 @@ end
 
 
 # Replaces categoricals column with target encoding values stored in param.cat_values, unless the variable is dichotomous. 
-# NOTE: assumes categorical information is encoed in one column.
 # If some categorial features requires an extensive (>1 column) representation, it adds columns to x 
 function target_encoding(x0::AbstractMatrix,param::HTBparam)  # modifies only x 
 
@@ -136,8 +135,6 @@ function target_encoding_values!(param::HTBparam,data::HTBdata)    # modifies pa
     end 
 
 end 
-
-
 
 
 # Computes some statistics on the full sample, and calls the appropriate function given param.loss

@@ -160,7 +160,7 @@ f,b  = [f_1,f_2,f_3,f_4],[b1,b2,b3,b4]
 
 for i in 1:length(pl)
         pl[i]   = plot( [q[:,i]],[pdp[:,i] f[i](q[:,i],b[i]) - f[i](q[:,i]*0,b[i])],
-           label = ["htb" "dgp"],
+           label = ["HTB" "dgp"],
            legend = :bottomright,
            linecolor = [:blue :red],
            linestyle = [:solid :dot],

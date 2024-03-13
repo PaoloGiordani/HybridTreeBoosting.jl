@@ -57,7 +57,7 @@ nofullsample = true       # if nfold=1 and nofullsample=true, the model is not r
 
 randomizecv = false       # false (default) to use block-cv. 
 verbose     = :Off
-warnings    = :On
+warnings    = :Off
  
 # options to generate data. y = sum of six additive nonlinear functions + Gaussian noise.
 n,p,n_test  = 10_000,6,100_000
@@ -88,10 +88,10 @@ param  = HTBparam(loss=loss,priortype=priortype,randomizecv=randomizecv,nfold=nf
 
 data   = HTBdata(y,x,param)
 
-output = HTBfit(data,param)
+@time output = HTBfit(data,param)
 yf     = HTBpredict(x_test,output,predict=:Egamma)  # predict the natural parameter
 
-avgtau,avg_explogtau,avgtau_a,dftau,x_plot,g_plot = HTBweightedtau(output,data,verbose=true,best_model=false)
+avgtau,avg_explogtau,avgtau_a,dftau,x_plot,g_plot = HTBweightedtau(output,data,verbose=true,best_model=false);
 plot(x_plot,g_plot,title="smoothness of splits",xlabel="standardized x",label=:none)
 
 println(" \n modality = $(param.modality), nfold = $nfold ")
@@ -113,7 +113,7 @@ f,b  = [f_1,f_2,f_3,f_4,f_5,f_6],[b1,b2,b3,b4,b5,b6]
 
 for i in 1:length(pl)
     pl[i]   = plot( [q[:,i]],[pdp[:,i] f[i](q[:,i],b[i]) - f[i](q[:,i]*0,b[i])],
-           label = ["htb" "dgp"],
+           label = ["HTB" "dgp"],
            legend = :bottomright,
            linecolor = [:blue :red],
            linestyle = [:solid :dot],
