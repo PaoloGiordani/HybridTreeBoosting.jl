@@ -1,14 +1,14 @@
 
 """
 
-**Multiclass classification in SMARTboost. Key points:**
+**Multiclass classification in HTBoost. Key points:**
 
 - y is a vector: only one outcome possible. (For multilabel classification, fit a sequence of :logistic models.)
 - Elements of y can be numerical or string. Numericals do not need to be in the format (0,1,2,...). e.g. (1,2,3,...), (22,7,48,...)
     ("a","b","c",...), ("Milan","Rome","Naples",...) are all allowed.
 - num_class is detected automatically, not a user input.  
-- The output from SMARTpredict() is: 
-  yf,class_values,ymax = SMARTpredict(x_test,output). yf is a (n_test,num_class) matrix of probabilities, with yf[i,j] the probability
+- The output from HTBpredict() is: 
+  yf,class_values,ymax = HTBpredict(x_test,output). yf is a (n_test,num_class) matrix of probabilities, with yf[i,j] the probability
   that observation i takes value class_value[j]. class_values is a (num_class) vector of the unique values of y, sorted from smallest to largest.
   ymax is a (n_test) vector the most likely outcome.
 - The training time is proportional to num_classes, and it can therefore be high. There is room for future improvements though,
@@ -19,7 +19,7 @@ number_workers  = 8  # desired number of workers
 
 using Distributed
 nprocs()<number_workers ? addprocs( number_workers - nprocs()  ) : addprocs(0)
-@everywhere using SMARTboostPrivate
+@everywhere using HTBoost
 
 using Random,Statistics
 using LightGBM
@@ -32,7 +32,7 @@ Random.seed!(12)
 n         = 10_000
 p         = 5      # p>=4. Only the first 4 variables are used in the function f(x) below 
 
-# Options for SMARTboost: modality is the key parameter guiding hyperparameter tuning and learning rate.
+# Options for HTBoost: modality is the key parameter guiding hyperparameter tuning and learning rate.
 # :fast and :fastest only fit one model at default parameters, while :compromise and :accurate perform
 # automatic hyperparameter tuning. 
 
@@ -62,8 +62,8 @@ b2v = [0.0,0.3,0.3,1.0,1.0]   # coefficients second class
 function rnd_3classes(x,b1v,b2v)
 
   class_values = [0.0,1.0,2.0]
-#  class_values = [1.0,2.0,3.0]     # SMARTboost works. LightGBM needs converting to 0,1,2 ...
-#  class_values = ["orange","apple","mango"]     # SMARTboost works. LightGBM needs converting to 0,1,2 ...
+#  class_values = [1.0,2.0,3.0]     # HTBoost works. LightGBM needs converting to 0,1,2 ...
+#  class_values = ["orange","apple","mango"]     # HTBoost works. LightGBM needs converting to 0,1,2 ...
 
   b0,b1,b2,b3,b4 = b1v[1],b1v[2],b1v[3],b1v[4],b1v[5]
   d1 = b0 .+ f_1(x[:,1],b1) + f_2(x[:,2],b2) + f_3(x[:,3],b3) + f_4(x[:,4],b4)
@@ -92,19 +92,19 @@ x,x_test = randn(n,p), randn(n_test,p)
 y        = rnd_3classes(x,b1v,b2v)
 y_test   = rnd_3classes(x_test,b1v,b2v)
 
-# fit SMARTboost
-param  = SMARTparam(loss=loss,priortype=priortype,nfold=nfold,
+# fit HTBoost
+param  = HTBparam(loss=loss,priortype=priortype,nfold=nfold,
                    verbose=verbose,warnings=warnings,modality=modality,nofullsample=nofullsample)
     
-data   = SMARTdata(y,x,param)
+data   = HTBdata(y,x,param)
 
-output = SMARTfit(data,param)
-yf,class_values,ymax = SMARTpredict(x_test,output)
+output = HTBfit(data,param)
+yf,class_values,ymax = HTBpredict(x_test,output)
 hit_rate = mean(ymax .== y_test)
 
-loss     = SMARTmulticlass_loss(y_test,yf,param.class_values)
+loss     = HTBmulticlass_loss(y_test,yf,param.class_values)
 
-println("\n SMARTboost hit rate $hit_rate and loss $loss ")
+println("\n HTBoost hit rate $hit_rate and loss $loss ")
 
 # lightGBM 
 estimator = LGBMClassification(   # LGBMRegression(...)
@@ -152,7 +152,7 @@ for i in eachindex(ymax)
 end     
 
 hit_rate = mean(ymax_gbm .== y_test)
-loss     = SMARTmulticlass_loss(y_test,yf_gbm,param.class_values)
+loss     = HTBmulticlass_loss(y_test,yf_gbm,param.class_values)
 
 println("\n LightGBM hit rate $hit_rate and loss $loss ")
 

@@ -1,31 +1,31 @@
 """
 
-**How to inform SMARTboost about categorical features:** 
+**How to inform HTBoost about categorical features:** 
 
 - If cat_features is not specified, non-numerical features (e.g. Strings) are treated as categorical
 - If cat_features is specified, it can be a vector of Integers (positions), a vector of Strings (corresponding to 
   data.fnames, which must be provided) or a vector of Symbols (the features' names in the dataframe).
 
 # Example of use: all categorical features are non-numerical. 
-    param = SMARTparam()  
+    param = HTBparam()  
 
 # Example of use: specify positions in data.x
 
-    param = SMARTparam(cat_features=[1])
-    param = SMARTparam(cat_features=[1,9])
+    param = HTBparam(cat_features=[1])
+    param = HTBparam(cat_features=[1,9])
 
 # Example of use: specify names from data.fnames 
 
-    data = SMARTdata(y,x,param,fnames=["country","industry","earnings","sales"]) 
-    param = SMARTparam(cat_features=["country","industry"])
+    data = HTBdata(y,x,param,fnames=["country","industry","earnings","sales"]) 
+    param = HTBparam(cat_features=["country","industry"])
 
 # Example of use: specify names in dataframe 
 
-    data = SMARTdata(y,x) #  where x is DataFrame                           
-    param = SMARTpara(cat_features=[:country,:industry])         
+    data = HTBdata(y,x) #  where x is DataFrame                           
+    param = HTBparam(cat_features=[:country,:industry])         
 
 
-**How SMARTboost handles categorical features:**
+**How HTBoost handles categorical features:**
 
 - Missing values are assigned to a new category.
 - If there are only 2 categories, a 0-1 dummy is created. For anything more than two categories, it uses a variation of target encoding.
@@ -49,19 +49,19 @@ is high in relation to n (e.g. n=10k,n=1k). (The LightGBM manual https://lightgb
 treating high dimensional categorical features as numerical or embedding them in a lower-dimensional space.)
 
 CatBoost (note: code in separate Python file), in contrast, adopts target encoding as default, can handle very high dimensionality and
-has a sophisticated approach to avoiding data leakage which SMARTboost is missing.
-In spite of the absence of data leakage (which would presumably benefit SMARTboost as well), in this simple simulation set-up
-SMARTboost substantially outperforms CatBoost if n_cat is high and the categorical feature interacts with the continuous feature,
+has a sophisticated approach to avoiding data leakage which HTBoost is missing.
+In spite of the absence of data leakage (which would presumably benefit HTBoost as well), in this simple simulation set-up
+HTBoost substantially outperforms CatBoost if n_cat is high and the categorical feature interacts with the continuous feature,
 presumably because target encoding generates smooth functions in this set-up.   
 It seems reasonable to assume that target encoding, by its very nature, will generate smooth functions in most settings, making 
-SMARTboost a promising tool for high dimensional categorical features. The current treatment of categorical features is however quite
+HTBoost a promising tool for high dimensional categorical features. The current treatment of categorical features is however quite
 crude compared to CatBoost, so some of these gains are not yet realized. 
 
 """
 number_workers  = 8  # desired number of workers
 using Distributed
 nprocs()<number_workers ? addprocs( number_workers - nprocs()  ) : addprocs(0)
-@everywhere using SMARTboostPrivate
+@everywhere using HTBoost
 
 using Random
 using Statistics
@@ -93,7 +93,7 @@ function yhat_x1xcat(b1,b2,x1)
     return yhat
 end 
 
-# SMARTboost parameters 
+# HTBoost parameters 
 loss         = :L2
 modality     = :compromise  
 depth        = 3           # fix depth to speed up estimation  
@@ -144,23 +144,23 @@ end
 y = yhat + stde*randn(n)
 y_test = yhat_test + stde*randn(n_test)
 
-# Fit SMARTboost 
-param  = SMARTparam(loss=loss,modality=modality,depth=depth,nfold=nfold,nofullsample=nofullsample,verbose=verbose,cat_features=cat_features)
-data   = SMARTdata(y,x,param)
-output = SMARTfit(data,param,cv_grid=[depth])
+# Fit HTBoost 
+param  = HTBparam(loss=loss,modality=modality,depth=depth,nfold=nfold,nofullsample=nofullsample,verbose=verbose,cat_features=cat_features)
+data   = HTBdata(y,x,param)
+output = HTBfit(data,param,cv_grid=[depth])
 
 ntrain = Int(round(n*(1-param.sharevalidation)))
-yhat   = SMARTpredict(x[1:ntrain,:],output) 
-yf     = SMARTpredict(x_test,output) 
+yhat   = HTBpredict(x[1:ntrain,:],output) 
+yf     = HTBpredict(x_test,output) 
 
 println("\n n and number of unique features ", [n length(unique(xcat))])
-println("\n SMARTboost " )
+println("\n HTBoost " )
 println("\n in-sample R2           ", 1 - mean((yhat - y[1:ntrain]).^2)/var(y[1:ntrain])  )
 println(" validation  R2         ", 1 - output.loss/var(y[ntrain+1:end]) )
 println(" out-of-samplesample R2 ", 1 - mean((yf - y_test).^2)/var(y_test) )
 
 println(" Average τ on categorical feature is low, suggesting gains from smoothness. ")
-avgtau,avg_explogtau,avgtau_a,dftau,x_plot,g_plot = SMARTweightedtau(output,data,verbose=true,best_model=false)
+avgtau,avg_explogtau,avgtau_a,dftau,x_plot,g_plot = HTBweightedtau(output,data,verbose=true,best_model=false)
 
 # LightGBM
 if ignore_cat_lightgbm == true

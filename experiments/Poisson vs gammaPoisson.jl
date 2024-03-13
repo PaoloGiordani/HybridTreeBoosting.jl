@@ -16,14 +16,14 @@ number_workers  = 8  # desired number of workers
 
 using Distributed
 nprocs()<number_workers ? addprocs( number_workers - nprocs()  ) : addprocs(0)
-#@everywhere using SMARTboostPrivate
+#@everywhere using HTBoost
 
 using Random,Plots,Distributions 
 using LightGBM
 
 # USER'S OPTIONS 
 
-# Some options for SMARTboost
+# Some options for HTBoost
 modality  = :compromise    # :accurate, :compromise (default), :fast, :fastest 
 
 priortype = :hybrid       # :hybrid (default) or :smooth to force smoothness 
@@ -98,12 +98,12 @@ end
 
 
 
-param  = SMARTparam(loss=:Poisson,priortype=priortype,randomizecv=randomizecv,nfold=nfold,
+param  = HTBparam(loss=:Poisson,priortype=priortype,randomizecv=randomizecv,nfold=nfold,
                    verbose=verbose,warnings=warnings,modality=modality,nofullsample=nofullsample)
-data   = SMARTdata(y,x,param)
+data   = HTBdata(y,x,param)
 
-output = SMARTfit(data,param)
-yf     = SMARTpredict(x_test,output,predict=:Ey)
+output = HTBfit(data,param)
+yf     = HTBpredict(x_test,output,predict=:Ey)
 
 deviance[simul,1] = -2(mean(loglik_vector(:Poisson,output.bestparam,y_test,log.(yf))))
 RMSE[simul,1] = sqrt(sum((yf - μ_test).^2)/n_test) 
@@ -116,11 +116,11 @@ output.ntrees==1 ? display(plot(output.meanloss,title="Poisson")) : nothing
 
 
 # gammaPoisson 
-param  = SMARTparam(loss=:gammaPoisson,priortype=priortype,randomizecv=randomizecv,nfold=nfold,
+param  = HTBparam(loss=:gammaPoisson,priortype=priortype,randomizecv=randomizecv,nfold=nfold,
                    verbose=verbose,warnings=warnings,modality=modality,nofullsample=nofullsample)
 
-output = SMARTfit(data,param)
-yf2    = SMARTpredict(x_test,output,predict=:Ey)  
+output = HTBfit(data,param)
+yf2    = HTBpredict(x_test,output,predict=:Ey)  
 
 deviance[simul,2] = -2(mean(loglik_vector(:Poisson,output.bestparam,y_test,log.(yf2))))
 RMSE[simul,2] = sqrt(sum((yf2 - μ_test).^2)/n_test)
@@ -132,11 +132,11 @@ output.ntrees==1 ? display(plot(output.meanloss,title="gammaPoisson")) : nothing
 
 # L2
 
-param  = SMARTparam(loss=:L2,priortype=priortype,randomizecv=randomizecv,nfold=nfold,
+param  = HTBparam(loss=:L2,priortype=priortype,randomizecv=randomizecv,nfold=nfold,
                    verbose=verbose,warnings=warnings,modality=modality,nofullsample=nofullsample)
 
-output = SMARTfit(data,param)
-yf2    = SMARTpredict(x_test,output,predict=:Ey)  
+output = HTBfit(data,param)
+yf2    = HTBpredict(x_test,output,predict=:Ey)  
 
 yf2 = @. yf2*(yf2 > 0) + 0.001*(yf2 <= 0) 
 deviance[simul,3] = -2(mean(loglik_vector(:Poisson,output.bestparam,y_test,log.(yf2))))

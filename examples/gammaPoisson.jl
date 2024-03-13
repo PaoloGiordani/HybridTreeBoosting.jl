@@ -2,7 +2,7 @@
 
 **GammaPoisson for (possibly) overdisperesed count data.**
 
-- SMARTboost with gammaPoisson (aka negative binomial) distribution on simulated data. E(y)=μ, var(y)=μ(1+αμ)
+- HTBoost with gammaPoisson (aka negative binomial) distribution on simulated data. E(y)=μ, var(y)=μ(1+αμ)
 - The overdispersion parameter α is estimated internally. 
 - loss=:Poisson is also available (α=0)
 
@@ -13,7 +13,7 @@ number_workers  = 8  # desired number of workers
 
 using Distributed
 nprocs()<number_workers ? addprocs( number_workers - nprocs()  ) : addprocs(0)
-@everywhere using SMARTboostPrivate
+@everywhere using HTBoost
 
 using Random,Plots,Distributions 
 using LightGBM
@@ -22,7 +22,7 @@ using LightGBM
 
 Random.seed!(1)
 
-# Some options for SMARTboost
+# Some options for HTBoost
 loss      = :gammaPoisson      # :gammaPoisson or Poisson              
 modality  = :fast         # :accurate, :compromise (default), :fast, :fastest 
 
@@ -78,15 +78,15 @@ end
 histogram(y)
 @show [mean(y), std(y), std(μ), maximum(y)]
 
-# set up SMARTparam and SMARTdata, then fit and predit
+# set up HTBparam and HTBdata, then fit and predit
 
 # coefficient estimated internally. 
-param  = SMARTparam(loss=loss,priortype=priortype,randomizecv=randomizecv,nfold=nfold,
+param  = HTBparam(loss=loss,priortype=priortype,randomizecv=randomizecv,nfold=nfold,
                    verbose=verbose,warnings=warnings,modality=modality,nofullsample=nofullsample)
-data   = SMARTdata(y,x,param)
+data   = HTBdata(y,x,param)
 
-@time output = SMARTfit(data,param)
-yf     = SMARTpredict(x_test,output,predict=:Ey)
+@time output = HTBfit(data,param)
+yf     = HTBpredict(x_test,output,predict=:Ey)
 
 println(" \n loss = $(param.loss), modality = $(param.modality), nfold = $nfold ")
 println(" depth = $(output.bestvalue), number of trees = $(output.ntrees) ")
@@ -96,8 +96,8 @@ println(" out-of-sample MAD from true μ      ", mean(abs.(yf - μ_test)) )
 
 println("\n true overdispersion = $α, estimated = $(exp(output.bestparam.coeff_updated[1][1])) ")
 
-println("\n For more information about coefficients, use SMARTcoeff(output) ")
-SMARTcoeff(output)
+println("\n For more information about coefficients, use HTBcoeff(output) ")
+HTBcoeff(output)
 
 # lightGBM
 
@@ -148,9 +148,9 @@ println("\n oss RMSE from truth, μ, LightGBM default ", sqrt(sum((yf_gbm_defaul
 println(" oss RMSE from true μ, LightGBM cv      ", sqrt(sum((yf_gbm - μ_test).^2)/n_test) )
 println(" oos MAD from true μ, LightGBM cv       ", mean(abs.(yf_gbm - μ_test)) )
 
-# SMARTboost partial plots
+# HTBoost partial plots
 
-q,pdp  = SMARTpartialplot(data,output,[1,2,3,4],predict=:Egamma)
+q,pdp  = HTBpartialplot(data,output,[1,2,3,4],predict=:Egamma)
 
 # plot partial dependence in terms of the natural parameter 
 pl   = Vector(undef,4)
@@ -158,7 +158,7 @@ f,b  = [f_1,f_2,f_3,f_4],[b1,b2,b3,b4]
 
 for i in 1:length(pl)
         pl[i]   = plot( [q[:,i]],[pdp[:,i] f[i](q[:,i],b[i]) - f[i](q[:,i]*0,b[i])],
-           label = ["smart" "dgp"],
+           label = ["htb" "dgp"],
            legend = :bottomright,
            linecolor = [:blue :red],
            linestyle = [:solid :dot],

@@ -1,14 +1,14 @@
 
 #
-# SMARTparam    struct. Includes several options for cross-validation.
-# SMARTdata     struct
-# SMARTparam    function
-# SMARTdata     function
-# SMARTdata_sharedarray  function 
-# SMARTdata_subset  function 
+# HTBparam    struct. Includes several options for cross-validation.
+# HTBdata     struct
+# HTBparam    function
+# HTBdata     function
+# HTBdata_sharedarray  function 
+# HTBdata_subset  function 
 #
 # param_given_data!               Sets those parameters that require having the complete data set (e.g. the total number of features...)
-#                                 Typically, those that have a default :Auto in SMARTparam()
+#                                 Typically, those that have a default :Auto in HTBparam()
 # param_constraints!
 # SharedMatrixErrorRobust
 # convert_df_matrix   # converts a dataframe to a Matrix{T} 
@@ -19,7 +19,7 @@
 
 
 # NOTE: several fields are redundant, reflecting early experimentation, and will disappear in later versions
-mutable struct SMARTparam{T<:AbstractFloat, I<:Int,R<:Real}
+mutable struct HTBparam{T<:AbstractFloat, I<:Int,R<:Real}
 
     T::Type 
     I::Type
@@ -106,7 +106,7 @@ mutable struct SMARTparam{T<:AbstractFloat, I<:Int,R<:Real}
     ntrees::I   # number of trees
     theta::T  # penalization of β: multiplies the default precision. Default 1. Higher values give tighter priors.
     loglikdivide::Union{Symbol,T}  # the log-likelhood is divided by this scalar. Used to improve inference when observations are correlated.
-    overlap::I       # used in purged-CV and SMARTloglikdivide
+    overlap::I       # used in purged-CV and HTBloglikdivide
     multiply_pb::T
     varGb::T
     ncores::I        # nprocs()-1, number of cores available
@@ -126,7 +126,7 @@ end
 
 
 # TO DO: extend cat_ind so it can be a vector of strings or names from df 
-struct SMARTdata{T<:AbstractFloat,D<:Any,I<:Int}
+struct HTBdata{T<:AbstractFloat,D<:Any,I<:Int}
     y::AbstractVector{T}
     x::AbstractMatrix{T}
     weights::AbstractVector{T}
@@ -138,9 +138,9 @@ end
 
 
 
-# Creates a SMARTdata dataset by taking a subsample (indexed by ind::Vector{Bool}) of another. 
+# Creates a HTBdata dataset by taking a subsample (indexed by ind::Vector{Bool}) of another. 
 # Example of use: data_not0 = data_take_subset(data,data.y .!= 0)
-function SMARTdata_subset(data::SMARTdata,param::SMARTparam,ind)
+function HTBdata_subset(data::HTBdata,param::HTBparam,ind)
 
     y   = data.y[ind]
     x   = data.x[ind,:]
@@ -151,7 +151,7 @@ function SMARTdata_subset(data::SMARTdata,param::SMARTparam,ind)
     fnames  = data.fnames 
     cat_features = param.cat_features 
 
-    data_ind = SMARTdata(y,SharedMatrixErrorRobust(x,param),weights,dates,fnames,cat_features,offset)
+    data_ind = HTBdata(y,SharedMatrixErrorRobust(x,param),weights,dates,fnames,cat_features,offset)
 
     return data_ind 
 
@@ -160,8 +160,8 @@ end
 
 
 """
-    SMARTparam(;)
-Parameters for SMARTboost
+    HTBparam(;)
+Parameters for HTBoost
 
 # Parameters that are most likely to be modified by user (all inputs are keywords with default values)
 
@@ -170,27 +170,27 @@ Parameters for SMARTboost
                             :L2loglink, :lognormal,:hurdleGamma,:hurdleL2loglink,:hurdleL2 
                             See ?? for explanation and ?? for examples.      
                             MOVE ELSEWHERE !!!!
-                            ADD OFFSET IF RELEVANT .... NB ITS' IN SMARTdata()     
+                            ADD OFFSET IF RELEVANT .... NB ITS' IN HTBdata()     
                             :L2loglink should be used on y>=0; givee a consistent estimate of E(y|x), (unlike taking logs of y),
                             but is slightly more accurate than :L2 in estimating log(E(y|x)). 
 
                             Parameters such as shape for :gamma and (dispersion,dof) for :t and overdispersion for :gammaPoisson
-                            are computed internally by MLE. Inspect them using SMARTcoeff()
-                            In SMARTpredict(), predictions are for E(y) if predict=:Ey, while predict=:Egamma forecasts the relevant parameter otherwise
+                            are computed internally by MLE. Inspect them using HTBcoeff()
+                            In HTBpredict(), predictions are for E(y) if predict=:Ey, while predict=:Egamma forecasts the relevant parameter otherwise
                             ( E(logit(prob)) for :logistic, for :gamma 
 
 - `modality:Symbol`         [:compromise] Options are: :accurate, :compromise, :fast, :fastest.
-                            :fast runs only one model (only cv number of trees) at values defined in param = SMARTparam(). 
+                            :fast runs only one model (only cv number of trees) at values defined in param = HTBparam(). 
                             :fastest runs only one model, setting nfold=1 and nofullsample=true (does not re-estimate on the full sample after cv).
                             Recommended for faster preliminary analysis only.
                             In most cases, :fast and :fastest also use the quadratic approximation to the loss for large samples.
-                            :accurate cross-validates several models (see SMARTfit() for more info).
+                            :accurate cross-validates several models (see HTBfit() for more info).
                             :compromise cross-validates fewer models than :accurate.
                                         
 - `priortype`               [:hybrid] :hybrid encourages smoothness, but allows both smooth and sharp splits, :smooth forces smooth splits, :sharp forces sharp splits, :disperse has no prior on smoothness.
                             Set to :smooth if you want to force derivatives to be defined everywhere. 
 
-- `randomizecv::Bool`       [false] default is purged-cv (see paper); a time series or panel structure is automatically detected (see SMARTdata) if
+- `randomizecv::Bool`       [false] default is purged-cv (see paper); a time series or panel structure is automatically detected (see HTBdata) if
                             if a date column is provided. Set to true for standard cv.
 - `nfold::Int`              [4] n in n-fold cv. Set nfold = 1 for a single validation set (by default the last param.sharevalidation share of the sample).
                             nfold, sharevalidation, and randomizecv are disregarded if train and test observations are provided by the user.
@@ -198,7 +198,7 @@ Parameters for SMARTboost
                             Relevant only if nfold = 1. 
 - `indtrain_a:Vector{Vector{I}} ` [] for user's provided array of indices of train sets. e.g. vector of 5 vectors, each with indices of train set observations
 - `indtest_a:Vector{Vector{I}} `  [] for user's provided array of indices of test sets. e.g. vector of 5 vectors, each with indices of train set observations
-- `nofullsample::Bool`      [false] if true and nfold=1, SMARTboost is not re-estimated on the full sample after cross-validation.
+- `nofullsample::Bool`      [false] if true and nfold=1, HTBoost is not re-estimated on the full sample after cross-validation.
                             Reduces computing time by roughly 60%, at the cost of a modest loss of efficiency.
                             Useful for very large datasets, in preliminary analysis, in simulations, and when instructions specify a train/validation split with no re-estimation on full sample.
                             Activated by default when modality=:fastest.     
@@ -211,14 +211,14 @@ Parameters for SMARTboost
 
 # Parameters that may sometimes be be modified by user
 
-- 'weights`                 NOTE: weights for weighted likelihood are set in SMARTdata, not in SMARTparam.
-- 'offset`                  NOTE: offsets (or exposures) are set in SMARTdata, not in SMARTparam.      
+- 'weights`                 NOTE: weights for weighted likelihood are set in HTBdata, not in HTBparam.
+- 'offset`                  NOTE: offsets (or exposures) are set in HTBdata, not in HTBparam.      
 
 - `lambda::Float`           [0.1 or 0.2] Learning rate. 0.10 for (nearly) best performance. 0.2 is a good compromise. Default is 0.1 of modality=:accruate, and 0.2 otherwise.
-- `depth::Int`              [5] tree depth. Unless modality = :fast or :fastest, this is over-written as depth is cross-validated. See SMARTfit() for more options.
+- `depth::Int`              [5] tree depth. Unless modality = :fast or :fastest, this is over-written as depth is cross-validated. See HTBfit() for more options.
 - `sparsity_penalization`   [0.3] positive numbers encourage sparsity. The range [0.0-1.5] should cover most scenarios. 
                             Automatically cv in modality=:compromise and :accurate. Increase to obtain a more parsimonious model, set to 0 for standard boosting.
-- `ntrees::Int`             [2000] Maximum number of trees. SMARTfit will automatically stop when cv loss stops decreasing.
+- `ntrees::Int`             [2000] Maximum number of trees. HTBfit will automatically stop when cv loss stops decreasing.
 
 ? IS THIS STILL TRUE ABOUT SHAREVS ? WHICH CATEGORY SHOULD IT BE IN ? 
 - `sharevs`                 [1.0] row subsampling in variable selection phase (only to choose feature on which to split.)
@@ -239,8 +239,8 @@ Parameters for SMARTboost
 - `losscv`                  [:default] loss function for cross-validation (:mse,:mae,:logistic,:sign). 
 - `n_refineOptim::Int`      [10^6] MAXIMUM number of observations to use fit μ and τ (split point and smoothness).
                             Lower numbers can provide speed-ups with very large n at some cost in terms of fit.
-- `loglikdivide::Float`     [1.0] with time series and longitudinal (or panel) data, higher numbers increase the strength or all priors. The defaults sets it internally using SMARTloglikdivide(),
-                            when it detects a dates series in SMARTdata().
+- `loglikdivide::Float`     [1.0] with time series and longitudinal (or panel) data, higher numbers increase the strength or all priors. The defaults sets it internally using HTBloglikdivide(),
+                            when it detects a dates series in HTBdata().
 
 
 # Parameters that should rarely require modifying 
@@ -248,14 +248,14 @@ Parameters for SMARTboost
 
 
 
-# Additional parameters to control the cross-validation process can be set in SMARTfit(), but keeping the defaults is generally encouraged.
+# Additional parameters to control the cross-validation process can be set in HTBfit(), but keeping the defaults is generally encouraged.
 
 # Example
-    param = SMARTparam()
+    param = HTBparam()
 # Example
-    param = SMARTparam(nfold=1,sharevalidation=0.2)
+    param = HTBparam(nfold=1,sharevalidation=0.2)
 """
-function SMARTparam(;
+function HTBparam(;
 
     T = Float32,   # Float32 or Float64. Float32 is up to twice as fast for sufficiently large n (due not to faster computations, but faster copying and storing)
     I = typeof(1),   
@@ -334,7 +334,7 @@ function SMARTparam(;
     method_refineOptim = :pmap, #  :pmap, :distributed 
     points_refineOptim = 12,    # number of values of tau for refineOptim. Default 12. Other values allowed are 4,7.
     # miscel                    # becomes 7 once coarse_grid kicks in, unless ncores>12.
-    ntrees = 2000, # number of trees. 1000 is CatBoost default, but in SMARTboost trees are shallow.  
+    ntrees = 2000, # number of trees. 1000 is CatBoost default, but in HTBoost trees are shallow.  
     theta = 1.0,   # numbers larger than 1 imply tighter penalization on β compared to default. 
     loglikdivide = :Auto,   # the log-likelhood is divided by this scalar. Used to improve inference when observations are correlated.
     overlap = 0,
@@ -407,7 +407,7 @@ function SMARTparam(;
         end
     end 
      
-    param = SMARTparam(T,I,loss,losscv,Symbol(modality),T.(coeff),coeff_updated,Symbol(verbose),Symbol(warnings),I(num_warnings),randomizecv,I(nfold),nofullsample,T(sharevalidation),indtrain_a,indtest_a,T(stderulestop),T(lambda),I(depth),I(depth1),I(depthppr),Symbol(sigmoid),
+    param = HTBparam(T,I,loss,losscv,Symbol(modality),T.(coeff),coeff_updated,Symbol(verbose),Symbol(warnings),I(num_warnings),randomizecv,I(nfold),nofullsample,T(sharevalidation),indtrain_a,indtest_a,T(stderulestop),T(lambda),I(depth),I(depth1),I(depthppr),Symbol(sigmoid),
         T(meanlntau),T(varlntau),T(doflntau),T(multiplier_stdtau),T(varmu),T(dofmu),
         T(meanlntau_ppr),T(varlntau_ppr),T(doflntau_ppr),Symbol(priortype),T(max_tau_smooth),I(min_unique),mixed_dc_sharp,force_sharp_splits,force_smooth_splits,exclude_features,augment_mugrid,cat_features,cat_features_extended,cat_dictionary,cat_values,cat_globalstats,I(cat_representation_dimension),T(n0_cat),T(mean_encoding_penalization),
         class_values,Bool(delete_missing),mask_missing,missing_features,info_date,T(sparsity_penalization),p0,sharevs,refine_obs_from_vs,finalβ_obs_from_vs,
@@ -417,7 +417,7 @@ function SMARTparam(;
         I(points_refineOptim),I(ntrees),T(theta),loglikdivide,I(overlap),T(multiply_pb),T(varGb),I(ncores),I(seed_datacv),I(seed_subsampling),newton_gaussian_approx,
         I(newton_max_steps),I(newton_max_steps_final),T(newton_tol),T(newton_tol_final),I(newton_max_steps_refineOptim),linesearch)
 
-    param_constraints!(param) # enforces constraints across options. Must be repeated in SMARTfit.
+    param_constraints!(param) # enforces constraints across options. Must be repeated in HTBfit.
 
     return param
 end
@@ -425,7 +425,7 @@ end
 
 
 # Sets some parameters that require knowledge of data. Notice that data.x (but no data.y) may contain NaN. 
-function param_given_data!(param::SMARTparam,data::SMARTdata)
+function param_given_data!(param::HTBparam,data::HTBdata)
 
     n,p = size(data.x)
     I = typeof(param.nfold)
@@ -433,7 +433,7 @@ function param_given_data!(param::SMARTparam,data::SMARTdata)
 
     # compute loglikdivide unless user provided it 
     if param.loglikdivide == :Auto
-        lld,ess = SMARTloglikdivide(data.y,data.dates,overlap=param.overlap)
+        lld,ess = HTBloglikdivide(data.y,data.dates,overlap=param.overlap)
         param.loglikdivide = T(lld)
     end
 
@@ -475,7 +475,7 @@ end
 
 
 # separate function enforces constraints across options.
-function param_constraints!(param::SMARTparam)
+function param_constraints!(param::HTBparam)
 
     if param.meanlntau==Inf; param.priortype==:sharp; end;
 
@@ -508,14 +508,14 @@ end
 
 
 """
-        SMARTdata(y,x,param,[dates];T=Float32,fnames=[],enforce_dates=true)
-Collects and pre-processes data in preparation for fitting SMARTboost
+        HTBdata(y,x,param,[dates];T=Float32,fnames=[],enforce_dates=true)
+Collects and pre-processes data in preparation for fitting HTBoost
 
 # Inputs
 
 - `y::Vector`              Vector of responses. Can be a vector of lables, or a dataframe with one column. 
-- `x`                      Matrix of features. Can be a vector or matrix of floats, or a dataframe. Converted internally to a Matrix{T}, T as defined in SMARTparam
-- `param::SMARTparam`
+- `x`                      Matrix of features. Can be a vector or matrix of floats, or a dataframe. Converted internally to a Matrix{T}, T as defined in HTBparam
+- `param::HTBparam`
 
 
 # Optional Inputs
@@ -527,16 +527,16 @@ Collects and pre-processes data in preparation for fitting SMARTboost
 - 'offset'                 vector of offsets (exposure), in logs if the loss adopts a loss link (:gamma,:gammaPoisson,:L2loglink,....) 
 
 # Examples of use
-    data = SMARTdata(y,x,param)
-    data = SMARTdata(y,x,param,dates,fnames=names)
-    data = SMARTdata(y,df[:,[:CAPE, :momentum ]],param,df.dates,fnames=df.names)
-    data = SMARTdata(y,df[:,3:end],param)
+    data = HTBdata(y,x,param)
+    data = HTBdata(y,x,param,dates,fnames=names)
+    data = HTBdata(y,df[:,[:CAPE, :momentum ]],param,df.dates,fnames=df.names)
+    data = HTBdata(y,df[:,3:end],param)
 
 # Notes
 - When dates are provided, the data will be ordered chronologically (for cross-validation functions) unless the user has provided explicit training and validation sets.
 """
-function SMARTdata(y0::Union{AbstractVector,AbstractMatrix,AbstractDataFrame},x::Union{AbstractVector,AbstractMatrix,AbstractDataFrame},
-    param::SMARTparam,dates::AbstractVector=[];weights::AbstractVector=[],fnames = Vector{String}[],offset=[])  
+function HTBdata(y0::Union{AbstractVector,AbstractMatrix,AbstractDataFrame},x::Union{AbstractVector,AbstractMatrix,AbstractDataFrame},
+    param::HTBparam,dates::AbstractVector=[];weights::AbstractVector=[],fnames = Vector{String}[],offset=[])  
 
     T    = param.T
     n    = size(y0,1)
@@ -544,7 +544,7 @@ function SMARTdata(y0::Union{AbstractVector,AbstractMatrix,AbstractDataFrame},x:
     if typeof(y0)<:AbstractDataFrame || eltype(y0) <: Union{Bool,Number} || typeof(y0)<:AbstractMatrix
     elseif eltype(y0)==String && param.loss==:multiclass  # accept strings for multiclass 
     else 
-        @error "in SMARTdata, y must be of type Number or Bool (true,false) or DataFrame"
+        @error "in HTBdata, y must be of type Number or Bool (true,false) or DataFrame"
     end      
 
     y = y0[:,1]    
@@ -560,7 +560,7 @@ function SMARTdata(y0::Union{AbstractVector,AbstractMatrix,AbstractDataFrame},x:
     if isempty(weights)
         weights=ones(T,length(y))
     else    
-        @assert(minimum(weights)>0.0, " weights in SMARTdata() must be strictly positive ")
+        @assert(minimum(weights)>0.0, " weights in HTBdata() must be strictly positive ")
     end    
 
     fnames1 = copy(fnames)
@@ -637,21 +637,21 @@ function SMARTdata(y0::Union{AbstractVector,AbstractMatrix,AbstractDataFrame},x:
     extended_categorical_features!(param,fnames1)   # finds categorical features needing an extensive (more than one column) representation
     xp = replace_missing_with_nan(xp)   # SharedArray do not accept missing.
 
-    data = SMARTdata(T.(y),convert_df_matrix(xp,T),T.(weights),dates,fnames1,param.cat_features,offset)
+    data = HTBdata(T.(y),convert_df_matrix(xp,T),T.(weights),dates,fnames1,param.cat_features,offset)
 
     return data
 
 end
 
 
-# SMARTdata() should be invoked only once, by the user. SMARTdata_sharedarray to be used everywhere else.
-# It creates an instance of SMARTdata where x is a SharedArray.
+# HTBdata() should be invoked only once, by the user. HTBdata_sharedarray to be used everywhere else.
+# It creates an instance of HTBdata where x is a SharedArray.
 # I don't think there gains from making y and weights SharedVector. Only x.
 # SharedArray can cause a "mmap: Access is denied" error, presumably on systems shared by several users
-function SMARTdata_sharedarray(y::Union{AbstractVector,AbstractDataFrame},x::Union{AbstractVector,AbstractMatrix,AbstractDataFrame},
-   param::SMARTparam,dates::AbstractVector,weights::AbstractVector,fnames::Vector{String},offset::AbstractVector)
+function HTBdata_sharedarray(y::Union{AbstractVector,AbstractDataFrame},x::Union{AbstractVector,AbstractMatrix,AbstractDataFrame},
+   param::HTBparam,dates::AbstractVector,weights::AbstractVector,fnames::Vector{String},offset::AbstractVector)
     
-   data = SMARTdata(y,SharedMatrixErrorRobust(x,param),weights,dates,fnames,param.cat_features,offset)
+   data = HTBdata(y,SharedMatrixErrorRobust(x,param),weights,dates,fnames,param.cat_features,offset)
 
    return data
 

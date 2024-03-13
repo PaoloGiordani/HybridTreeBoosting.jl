@@ -7,7 +7,7 @@
 
 Extensive description: 
 
-Sparsevs is used by SMARTboost to speed up SMARTboost with large number of features (p>>100).
+Sparsevs is used by HTBoost to speed up HTBoost with large number of features (p>>100).
 The idea is to to store, at predetermined intervals (a Fibonacci sequence in default), the 
 ten (or other number: param.number_best_features) features that had the lowest loss in each
 split of the tree. For example, for a tree of depth 4, between 10 and 40 features will be stored
@@ -33,7 +33,7 @@ number_workers  = 8  # desired number of workers
 
 using Distributed
 nprocs()<number_workers ? addprocs( number_workers - nprocs()  ) : addprocs(0)
-@everywhere using SMARTboostPrivate
+@everywhere using HTBoost
 
 using Random,Statistics
 using LightGBM
@@ -46,7 +46,7 @@ n         = 1_000
 p         = 1_000        # number of features 
 stde      = 1            
 
-# Options for SMARTboost: modality is the key parameter guiding hyperparameter tuning and learning rate.
+# Options for HTBoost: modality is the key parameter guiding hyperparameter tuning and learning rate.
 # :fast and :fastest only fit one model at default parameters, while :compromise and :accurate perform
 # automatic hyperparameter tuning. 
 
@@ -113,25 +113,25 @@ LightGBM.fit!(estimator,x_train,y_train,(x_val,y_val),verbosity=-1)
 yf_gbm = LightGBM.predict(estimator,x_test)
 
 
-# SMARtboost
+# HTBoost
 
-param   = SMARTparam(modality=modality,ntrees=ntrees,sparsevs=sparsevs,
+param   = HTBparam(modality=modality,ntrees=ntrees,sparsevs=sparsevs,
                     frequency_update=frequency_update,number_best_features=number_best_features,
                     nfold=nfold,verbose=:Off,warnings=:On)
 
-data  = SMARTdata(y,x,param)
+data  = HTBdata(y,x,param)
 
 println("\n n = $n, p = $p, modality = $modality, sparsevs = $sparsevs, frequency_update = $frequency_update")
 println(" time to fit ")
 
-@time output = SMARTfit(data,param);
-yf = SMARTpredict(x_test,output,predict=:Ey)  # predict
+@time output = HTBfit(data,param);
+yf = HTBpredict(x_test,output,predict=:Ey)  # predict
 
-println("\n RMSE of SMARTboost from true E(y|x)                   ", sqrt(mean((yf-f_true).^2)) )
+println("\n RMSE of HTBoost from true E(y|x)                   ", sqrt(mean((yf-f_true).^2)) )
 println(" RMSE of LightGBM (default param) from true E(y|x)     ", sqrt(mean((yf_gbm-f_true).^2)) )
 
-fnames,fi,fnames_sorted,fi_sorted,sortedindx = SMARTrelevance(output,data,verbose=false);
-println(" SMARTboost number of included features in final model $(sum(fi.>0))")
+fnames,fi,fnames_sorted,fi_sorted,sortedindx = HTBrelevance(output,data,verbose=false);
+println(" HTBoost number of included features in final model $(sum(fi.>0))")
 
 if param.sparsevs == :On
     @info " sparsevs is :On. Repeat with sparsevs=:Off to track speed gains and any accuracy loss. Speed gains will be smaller if many features are relevant."

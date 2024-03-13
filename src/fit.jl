@@ -37,8 +37,8 @@
 #  fit_one_tree
 #   fit_one_tree_inner 
 #   fit_one_tree_ppr
-#  updateSMARTtrees!
-#  SMARTtreebuild
+#  updateHTBtrees!
+#  HTBtreebuild
 #  median_weighted_tau  a weighted median value of τ for each feature
 #  (tau_info)        provides info on posterior variance of estimated tau.
 # speedup_preliminaryvs() 
@@ -248,7 +248,7 @@ end
 
 
 # Pb = pb*I(p), where Pb is the precision matrix of β. Pb is the prediction of the prior on β
-function pb_compute(r::AbstractVector{T},param::SMARTparam,GGh,n) where T<:AbstractFloat
+function pb_compute(r::AbstractVector{T},param::HTBparam,GGh,n) where T<:AbstractFloat
 
     ndims(GGh)==1 ? diagGGh=sum(GGh) : diagGGh=sum(diag(GGh))
     pb = param.theta*diagGGh/(n*param.varGb)
@@ -261,8 +261,8 @@ end
 
 # Computes log t-density of the prior on log(τ). The mean of this density is a function of the Kantorovic distance of feature i.
 # τ is trucated at τmax=100 to allow for Inf (sharp threshold) to have finite density. d is tree dimension as in size(G,2)= 2^d (e.g. 1 for d=depth1+1)
-# function lnpτ(τ0::Union{T,Vector{T}},param::SMARTparam,info_i,d;τmax=T(100) )::T where T<:AbstractFloat     # NOTE: modifications required for τ0 a vector.
-function lnpτ(τ0::T,param::SMARTparam,info_i,d;τmax=T(100) )::T where T<:AbstractFloat
+# function lnpτ(τ0::Union{T,Vector{T}},param::HTBparam,info_i,d;τmax=T(100) )::T where T<:AbstractFloat     # NOTE: modifications required for τ0 a vector.
+function lnpτ(τ0::T,param::HTBparam,info_i,d;τmax=T(100) )::T where T<:AbstractFloat
 
     τ = @.  (abs(τ0)<=τmax)*τ0 +  (τ0>τmax)*τmax 
 
@@ -317,8 +317,8 @@ end
 
 
 
-# fitβ: Newton optimization of log posterior for SMARTboost with smooth threshold.
-function fitβ(y,w,gammafit_ensemble,r0::AbstractVector{T},h0::AbstractVector{T},G::AbstractArray{T},Gh,param::SMARTparam,infeatures,fi,info_i::Info_xi,
+# fitβ: Newton optimization of log posterior for HTBoost with smooth threshold.
+function fitβ(y,w,gammafit_ensemble,r0::AbstractVector{T},h0::AbstractVector{T},G::AbstractArray{T},Gh,param::HTBparam,infeatures,fi,info_i::Info_xi,
     μ::Union{T,Vector{T}},τ::Union{T,Vector{T}},m::T,llik0::T;finalβ="false")::Tuple{T,Vector{T},Vector{T}}  where T<:AbstractFloat
 
     r,h = copy(r0),copy(h0)
@@ -445,7 +445,7 @@ end
 # In trees, the slope coefficient may be different from 0.9. It depends on the features cross-correlations, the 
 # number of candidate splits, what type of tree (smooth or sharp), at what level it comes in (first, second ...).
 # However, trying the values {0,1} seems a good choice param.sparsity_penalization, and the range [0-1.5] sensible for full cv.
-function lnpAIC(param::SMARTparam,info_i::Info_xi,infeatures,fi,T)
+function lnpAIC(param::HTBparam,info_i::Info_xi,infeatures,fi,T)
 
     if info_i.pp == true 
         return T(0)
@@ -512,7 +512,7 @@ end
 
 
 
-function Gfitβ(y,w,gammafit_ensemble,r::AbstractVector{T},h::AbstractVector{T},G0::AbstractArray{T},xi::AbstractVector{T},param::SMARTparam,infeatures,fi,info_i::Info_xi,μlogτm,G::AbstractMatrix{T},Gh,llik0)::T where T<:AbstractFloat
+function Gfitβ(y,w,gammafit_ensemble,r::AbstractVector{T},h::AbstractVector{T},G0::AbstractArray{T},xi::AbstractVector{T},param::HTBparam,infeatures,fi,info_i::Info_xi,μlogτm,G::AbstractMatrix{T},Gh,llik0)::T where T<:AbstractFloat
 
     μ = μlogτm[1]
     τ = exp(μlogτm[2])
@@ -529,7 +529,7 @@ end
 
 
 # used in refineOptim
-function Gfitβ2(y,w,gammafit_ensemble,r::AbstractVector{T},h::AbstractVector{T},G0::AbstractArray{T},xi::AbstractVector{T},param::SMARTparam,infeatures,fi,info_i::Info_xi,μv,τ::T,m::T,G::AbstractMatrix{T},Gh,llik0)::T where T<:AbstractFloat
+function Gfitβ2(y,w,gammafit_ensemble,r::AbstractVector{T},h::AbstractVector{T},G0::AbstractArray{T},xi::AbstractVector{T},param::HTBparam,infeatures,fi,info_i::Info_xi,μv,τ::T,m::T,G::AbstractMatrix{T},Gh,llik0)::T where T<:AbstractFloat
 
     μ = T(μv[1])
     τ = maximum((τ,T(0.2)))  # Anything lower than 0.2 is still essentially linear, with very flat log-likelihood
@@ -712,7 +712,7 @@ end
 
 # looping using @distributed or (since @distributed requires SharedArray, which can crash on Windows) Distributed.@spawn.
 # pmap is as slow as map in this settings, which I don't understand, since it works as expected in refineOptim.
-function loopfeatures(y,w,gammafit_ensemble,gammafit,r::AbstractVector{T},h::AbstractVector{T},G0::AbstractArray{T},x::AbstractMatrix{T},ifit,infeatures,fi,μgrid,Info_x,τgrid::AbstractVector{T},param::SMARTparam,ntree)::AbstractArray{T} where T<:AbstractFloat
+function loopfeatures(y,w,gammafit_ensemble,gammafit,r::AbstractVector{T},h::AbstractVector{T},G0::AbstractArray{T},x::AbstractMatrix{T},ifit,infeatures,fi,μgrid,Info_x,τgrid::AbstractVector{T},param::HTBparam,ntree)::AbstractArray{T} where T<:AbstractFloat
 
     n,p   = size(x)
     ps    = Vector(1:p)                    # default: included all features
@@ -869,7 +869,7 @@ end
 
 
 function refineOptim(y,w,gammafit_ensemble,r::AbstractVector{T},h::AbstractVector{T},G0::AbstractArray{T},xi::AbstractVector{T},infeatures,fi,info_i::Info_xi,μ0::T,τ0::T,m0::T,
-    param::SMARTparam,gridvectorτ::AbstractVector{T}) where T<:AbstractFloat
+    param::HTBparam,gridvectorτ::AbstractVector{T}) where T<:AbstractFloat
 
     loss,τ,μ,nan_present = refineOptim_μτ_excluding_nan(y,w,gammafit_ensemble,r,h,G0,xi,infeatures,fi,info_i,μ0,τ0,param,gridvectorτ)
 
@@ -954,7 +954,7 @@ end
 # PG: in older versions, τgrid depended on τ0, which I now consider a mistake (because the initial μgrid is very rough,
 #   τ0 can be much smaller than τ in refineOptim.)
 function refineOptim_μτ_excluding_nan(y,w,gammafit_ensemble,r::AbstractVector{T},h::AbstractVector{T},G0::AbstractArray{T},xi::AbstractVector{T},infeatures,fi,info_i::Info_xi,μ0::T,τ0::T,
-    param::SMARTparam,gridvectorτ::AbstractVector{T}) where T<:AbstractFloat
+    param::HTBparam,gridvectorτ::AbstractVector{T}) where T<:AbstractFloat
 
     miss_a = isnan.(xi)          # exclude missing values
     sum(miss_a)>0 ? nan_present=true : nan_present=false
@@ -1088,12 +1088,12 @@ end
 
 
 # param.best_features updated here
-function fit_one_tree_inner(y::AbstractVector{T},w,SMARTtrees::SMARTboostTrees,r::AbstractVector{T},h::AbstractVector{T},x::AbstractArray{T},μgrid,Info_x,τgrid,param::SMARTparam;
+function fit_one_tree_inner(y::AbstractVector{T},w,HTBtrees::HTBoostTrees,r::AbstractVector{T},h::AbstractVector{T},x::AbstractArray{T},μgrid,Info_x,τgrid,param::HTBparam;
     depth2=0,G0::AbstractMatrix{T}=Matrix{T}(undef,0,0) ) where T<:AbstractFloat
 
-    gammafit_ensemble,infeatures,fi = SMARTtrees.gammafit,SMARTtrees.infeatures,SMARTtrees.fi
+    gammafit_ensemble,infeatures,fi = HTBtrees.gammafit,HTBtrees.infeatures,HTBtrees.fi
     best_features_current = Vector{param.I}(undef,0)
-    ntree = length(SMARTtrees.trees)+1
+    ntree = length(HTBtrees.trees)+1
 
     n,p   = size(x)
     I     = param.I
@@ -1189,9 +1189,9 @@ end
 
 
 # projection pursuit. xi = gammafit/std. info_xi = Info_x[end]. Always fitted on full sample.   
-function fit_one_tree_ppr(y::AbstractVector{T},w,SMARTtrees::SMARTboostTrees,r::AbstractVector{T},h::AbstractVector{T},xi::AbstractVector{T},info_xi,τgrid,param::SMARTparam) where T<:AbstractFloat
+function fit_one_tree_ppr(y::AbstractVector{T},w,HTBtrees::HTBoostTrees,r::AbstractVector{T},h::AbstractVector{T},xi::AbstractVector{T},info_xi,τgrid,param::HTBparam) where T<:AbstractFloat
 
-    gammafit_ensemble,infeatures,fi = SMARTtrees.gammafit,SMARTtrees.infeatures,SMARTtrees.fi
+    gammafit_ensemble,infeatures,fi = HTBtrees.gammafit,HTBtrees.infeatures,HTBtrees.fi
 
     n   = length(xi)
     G0 = ones(T,n,1)
@@ -1256,27 +1256,27 @@ end
 
 
 # if depth>depth1, cycles of depth1, at the end of each cycle re-start the tree with fitted values. (only for smooth trees)
-function fit_one_tree(y::AbstractVector{T},w,SMARTtrees::SMARTboostTrees,r::AbstractVector{T},
-    h::AbstractVector{T},x::AbstractArray{T},μgrid,Info_x,τgrid,param::SMARTparam) where T<:AbstractFloat
+function fit_one_tree(y::AbstractVector{T},w,HTBtrees::HTBoostTrees,r::AbstractVector{T},
+    h::AbstractVector{T},x::AbstractArray{T},μgrid,Info_x,τgrid,param::HTBparam) where T<:AbstractFloat
 
     I = param.I
     nrounds = I(ceil( 1+(param.depth-param.depth1)/param.depth1 ))
 
     βfit = Vector{AbstractVector{T}}(undef,nrounds)
 
-    gammafit0,ifit,μfit,τfit,mfit,β1,fi2=fit_one_tree_inner(y,w,SMARTtrees,r,h,x,μgrid,Info_x,τgrid,param;depth2=0)   # standard
+    gammafit0,ifit,μfit,τfit,mfit,β1,fi2=fit_one_tree_inner(y,w,HTBtrees,r,h,x,μgrid,Info_x,τgrid,param;depth2=0)   # standard
     βfit[1]=β1
 
     for round in 2:nrounds
         d2 = minimum([param.depth1,param.depth-(round-1)*param.depth1 ])
-        gammafit0,ifit_2,μfit_2,τfit_2,mfit_2,β2,fi2_2=fit_one_tree_inner(y,w,SMARTtrees,r,h,x,μgrid,Info_x,τgrid,param;depth2=d2,G0=gammafit0[:,:])
+        gammafit0,ifit_2,μfit_2,τfit_2,mfit_2,β2,fi2_2=fit_one_tree_inner(y,w,HTBtrees,r,h,x,μgrid,Info_x,τgrid,param;depth2=d2,G0=gammafit0[:,:])
         βfit[round]=β2;ifit=vcat(ifit,ifit_2); μfit=vcat(μfit,μfit_2); τfit=vcat(τfit,τfit_2); mfit=vcat(mfit,mfit_2); fi2=vcat(fi2,fi2_2)
     end
 
     if param.depthppr>0
         σᵧ = std(gammafit0)
         xi = gammafit0/σᵧ    # !!! must standardize gammafit0 and save std 
-        gammafit0,μfit_pp,τfit_pp,β_pp,fi2_pp = fit_one_tree_ppr(y,w,SMARTtrees,r,h,xi,Info_x[end],τgrid,param)
+        gammafit0,μfit_pp,τfit_pp,β_pp,fi2_pp = fit_one_tree_ppr(y,w,HTBtrees,r,h,xi,Info_x[end],τgrid,param)
         ifit_pp,mfit_pp = fill(-999,param.depthppr),fill(T(NaN),param.depthppr)
         push!(βfit,β_pp); μfit=vcat(μfit,μfit_pp); τfit=vcat(τfit,τfit_pp); ifit=vcat(ifit,ifit_pp); mfit=vcat(mfit,mfit_pp); fi2=vcat(fi2,fi2_pp)
     else 
@@ -1289,30 +1289,30 @@ end
 
 
 
-function updateSMARTtrees!(SMARTtrees,Gβ,tree,ntree,param)
+function updateHTBtrees!(HTBtrees,Gβ,tree,ntree,param)
 
   T   = typeof(Gβ[1])
   n, depth = length(Gβ),param.depth
 
-  SMARTtrees.gammafit   = SMARTtrees.gammafit + SMARTtrees.param.lambda*Gβ
-  push!(SMARTtrees.trees,tree)
+  HTBtrees.gammafit   = HTBtrees.gammafit + HTBtrees.param.lambda*Gβ
+  push!(HTBtrees.trees,tree)
 
-  SMARTtrees.param = param
+  HTBtrees.param = param
 
   for d in 1:depth
-    SMARTtrees.fi2[tree.i[d]]  += tree.fi2[d]
-    SMARTtrees.fr[tree.i[d]]  += 1
+    HTBtrees.fi2[tree.i[d]]  += tree.fi2[d]
+    HTBtrees.fr[tree.i[d]]  += 1
   end
 
-  #fi = sqrt.(abs.(SMARTtrees.fi2.*(SMARTtrees.fi2 .>=0.0) ))  # fi is feature importance
-  fi = SMARTtrees.fr                                           # fi is frequecy of inclusion
-  SMARTtrees.fi = fi/sum(fi)
+  #fi = sqrt.(abs.(HTBtrees.fi2.*(HTBtrees.fi2 .>=0.0) ))  # fi is feature importance
+  fi = HTBtrees.fr                                           # fi is frequecy of inclusion
+  HTBtrees.fi = fi/sum(fi)
 
 end
 
 
 
-function SMARTtreebuild(x::AbstractMatrix{T},ij,μj::AbstractVector{T},τj::AbstractVector{T},mj::AbstractVector{T},βj,σᵧ::T,param::SMARTparam)::AbstractVector{T} where T<:AbstractFloat
+function HTBtreebuild(x::AbstractMatrix{T},ij,μj::AbstractVector{T},τj::AbstractVector{T},mj::AbstractVector{T},βj,σᵧ::T,param::HTBparam)::AbstractVector{T} where T<:AbstractFloat
 
     sigmoid = param.sigmoid
     missing_features = param.missing_features
@@ -1373,20 +1373,20 @@ end
 
 
 # Computes mean weighted value of tau as. Dichotomous features are counted as sharp splits.
-# Can then be used to force sharp splits on those features where SMARTboost selects high τ, if these features contribute non-trivially to the fit.
-# Argument: sharpness may be difficult for SMARTboost to fit due to the greedy, iterative nature of the algorithm (the first values will tend to be smooth)
+# Can then be used to force sharp splits on those features where HTBoost selects high τ, if these features contribute non-trivially to the fit.
+# Argument: sharpness may be difficult for HTBoost to fit due to the greedy, iterative nature of the algorithm (the first values will tend to be smooth)
 # Note: bounds Inf at 40, and treats dichotomous as sharp splits (so τ=40)
 # Use:
-# weighted_meean_tau = meean_weighted_tau(output.SMARTtrees)   # output is (p,1), vector of median weighted values of tau
-function mean_weighted_tau(SMARTtrees)
+# weighted_meean_tau = meean_weighted_tau(output.HTBtrees)   # output is (p,1), vector of median weighted values of tau
+function mean_weighted_tau(HTBtrees)
 
-    i,μ,τ,fi2 = SMARToutput(SMARTtrees)
+    i,μ,τ,fi2 = HTBoutput(HTBtrees)
     
     T = eltype(τ)
-    p = length(SMARTtrees.meanx)  
+    p = length(HTBtrees.meanx)  
     avgtau = fill(T(0),p)
-    Info_x = SMARTtrees.Info_x
-    depth  = SMARTtrees.param.depth
+    Info_x = HTBtrees.Info_x
+    depth  = HTBtrees.param.depth
 
     # ? Why is this producing an error ? Is it only with 1 tree? 
     #fi2 = fi2[:,1:depth]   # don't count pp
@@ -1416,30 +1416,30 @@ end
 
 
 #=
-    tau_info(SMARTtrees::SMARTboostTrees,warnings)
+    tau_info(HTBtrees::HTBoostTrees,warnings)
 
 Provides info on posterior distribution of parameters, particularly mean and variance of log(tau) (with individual values weighted by their variance contribution).
 variance is computed from posterior mean, mse from prior mean
 
 # Example of use
-output = SMARTfit(data,param)
-avglntau,varlntau,mselntau,postprob2 = tau_info(output.SMARTtrees,warnings=:On)
+output = HTBfit(data,param)
+avglntau,varlntau,mselntau,postprob2 = tau_info(output.HTBtrees,warnings=:On)
 
 Note: this computes a variance, while varlntau is a precision (the distribution is tau).
 =#
 # mean and variance of log(τ), weighted by feature importance for each tree
-function tau_info(SMARTtrees::SMARTboostTrees)
+function tau_info(HTBtrees::HTBoostTrees)
 
-    i,μ,τ,fi2 = SMARToutput(SMARTtrees)
+    i,μ,τ,fi2 = HTBoutput(HTBtrees)
 
     lnτ   = log.(τ)
     mw    = sum(lnτ.*fi2)/sum(fi2)
     varw  = sum(fi2.*(lnτ .- mw).^2)/sum(fi2)
-    mse   = sum(fi2.*(lnτ .- SMARTtrees.param.meanlntau).^2)/sum(fi2)
+    mse   = sum(fi2.*(lnτ .- HTBtrees.param.meanlntau).^2)/sum(fi2)
 
     # ex-post probability of second (sharp) component
 
-    param=SMARTtrees.param
+    param=HTBtrees.param
     s   = sqrt(param.varlntau/param.depth)                 # to intrepret varlntau as dispersion
 
     T  = typeof(param.varlntau)
@@ -1460,12 +1460,12 @@ end
 # highly nonlinear functions (to be tested! No evidence at this point that it is ever helpful.)
 # 
 # Use:
-# output = SMARTfit(data,param)
+# output = HTBfit(data,param)
 # param.augment_mugrid = augment_mugrid_from_mu(output,data,npoints)
-# output = SMARTfit(data,param)
+# output = HTBfit(data,param)
 function augment_mugrid_from_mu(output,data;npoints=10)   # number of points  
 
-    i,μ,τ,fi2 = SMARToutput(output.SMARTtrees)
+    i,μ,τ,fi2 = HTBoutput(output.HTBtrees)
     p = size(data.x,2)
   
     augment_mugrid = Vector{Vector}(undef,p)

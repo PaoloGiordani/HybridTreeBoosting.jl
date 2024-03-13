@@ -5,7 +5,7 @@
 
 - Illustrates basic use on a regression problem.
 - param.modality as the most important user's choice, depending on time budget. 
-- In default modality, SMARTboost performs automatic hyperparameter tuning.
+- In default modality, HTBoost performs automatic hyperparameter tuning.
 
 **Extensive description:** 
 
@@ -20,9 +20,9 @@ Simulated iid data, additively nonlinear dgp.
 - average τ (smoothness parameter), which is also plotted. (Smoother functions ==> larger gains compared to other GBM)
 - partial effects plots
 
-Options for SMARTboost: modality is the key parameter guiding hyperparameter tuning and learning rate.
+Options for HTBoost: modality is the key parameter guiding hyperparameter tuning and learning rate.
 :fast and :fastest only fit one model at default parameters, while :compromise and :accurate perform
-automatic hyperparameter tuning. In SMARTboost, it is not recommended that the user performs 
+automatic hyperparameter tuning. In HTBoost, it is not recommended that the user performs 
 hyperparameter tuning by cross-validation, because this process is done automatically if modality is
 :compromise or :accurate. The recommended process is to first run in modality=:fast or :fastest,
 for exploratory analysis and to gauge computing time, and then switch to :compromise (default)
@@ -30,7 +30,7 @@ or :accurate.
 
 Block cross-validation:
 While the default in other GBM is to randomize the allocation to train and validation sets,
-the default in SMARTboost is block cv, which is suitable for time series and panels.
+the default in HTBoost is block cv, which is suitable for time series and panels.
 Set randomizecv=true to bypass this default. 
 See examples/Global equity Panel.jl for further options on cross-validation (e.g. sequential cv).
 
@@ -39,7 +39,7 @@ number_workers  = 8  # desired number of workers
 
 using Distributed
 nprocs()<number_workers ? addprocs( number_workers - nprocs()  ) : addprocs(0)
-#@everywhere using SMARTboostPrivate
+@everywhere using HTBoost
 
 using Random,Plots 
 
@@ -47,9 +47,9 @@ using Random,Plots
 
 Random.seed!(1)
 
-# Some options for SMARTboost
-loss      = :L2            # :L2 or :logistic (or :Huber or :t). 
-modality  = :fast    # :accurate, :compromise (default), :fast, :fastest 
+# Some options for HTBoost
+loss      = :L2            # :L2 is default. Other options for regression are :L2loglink (if y≥0), :t, :Huber
+modality  = :fast          # :accurate, :compromise (default), :fast, :fastest 
 
 priortype = :hybrid       # :hybrid (default) or :smooth to force smoothness 
 nfold     = 1             # number of cv folds. 1 faster (single validation sets), default 4 is slower, but more accurate.
@@ -82,16 +82,16 @@ f_test   = f_1(x_test[:,1],b1) + f_2(x_test[:,2],b2) + f_3(x_test[:,3],b3) + f_4
 
 y = f + stde*randn(n)
 
-# set up SMARTparam and SMARTdata, then fit and predit
-param  = SMARTparam(loss=loss,priortype=priortype,randomizecv=randomizecv,nfold=nfold,verbose=verbose,warnings=warnings,
-           modality=modality,nofullsample=nofullsample)
+# set up HTBparam and HTBdata, then fit and predit
+param  = HTBparam(loss=loss,priortype=priortype,randomizecv=randomizecv,nfold=nfold,verbose=verbose,
+                warnings=warnings,modality=modality,nofullsample=nofullsample)
 
-data   = SMARTdata(y,x,param)
+data   = HTBdata(y,x,param)
 
-output = SMARTfit(data,param)
-yf     = SMARTpredict(x_test,output,predict=:Egamma)  # predict the natural parameter
+output = HTBfit(data,param)
+yf     = HTBpredict(x_test,output,predict=:Egamma)  # predict the natural parameter
 
-avgtau,avg_explogtau,avgtau_a,dftau,x_plot,g_plot = SMARTweightedtau(output,data,verbose=true,best_model=false)
+avgtau,avg_explogtau,avgtau_a,dftau,x_plot,g_plot = HTBweightedtau(output,data,verbose=true,best_model=false)
 plot(x_plot,g_plot,title="smoothness of splits",xlabel="standardized x",label=:none)
 
 println(" \n modality = $(param.modality), nfold = $nfold ")
@@ -104,8 +104,8 @@ println(" out-of-sample RMSE from truth ", sqrt(sum((yf - f_test).^2)/n_test) )
 #@load "output.jld2" output    # Note: key must be the same, e.g. @load "output.jld2" output2 is a KeyError
 
 # feature importance, partial dependence plots and marginal effects
-fnames,fi,fnames_sorted,fi_sorted,sortedindx = SMARTrelevance(output,data,verbose=false);
-q,pdp  = SMARTpartialplot(data,output,[1,2,3,4,5,6],predict=:Egamma)
+fnames,fi,fnames_sorted,fi_sorted,sortedindx = HTBrelevance(output,data,verbose=false);
+q,pdp  = HTBpartialplot(data,output,[1,2,3,4,5,6],predict=:Egamma)
 
 # plot partial dependence in terms of the natural parameter 
 pl   = Vector(undef,6)
@@ -113,7 +113,7 @@ f,b  = [f_1,f_2,f_3,f_4,f_5,f_6],[b1,b2,b3,b4,b5,b6]
 
 for i in 1:length(pl)
     pl[i]   = plot( [q[:,i]],[pdp[:,i] f[i](q[:,i],b[i]) - f[i](q[:,i]*0,b[i])],
-           label = ["smart" "dgp"],
+           label = ["htb" "dgp"],
            legend = :bottomright,
            linecolor = [:blue :red],
            linestyle = [:solid :dot],

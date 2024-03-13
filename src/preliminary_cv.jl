@@ -63,7 +63,7 @@ function preliminary_cv_categoricals!(param0,data)
 
             param_cv.n0_cat = param0.n0_cat*n0
             param_cv.mean_encoding_penalization = mep
-            output = SMARTfit(data,param_cv) 
+            output = HTBfit(data,param_cv) 
             loss_a[i,j] = output.loss
 
             if output.loss < loss0

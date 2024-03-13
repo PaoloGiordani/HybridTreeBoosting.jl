@@ -1,7 +1,7 @@
 
 """
 
-# Some options to speed up training for SMARTboost, particularly with large n and large p.
+# Some options to speed up training for HTBoost, particularly with large n and large p.
 
 ## 1) Modality = :fast 
 
@@ -13,8 +13,8 @@ on a smaller sample.
 
 Examples of use: 
 '''
-    param = SMARTparam(depth_coarse_grid =4,depth_coarse_grid2=5,modality=:fast)
-    param = SMARTparam(depth_coarse_grid =4,depth_coarse_grid2=5,modality=:compromise)
+    param = HTBparam(depth_coarse_grid =4,depth_coarse_grid2=5,modality=:fast)
+    param = HTBparam(depth_coarse_grid =4,depth_coarse_grid2=5,modality=:compromise)
 '''
 Replacing the defaults (5,7) with (4,5) may speed up computations by 25-33%, with no or little loss of
 fit in most cases. 
@@ -32,12 +32,12 @@ Setting modality = :fast fits the model at default parameters either. If some cr
 the following strategy can be used to speed up cross-validation, typically with only small deterioration in performance
 if n is large and n/p is large.
 
-When n is very large, and it takes too long to fit SMARTboost in modality = :compromise or :accurate,
+When n is very large, and it takes too long to fit HTBoost in modality = :compromise or :accurate,
 one way to proceed is to cv on a subsample of the data (say 20%) and then fit only one model on the full sample.
 This can be accomplished as follows:
 
-- Set modality=:compromise or :accurate, take a subsample of the data (say 10% or 20%), and run output=SMARTfit() on that.
-- Set param=output.bestparam, and then param.modality=:fast, and run SMARTfit() on the full data.
+- Set modality=:compromise or :accurate, take a subsample of the data (say 10% or 20%), and run output=HTBfit() on that.
+- Set param=output.bestparam, and then param.modality=:fast, and run HTBfit() on the full data.
  
 An example is given below: 
 """
@@ -45,7 +45,7 @@ number_workers  = 8  # desired number of workers
 
 using Distributed
 nprocs()<number_workers ? addprocs( number_workers - nprocs()  ) : addprocs(0)
-@everywhere using SMARTboostPrivate
+@everywhere using HTBoost
 
 using Random,Statistics
 
@@ -58,7 +58,7 @@ p         = 100          # number of features
 dummies   = true        # if true if x, x_test are 0-1 (much faster training).
 stde      = 1            
 
-# Options for SMARTboost: modality is the key parameter guiding hyperparameter tuning and learning rate.
+# Options for HTBoost: modality is the key parameter guiding hyperparameter tuning and learning rate.
 # :fast only fits one model at default parameters, while :compromise and :accurate perform
 # automatic hyperparameter tuning. 
 
@@ -92,30 +92,30 @@ end
 y       = dgp(x) + stde*randn(n)
 f_test  = dgp(x_test)
 
-# SMARtboost on a sub-sample 
+# HTBoost on a sub-sample 
 
-param_subs   = SMARTparam(modality=modality_subs,nfold=nfold_subs,
+param_subs   = HTBparam(modality=modality_subs,nfold=nfold_subs,
                 verbose=verbose,warnings=warnings)
-data         = SMARTdata(y,x,param_subs)
+data         = HTBdata(y,x,param_subs)
 n            = length(data.y)
 
 ind       = randperm(n)[1:convert(Int,round(randomsubset*n))]
-data_subs = SMARTdata(y[ind],x[ind,:],param)
+data_subs = HTBdata(y[ind],x[ind,:],param)
 
-output_subs = SMARTfit(data_subs,param_subs) # performs cv on subset
+output_subs = HTBfit(data_subs,param_subs) # performs cv on subset
 param       = output_subs.bestparam        # sets param at best configuration in subset
 param.modality = modality_full 
 param.nfold    = nfold_full
 
-# SMARTboost on full sample 
-param = SMARTparam(modality=:fast,nfold=1,nofullsample=true,priortype=:smooth,
+# HTBoost on full sample 
+param = HTBparam(modality=:fast,nfold=1,nofullsample=true,priortype=:smooth,
                    verbose=:Off)
-data  = SMARTdata(y,x,param)
+data  = HTBdata(y,x,param)
 
 println("\n n = $n, p = $p, dummies=$dummies, modality = $(param.modality)")
 
 println("\n Time to train the full model.")
-@time output = SMARTfit(data,param);
+@time output = HTBfit(data,param);
 
-yf = SMARTpredict(x_test,output,predict=:Ey)  # predict
-println("\n RMSE of SMARTboost from true E(y|x) ", sqrt(mean((yf-f_test).^2)) )
+yf = HTBpredict(x_test,output,predict=:Ey)  # predict
+println("\n RMSE of HTBoost from true E(y|x) ", sqrt(mean((yf-f_test).^2)) )

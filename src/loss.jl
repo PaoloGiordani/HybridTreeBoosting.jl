@@ -33,7 +33,7 @@
 
 
 # NOTE: returns sum loglik, i.e. MINUS loss up to constant which does not depend on any coefficient
-function loglik(loss,param::SMARTparam,y,gammafit,weights)
+function loglik(loss,param::HTBparam,y,gammafit,weights)
     
     ll = loglik_vector(loss,param,y,gammafit)
     @. ll = ll*weights
@@ -88,7 +88,7 @@ end
 # losscv is used in cv only (and it does not need to be a proper log-likelihood).
 # if losscv == :default, then same loss as in gradient_hessian is used.
 # Other options for losscv are :mse :rmse :mae :logistic :sign
-function losscv(param0::SMARTparam,y,gammafit,weights) # iter = 1 when no tree built yet, iter = j for j-1 trees already in the ensemble
+function losscv(param0::HTBparam,y,gammafit,weights) # iter = 1 when no tree built yet, iter = j for j-1 trees already in the ensemble
 
     T = param0.T
     n = length(y)
@@ -176,7 +176,7 @@ end
 
 
 # Initializes roughly at corresponding parameter value for the unconditional distribution
-function initialize_gamma0(data::SMARTdata,param::SMARTparam)
+function initialize_gamma0(data::HTBdata,param::HTBparam)
 
   y,weights,offset = data.y,data.weights,data.offset
   T = eltype(y)
@@ -260,7 +260,7 @@ end
 # multiply_pb multiplies the precision matrix of the prior for β. If g and h are (for convenience), the
 # gradient and -hessian multiplied by a scalar α, then multiply_pb = α. e.g. for Gaussian α=σ^2 
 # action_varGb=0 to use var(g) prior to preliminar run, 1 to set the prior in preliminary run, 2 not to update. 
-function gradient_hessian(y::AbstractVector{T},weights::AbstractVector{T},gammafit::AbstractVector{T},param0::SMARTparam,action_varGb) where T<:AbstractFloat
+function gradient_hessian(y::AbstractVector{T},weights::AbstractVector{T},gammafit::AbstractVector{T},param0::HTBparam,action_varGb) where T<:AbstractFloat
 
     param=deepcopy(param0)
 
@@ -316,7 +316,7 @@ function gradient_hessian(y::AbstractVector{T},weights::AbstractVector{T},gammaf
     end
 
     # multiply g,h by weights
-    if minimum(weights)<T(1)  # mean(weights)=1 in SMARTdata.
+    if minimum(weights)<T(1)  # mean(weights)=1 in HTBdata.
         @. g = g*weights
         h = @. h*weights     
     end     
@@ -432,7 +432,7 @@ function loss_gammaPoisson(logα,y,μ)
 end     
 
 
-function SMARTmulticlass_loss(y,prob,class_values) # y is a vector, prob is (n,num_class), class_values is (num_class)
+function HTBmulticlass_loss(y,prob,class_values) # y is a vector, prob is (n,num_class), class_values is (num_class)
 
     loss = zero(eltype(prob))
 

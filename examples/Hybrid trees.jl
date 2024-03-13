@@ -20,7 +20,7 @@ number_workers  = 8  # desired number of workers
 
 using Distributed
 nprocs()<number_workers ? addprocs( number_workers - nprocs()  ) : addprocs(0)
-@everywhere using SMARTboostPrivate
+@everywhere using HTBoost
 
 using Random,Plots 
 
@@ -28,7 +28,7 @@ using Random,Plots
 
 Random.seed!(1)
 
-# Some options for SMARTboost
+# Some options for HTBoost
 loss      = :L2            # :L2 or :logistic (or :Huber or :t). 
 modality  = :fast          # :accurate, :compromise (default), :fast, :fastest 
 
@@ -62,33 +62,33 @@ f_test   = f_interact(x_test[:,5],x_test[:,6],b_interact) + f_1(x_test[:,1],b1) 
 
 y = f + stde*randn(n)
 
-# set up SMARTparam and SMARTdata, then fit and predit
+# set up HTBparam and HTBdata, then fit and predit
 if ntrees == 1
     lambda = 1
 else
     lambda = 0.2 
 end 
 
-param  = SMARTparam(loss=loss,nfold=nfold,verbose=verbose,warnings=warnings,
+param  = HTBparam(loss=loss,nfold=nfold,verbose=verbose,warnings=warnings,
            modality=modality,nofullsample=true,lambda=lambda,ntrees=ntrees)
 
-data   = SMARTdata(y,x,param)
+data   = HTBdata(y,x,param)
 
-output = SMARTfit(data,param)
-yf     = SMARTpredict(x_test,output)  # predict the natural parameter
+output = HTBfit(data,param)
+yf     = HTBpredict(x_test,output)  # predict the natural parameter
 
 println(" \n modality = $(param.modality), nfold = $nfold ")
 println(" out-of-sample RMSE from truth ", sqrt(sum((yf - f_test).^2)/n_test) )
 
 println(" \n with smooth rather than hybrid trees ")
-output_s = SMARTfit(data,param,cv_hybrid=false)
-yf     = SMARTpredict(x_test,output_s)  # predict the natural parameter
+output_s = HTBfit(data,param,cv_hybrid=false)
+yf     = HTBpredict(x_test,output_s)  # predict the natural parameter
 
 println(" out-of-sample RMSE from truth ", sqrt(sum((yf - f_test).^2)/n_test) )
 
 # partial plots 
-q_s,pdp_s  = SMARTpartialplot(data,output_s,[1,2,3,4])
-q,pdp  = SMARTpartialplot(data,output,[1,2,3,4])
+q_s,pdp_s  = HTBpartialplot(data,output_s,[1,2,3,4])
+q,pdp  = HTBpartialplot(data,output,[1,2,3,4])
 
 pl   = Vector(undef,8)
 f,b  = [f_1,f_2,f_3,f_4],[b1,b2,b3,b4]

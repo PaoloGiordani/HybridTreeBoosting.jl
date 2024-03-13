@@ -1,8 +1,8 @@
-module SMARTboostPrivate
+module HTBoost
 
-export SMARTinfo, SMARTloglikdivide, SMARTparam, SMARTdata, SMARTfit, SMARTpredict, SMARTrelevance, SMARTpartialplot,
- SMARTmarginaleffect, SMARTtree, SMARTboostTrees, SMARTindexes_from_dates, losscv, SMARTweightedtau, SMARTmulticlass_loss,
- SMARTcoeff 
+export HTBinfo, HTBloglikdivide, HTBparam, HTBdata, HTBfit, HTBpredict, HTBrelevance, HTBpartialplot,
+ HTBmarginaleffect, HTBtree, HTBoostTrees, HTBindexes_from_dates, losscv, HTBweightedtau, HTBmulticlass_loss,
+ HTBcoeff 
 
 using Distributed, SharedArrays, LinearAlgebra,Statistics, DataFrames,Dates, Random
 using CategoricalArrays, Base.Threads

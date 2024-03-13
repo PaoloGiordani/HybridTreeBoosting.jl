@@ -2,7 +2,7 @@
 # Data preprocessing functions
 #
 #
-# The following functions are applied once, on the first SMARTdata() 
+# The following functions are applied once, on the first HTBdata() 
 #  
 # store_class_values!()
 # replace_nan_with_missing()
@@ -16,14 +16,14 @@
 #
 # The following functions are applied to each train set: 
 #
-# preparedataSMART()                     preliminary operations on data before starting boosting loop: standardize x using robust measures of dispersion.
-# preparegridsSMART()
+# preparedataHTB()                     preliminary operations on data before starting boosting loop: standardize x using robust measures of dispersion.
+# preparegridsHTB()
 # gridvectorτ()
 # gridmatrixμ()
 # kantorovic_distance()                   rough approximate distance between the empirical distribution of xi and y, or between xi and a Gaussian, using deciles
 #
 
-# in SMARTdata(), if loss=:multiclass, stores unique values of y as param.class_values, and then replaces y by 0,1,2... Leaves missing as missing
+# in HTBdata(), if loss=:multiclass, stores unique values of y as param.class_values, and then replaces y by 0,1,2... Leaves missing as missing
 function store_class_values!(param,y)
 
     if param.loss !== :multiclass 
@@ -85,13 +85,13 @@ end
 
 
 
-function convert_dates_to_real!(x,param::SMARTparam;predict=false)
+function convert_dates_to_real!(x,param::HTBparam;predict=false)
 end    
 
 
 
 # convert dates in x to [0 1], and save a named tuple in param.infodate 
-function convert_dates_to_real!(x::AbstractDataFrame,param::SMARTparam;predict=false)
+function convert_dates_to_real!(x::AbstractDataFrame,param::HTBparam;predict=false)
 
     if predict==false
 
@@ -126,7 +126,7 @@ end
 
 
 # add columns to x, for those columns with missing or NaN values
-function missing_features_extend_x(param::SMARTparam,x::AbstractDataFrame)
+function missing_features_extend_x(param::HTBparam,x::AbstractDataFrame)
 
     T   = param.T
 
@@ -167,7 +167,7 @@ end
 
 
 # fills param.missing_features (to a vector of I). Only non-categorical features can be missing.
-function missing_features!(param::SMARTparam,x::AbstractDataFrame)
+function missing_features!(param::HTBparam,x::AbstractDataFrame)
 
     for j in 1:size(x,2)
         if any(ismissing.(x[!,j]))  # missing in non-cat features treated as a category
@@ -185,7 +185,7 @@ end
 # Otherwise, it assumes:
 # - any type not in Real is a categorical features.
 # - floating numbers are not categorical features.
-function categorical_features!(param::SMARTparam,x::AbstractDataFrame)
+function categorical_features!(param::HTBparam,x::AbstractDataFrame)
 
     n,p = size(x)
     I = typeof(param.ntrees)
@@ -233,7 +233,7 @@ end
 # converts categorical features (as from param.cat_features) to 0,1,... by mapping each unique value to a number,
 # and saves the mapping in param.cat_dictionary
 # missing are converted to "missing" for strings, and to NaN for numbers
-function map_cat_convert_to_float!(x::AbstractDataFrame,param::SMARTparam;create_dictionary::Bool=false)
+function map_cat_convert_to_float!(x::AbstractDataFrame,param::HTBparam;create_dictionary::Bool=false)
 
     T = param.T
 
@@ -344,7 +344,7 @@ end
 
 
 # replace nan with mean ONLY if not categorical and not in missing_features
-function replace_nan_meanx!(x,param::SMARTparam,meanx)
+function replace_nan_meanx!(x,param::HTBparam,meanx)
 
     for i in 1:size(x)[2]
         if !(i in union(param.missing_features,param.cat_features))
@@ -357,9 +357,9 @@ end
 
 
 # Preliminary operations on training data before starting the boosting loop:
-# Example: param_nf,data_nf,meanx,stdx   = preparedataSMART(data_nf,param), where data_nf is standardized and missing are replaced by NaN
+# Example: param_nf,data_nf,meanx,stdx   = preparedataHTB(data_nf,param), where data_nf is standardized and missing are replaced by NaN
 # data.x may contain NaN. 
-function preparedataSMART(data::SMARTdata,param0::SMARTparam)
+function preparedataHTB(data::HTBdata,param0::HTBparam)
 
     param = deepcopy(param0)
 
@@ -370,7 +370,7 @@ function preparedataSMART(data::SMARTdata,param0::SMARTparam)
                                         # NB: Expands x if some categorical features require an extensive (>1 column) representation
     meanx,stdx = robust_mean_std(x)     # meanx,stdx computed using target encoding values      
 
-    data_standardized = SMARTdata_sharedarray( data.y,(x .- meanx)./stdx,param,data.dates,data.weights,data.fnames,data.offset) # standardize
+    data_standardized = HTBdata_sharedarray( data.y,(x .- meanx)./stdx,param,data.dates,data.weights,data.fnames,data.offset) # standardize
 
     param_given_data!(param,data_standardized)    # sets additional parameters that require data. 
 
@@ -388,8 +388,8 @@ end
 # Transform any categorical feature using the stored values for target encoding.
 # Assumes categorical features are already transformed to 0,1,.... using the dictionary in param.cat_dictionary
 # Finally standardizes. 
-# x_test = preparedataSMART_test(x_test,param,meanx,stdx) 
-function preparedataSMART_test(x,param,meanx,stdx)   # x = data.x[indtest,:]
+# x_test = preparedataHTB_test(x_test,param,meanx,stdx) 
+function preparedataHTB_test(x,param,meanx,stdx)   # x = data.x[indtest,:]
 
     x_test = copy(x)
     n      = size(x_test,1)
@@ -434,7 +434,7 @@ function preparedataSMART_test(x,param,meanx,stdx)   # x = data.x[indtest,:]
 end 
 
 
-# for SMARTpredict: for categorical, replaces nan with missing. For non-categorical, replaces missing with nan
+# for HTBpredict: for categorical, replaces nan with missing. For non-categorical, replaces missing with nan
 function nan_and_missing_predict(x0,param) 
 
     x = copy(x0)
@@ -454,7 +454,7 @@ end
 
 
 # data.x is now assumed already standardized
-function preparegridsSMART(data,param,meanx,stdx)
+function preparegridsHTB(data,param,meanx,stdx)
 
     τgrid             = gridvectorτ(param.meanlntau,param.varlntau,param.taugridpoints,priortype=param.priortype)
     μgrid,Info_x      = gridmatrixμ(data,param,meanx,stdx)
@@ -496,7 +496,7 @@ end
 # Rough approximation to the Kantorovic (aslo known as Wasserstein) distance, in terms of quantiles, between p(xi) and a standard normal
 # or between xi and another vector y (not necessarily of the same length)
 # The p-distance is [∫( q1(u) - q(u) )^p du]^1/p, https://en.wikipedia.org/wiki/Wasserstein_metric.
-# Quantiles are computed in the interval [0.025 0.975] rather than, say, [0.01 0.99] to avoid excessively penalizing fat tails, which SMARTboost
+# Quantiles are computed in the interval [0.025 0.975] rather than, say, [0.01 0.99] to avoid excessively penalizing fat tails, which HTBoost
 # can handle quite well at default parametrs (τ=1 flattens out in the tail, and features are standardized with a robust std)
 # NB: assumes xi and y are standardized, and, if y is provided, takes the smallest between d(xi,y) and d(xi,-y) (allowing for a minus sign)
 # NOTE: distance(xi,y) rather than (xi,N) is appropriate for :L2, :t, :Huber, :quantile, not for :logistic
@@ -544,7 +544,7 @@ end
 # If distrib_threads = false, uses @distributed and SharedArray. SharedArray can occasionally produce an error in Windows (not in Linux).
 # If this happens, the code switches to distrib_threads = true 
 # If distrib_threads = true, uses Threads.@threads. 
-function gridmatrixμ(data::SMARTdata,param::SMARTparam,meanx,stdx;maxn::Int = 100_000,tol = 0.005, maxiter::Int = 100, fuzzy::Bool = false,
+function gridmatrixμ(data::HTBdata,param::HTBparam,meanx,stdx;maxn::Int = 100_000,tol = 0.005, maxiter::Int = 100, fuzzy::Bool = false,
          distrib_threads::Bool=false)
 
     x        = data.x

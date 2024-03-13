@@ -3,10 +3,10 @@
 #
 # indicescv
 # indicescv_panel_purge  indices for purged cv. Extends De Prado's purged cv to panel data.
-# SMARTsequentialcv      key function: fits nfold sequences of boosted trees, and selects number of trees by cv.
+# HTBsequentialcv      key function: fits nfold sequences of boosted trees, and selects number of trees by cv.
 #                        Computationally efficient validation/cv of number of trees in boosting
 #
-# Note: SMARTindices_from_dates (for expanding window cv) is in main_functions.jl since it is called by user.
+# Note: HTBindices_from_dates (for expanding window cv) is in main_functions.jl since it is called by user.
 
 
 """
@@ -101,15 +101,15 @@ end
 
 
 """
-    SMARTsequentialcv( data::SMARTdata, param::SMARTparam; .... )
+    HTBsequentialcv( data::HTBdata, param::HTBparam; .... )
 
-ntrees,loss,meanloss,stdeloss,SMARTtrees = SMARTsequentialcv( data::SMARTdata, param::SMARTparam; .... )
+ntrees,loss,meanloss,stdeloss,HTBtrees = HTBsequentialcv( data::HTBdata, param::HTBparam; .... )
 
-sequential cross-validation for SMART. validation (early stopping) or n-fold cv for growing ensemble, automatically selecting the cv-optimal number of trees for a given parameter vector.
+sequential cross-validation for HTB. validation (early stopping) or n-fold cv for growing ensemble, automatically selecting the cv-optimal number of trees for a given parameter vector.
 
 # Inputs (optional)
 
-- The following options are specified in param::SMARTparam
+- The following options are specified in param::HTBparam
      randomizecv,nfold, sharevalidation,stderulestop,losscv
 
 # Output:
@@ -119,25 +119,25 @@ sequential cross-validation for SMART. validation (early stopping) or n-fold cv 
 - meanloss               Vector of loss (mean across nfolds) at 1,2,...,J, where J>=ntrees
 - stdeloss               Vector of stde(loss) at 1,2,...,J, where J>=ntrees; standard error of the estimated mean loss computed by aggregating loss[i] across i = 1,....,n, so std ( l .- mean(l)  )/sqrt(n).
                          Unlike the more common definition, this applies to p = 1 as well.
-- SMARTtrees1st          ::SMARTboostTrees fitted on y_train,x_train for first fold (intended for nfold = 1)
+- HTBtrees1st          ::HTBoostTrees fitted on y_train,x_train for first fold (intended for nfold = 1)
 - indtest                nfold vector of vectors of indices of validation sample
 - gammafit_test          vector of fitted values for nfold test samples at lowest loss (corresponding to ntrees), to be compared with y_test
 - ytest                  vector of test observations
 - problems               true if there is a computational problem 
 """
-function SMARTsequentialcv( data::SMARTdata, param::SMARTparam; indices=Vector(1:length(data.y)) )
+function HTBsequentialcv( data::HTBdata, param::HTBparam; indices=Vector(1:length(data.y)) )
 
     T = typeof(param.lambda)
     I = typeof(param.depth)
 
     nfold,sharevalidation,stderulestop,n = param.nfold, param.sharevalidation, param.stderulestop, I(length(data.y))
 
-    data_a           = Array{SMARTdata}(undef,nfold)    
+    data_a           = Array{HTBdata}(undef,nfold)    
     rh_a             = Array{NamedTuple}(undef,nfold)
     gammafit_test_a  = Array{Vector{T}}(undef,nfold)     # used to compute cv loss 
     gammafit_test_ba_a = Array{Vector{T}}(undef,nfold)   # bias-adjusted: used to output predictions 
     t_a              = Array{Tuple}(undef,nfold)
-    SMARTtrees_a     = Array{SMARTboostTrees}(undef,nfold)
+    HTBtrees_a     = Array{HTBoostTrees}(undef,nfold)
     indtest_a        = Vector{Vector{I}}(undef,nfold)
     param_a          = fill(param,nfold)
     problems = 0
@@ -150,16 +150,16 @@ function SMARTsequentialcv( data::SMARTdata, param::SMARTparam; indices=Vector(1
             indtrain,indtest         = param.indtrain_a[nf],param.indtest_a[nf]
         end
       
-        data_nf = SMARTdata(data.y[indtrain],data.x[indtrain,:],data.weights[indtrain],data.dates[indtrain],data.fnames,param_a[nf].cat_features,data.offset[indtrain])
-        param_nf,data_nf,meanx,stdx          = preparedataSMART(data_nf,param)
+        data_nf = HTBdata(data.y[indtrain],data.x[indtrain,:],data.weights[indtrain],data.dates[indtrain],data.fnames,param_a[nf].cat_features,data.offset[indtrain])
+        param_nf,data_nf,meanx,stdx          = preparedataHTB(data_nf,param)
 
-        τgrid,μgrid,info_x,n_train,p         = preparegridsSMART(data_nf,param_nf,meanx,stdx)
+        τgrid,μgrid,info_x,n_train,p         = preparegridsHTB(data_nf,param_nf,meanx,stdx)
         gamma0                               = initialize_gamma0(data_nf,param_nf)
         gammafit                             = data_nf.offset + fill(gamma0,length(indtrain))
 
         param_a[nf] = updatecoeff(param_nf,data_nf.y,gammafit,data_nf.weights,0)
-        SMARTtrees_a[nf]    = SMARTboostTrees(param_a[nf],gamma0,data_nf.offset,n_train,p,meanx,stdx,info_x)
-        rh_a[nf],param_a[nf]= gradient_hessian(data_nf.y,data_nf.weights,SMARTtrees_a[nf].gammafit,param_a[nf],0)
+        HTBtrees_a[nf]    = HTBoostTrees(param_a[nf],gamma0,data_nf.offset,n_train,p,meanx,stdx,info_x)
+        rh_a[nf],param_a[nf]= gradient_hessian(data_nf.y,data_nf.weights,HTBtrees_a[nf].gammafit,param_a[nf],0)
         gammafit_test_a[nf] = data.offset[indtest] + gamma0*ones(I,length(indtest))
         gammafit_test_ba_a[nf] = deepcopy(gammafit_test_a[nf])
         t_a[nf]             = (indtrain,indtest,meanx,stdx,n_train,p,τgrid,μgrid,info_x,param_a[nf])
@@ -177,9 +177,9 @@ function SMARTsequentialcv( data::SMARTdata, param::SMARTparam; indices=Vector(1
         indtrain,indtest,meanx,stdx,n_train,p,τgrid,μgrid,info_x,param = t_a[nf]
         data_nf = data_a[nf]
 
-        Gβ,trash = fit_one_tree(data_nf.y,data_nf.weights,SMARTtrees_a[nf],rh_a[nf].r,rh_a[nf].h,data_nf.x,μgrid,info_x,τgrid,param_a[nf])
-        param_a[nf] = updatecoeff(param_a[nf],data_nf.y,SMARTtrees_a[nf].gammafit+Gβ,data_nf.weights,0) # +Gβ, NOT +λGβ
-        trash,param_a[nf] = gradient_hessian( data_nf.y,data_nf.weights,SMARTtrees_a[nf].gammafit+Gβ,param_a[nf],1)            
+        Gβ,trash = fit_one_tree(data_nf.y,data_nf.weights,HTBtrees_a[nf],rh_a[nf].r,rh_a[nf].h,data_nf.x,μgrid,info_x,τgrid,param_a[nf])
+        param_a[nf] = updatecoeff(param_a[nf],data_nf.y,HTBtrees_a[nf].gammafit+Gβ,data_nf.weights,0) # +Gβ, NOT +λGβ
+        trash,param_a[nf] = gradient_hessian( data_nf.y,data_nf.weights,HTBtrees_a[nf].gammafit+Gβ,param_a[nf],1)            
 
     end
  
@@ -193,17 +193,17 @@ function SMARTsequentialcv( data::SMARTdata, param::SMARTparam; indices=Vector(1
             indtrain,indtest,meanx,stdx,n_train,p,τgrid,μgrid,info_x,param = t_a[nf]
             data_nf = data_a[nf]
     
-            x_test  = preparedataSMART_test(data.x[indtest,:],param_a[nf],meanx,stdx)
+            x_test  = preparedataHTB_test(data.x[indtest,:],param_a[nf],meanx,stdx)
             Gβ,ij,μj,τj,mj,βj,fi2j,σᵧ = fit_one_tree(data_nf.y,data_nf.weights,
-                    SMARTtrees_a[nf],rh_a[nf].r,rh_a[nf].h,data_nf.x,μgrid,info_x,τgrid,param_a[nf])
+                    HTBtrees_a[nf],rh_a[nf].r,rh_a[nf].h,data_nf.x,μgrid,info_x,τgrid,param_a[nf])
 
             lossM[i,nf],losses  = losscv(param_a[nf],data.y[indtest],gammafit_test_a[nf],data.weights[indtest] )  # losscv computed before updating parameters, using same parameters as for lik. losscv is a (ntest) vector of losses.  
          
-            param_a[nf] = updatecoeff(param_a[nf],data_nf.y,SMARTtrees_a[nf].gammafit+Gβ,data_nf.weights,i) # +Gβ, NOT +λGβ
-            updateSMARTtrees!(SMARTtrees_a[nf],Gβ,SMARTtree(ij,μj,τj,mj,βj,fi2j,σᵧ),i,param_a[nf])
-            rh_a[nf],param_a[nf] = gradient_hessian( data_nf.y,data_nf.weights,SMARTtrees_a[nf].gammafit,param_a[nf],2)
-            gammafit_test_a[nf] = gammafit_test_a[nf] + param.lambda*SMARTtreebuild(x_test,ij,μj,τj,mj,βj,σᵧ,param_a[nf])
-            bias,gammafit_test_ba_a[nf] = bias_correct(gammafit_test_a[nf],data_nf.y,SMARTtrees_a[nf].gammafit+Gβ,param)
+            param_a[nf] = updatecoeff(param_a[nf],data_nf.y,HTBtrees_a[nf].gammafit+Gβ,data_nf.weights,i) # +Gβ, NOT +λGβ
+            updateHTBtrees!(HTBtrees_a[nf],Gβ,HTBtree(ij,μj,τj,mj,βj,fi2j,σᵧ),i,param_a[nf])
+            rh_a[nf],param_a[nf] = gradient_hessian( data_nf.y,data_nf.weights,HTBtrees_a[nf].gammafit,param_a[nf],2)
+            gammafit_test_a[nf] = gammafit_test_a[nf] + param.lambda*HTBtreebuild(x_test,ij,μj,τj,mj,βj,σᵧ,param_a[nf])
+            bias,gammafit_test_ba_a[nf] = bias_correct(gammafit_test_a[nf],data_nf.y,HTBtrees_a[nf].gammafit+Gβ,param)
  
             lossv = vcat(lossv,losses)
             gammafit_test = vcat(gammafit_test,gammafit_test_ba_a[nf])  # bias-adjusted (used in stacking), while loss is computed on original fit
@@ -267,13 +267,13 @@ function SMARTsequentialcv( data::SMARTdata, param::SMARTparam; indices=Vector(1
     end
 
     if nfold==1
-        SMARTtrees_a[1].trees = SMARTtrees_a[1].trees[1:ntrees]
+        HTBtrees_a[1].trees = HTBtrees_a[1].trees[1:ntrees]
         # bias adjustment 
         indtrain,indtest,meanx,stdx,n_train,p,τgrid,μgrid,info_x = t_a[1]
-        bias,SMARTtrees_a[1].gammafit = bias_correct(SMARTtrees_a[1].gammafit,data.y[indtrain],SMARTtrees_a[1].gammafit,param)
-        SMARTtrees_a[1].gamma0 +=  bias
+        bias,HTBtrees_a[1].gammafit = bias_correct(HTBtrees_a[1].gammafit,data.y[indtrain],HTBtrees_a[1].gammafit,param)
+        HTBtrees_a[1].gamma0 +=  bias
     end
 
-    return ntrees,loss,meanloss[1:j],stdeloss[1:j],SMARTtrees_a[1],indtest_a,gammafit_test0,y_test,problems
+    return ntrees,loss,meanloss[1:j],stdeloss[1:j],HTBtrees_a[1],indtest_a,gammafit_test0,y_test,problems
 
 end

@@ -17,28 +17,28 @@ PG:  have a look at sklearn tools for stacking ... sklearn.ensemble import Stack
 =#
 
 # Stacking
-#   SMARTmodelweights
+#   HTBmodelweights
 #   lossgiven beta
 #   findw_grid
 #
 # Priors for stacking (currently not used: uniform prior )
-#   SMARTlnpoisson
-#   SMARTpoisson
+#   HTBlnpoisson
+#   HTBpoisson
 #
 
 
 
 # Compute weights by stacking.
 # Accepts elements in lossgrid with Inf loss, giving them zero weights.
-# w,lossw = SMARTmodelweights(output,data)
-function SMARTmodelweights(output,data::SMARTdata,param::SMARTparam)
-    w,lossw =  SMARTmodelweights(output.lossgrid,output.y_test,output.indtest,output.gammafit_test_a,data,param)
+# w,lossw = HTBmodelweights(output,data)
+function HTBmodelweights(output,data::HTBdata,param::HTBparam)
+    w,lossw =  HTBmodelweights(output.lossgrid,output.y_test,output.indtest,output.gammafit_test_a,data,param)
     return w,lossw
 end
 
 
 
-function SMARTmodelweights(lossgrid,y_test,indtest,gammafit_test_a,data::SMARTdata,param::SMARTparam;min_w=0.02)
+function HTBmodelweights(lossgrid,y_test,indtest,gammafit_test_a,data::HTBdata,param::HTBparam;min_w=0.02)
 
     T = typeof(y_test[1])
     ind = Vector(1:length(lossgrid))[lossgrid.<Inf]  # indices with finite loss
@@ -159,6 +159,6 @@ Poisson distribution as prior for depth d with parameter λ.  mean λ, var λ, m
 p(d) = (λ^d)*exp(-λ)/d!
 log(p(d)) = d*log(λ)-λ-log(d!)
 =#
-SMARTlnpoisson(d,λ) = d*log(λ)-λ-log(factorial(d))
-SMARTpoisson(d,λ)   = (λ^d)*exp(-λ)/factorial(d)
+HTBlnpoisson(d,λ) = d*log(λ)-λ-log(factorial(d))
+HTBpoisson(d,λ)   = (λ^d)*exp(-λ)/factorial(d)
 

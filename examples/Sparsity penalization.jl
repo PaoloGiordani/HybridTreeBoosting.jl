@@ -3,7 +3,7 @@
 
 **Short description:**
 
-SMARTboost has an in-built penalization encouraging a sparse representation.
+HTBoost has an in-built penalization encouraging a sparse representation.
 This penalization is very mild in modality = :fast, which is close to standard boosting. 
 When modality=:compromise or modality=:accurate, the amount of penalization is automatically cross-validated, ranging
 from none (standard boosting) to quite strong (to capture very sparse representations.)
@@ -12,15 +12,15 @@ is large compared to the number of features p.
 
 Our approach to sparsity is builds on Xu et al. 2019, "Gradient Boosted Feature Selection", designed for the n>>p case, 
 implemented by penalizing the introduction of any feature not previously selected, with some important innovations. 
-Since SMARTboost is much slower than other GBMs, it is essential for cross-validation to require only a handful
+Since HTBoost is much slower than other GBMs, it is essential for cross-validation to require only a handful
 of evaluations. This is not possible in the representation of Xu et al., where the penalization has no obvious
-range, and a grid from 0.125 to 500 is used for cv. SMARTboost normalizes the the penalization by taking into
+range, and a grid from 0.125 to 500 is used for cv. HTBoost normalizes the the penalization by taking into
 account the number of features as well as their nature (continuous or binary), which allows for a more focused search
 of a few values in a narrow range. 
 
 In the example below, only a small subset p_star of features are relevant.
 All features are dichotomous, and they don't interact, so there is no smoothness for 
-SMARTboost to take advantage of, but SMARTboost outperforms a version without
+HTBoost to take advantage of, but HTBoost outperforms a version without
 sparsity penalization (especially in modality=:compromise or :accurate).
 
 Sparsity penalization is most useful with small n, very large p, or low SNR, as
@@ -31,7 +31,7 @@ number_workers  = 8  # desired number of workers
 
 using Distributed
 nprocs()<number_workers ? addprocs( number_workers - nprocs()  ) : addprocs(0)
-@everywhere using SMARTboostPrivate
+@everywhere using HTBoost
 
 using Random,Statistics
 using LightGBM
@@ -45,7 +45,7 @@ p         = 500       # number of features
 p_star    = 20        # number of relevant features (p_star < p )
 stde      = 1            
 
-# Options for SMARTboost
+# Options for HTBoost
 modality = :compromise  
 
 depth     = 2     # depth fixed to speed up computations
@@ -85,29 +85,29 @@ LightGBM.fit!(estimator,x_train,y_train,(x_val,y_val),verbosity=-1)
 
 yf_gbm = LightGBM.predict(estimator,x_test)[:,1]   # (n_test,num_class) 
 
-# SMARtboost
+# HTBoost
 
-param   = SMARTparam(modality=modality,verbose=:Off,warnings=:On,depth=depth,nfold=nfold)
-data  = SMARTdata(y,x,param)
+param   = HTBparam(modality=modality,verbose=:Off,warnings=:On,depth=depth,nfold=nfold)
+data  = HTBdata(y,x,param)
 
-output = SMARTfit(data,param,cv_grid=[depth]);
-yf = SMARTpredict(x_test,output,predict=:Ey)  # predict
+output = HTBfit(data,param,cv_grid=[depth]);
+yf = HTBpredict(x_test,output,predict=:Ey)  # predict
 
-println("\n RMSE of SMARTboost from true E(y|x)                   ", sqrt(mean((yf-f_true).^2)) )
+println("\n RMSE of HTBoost from true E(y|x)                   ", sqrt(mean((yf-f_true).^2)) )
 println(" RMSE of LightGBM (default param) from true E(y|x)     ", sqrt(mean((yf_gbm-f_true).^2)) )
 
-fnames,fi,fnames_sorted,fi_sorted,sortedindx = SMARTrelevance(output,data,verbose=false);
-println(" SMARTboost number of included features in final model $(sum(fi.>0))")
+fnames,fi,fnames_sorted,fi_sorted,sortedindx = HTBrelevance(output,data,verbose=false);
+println(" HTBoost number of included features in final model $(sum(fi.>0))")
 
-# SMARtboost without scarcity penalization
+# HTBoost without scarcity penalization
 
-param   = SMARTparam(modality=modality,verbose=:Off,warnings=:On,depth=depth,nfold=nfold,
+param   = HTBparam(modality=modality,verbose=:Off,warnings=:On,depth=depth,nfold=nfold,
                     sparsity_penalization = 0)
 
-output = SMARTfit(data,param,cv_grid=[depth],cv_sparsity=false);
-yf = SMARTpredict(x_test,output,predict=:Ey)  # predict
+output = HTBfit(data,param,cv_grid=[depth],cv_sparsity=false);
+yf = HTBpredict(x_test,output,predict=:Ey)  # predict
 
-println("\n RMSE of SMARTboost without sparsity penalization      ", sqrt(mean((yf-f_true).^2)) )
+println("\n RMSE of HTBoost without sparsity penalization      ", sqrt(mean((yf-f_true).^2)) )
 
-fnames,fi,fnames_sorted,fi_sorted,sortedindx = SMARTrelevance(output,data,verbose=false);
-println(" SMARTboost without sparsity penalization: #included features  $(sum(fi.>0))")
+fnames,fi,fnames_sorted,fi_sorted,sortedindx = HTBrelevance(output,data,verbose=false);
+println(" HTBoost without sparsity penalization: #included features  $(sum(fi.>0))")

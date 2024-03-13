@@ -2,88 +2,88 @@
 #  Collects most functions that are exported, as well as some that are not exported
 #
 #  INFORMATION about available functions   
-#  SMARTinfo               basic information about the main functions in SMARTboost
+#  HTBinfo               basic information about the main functions in HTBoost
 # 
 #  SETTING UP THE MODEL, and CALIBRATING PRIOR for panel data and/or overlapping data
-#  SMARTloglikdivide       calibrates param.loglikdivide for panel data and/or overlapping data
-#  SMARTindexes_from_dates train and test sets indexes for expanding window cross-validation
-#  SMARTparam              parameters, defaults or user-provided
+#  HTBloglikdivide       calibrates param.loglikdivide for panel data and/or overlapping data
+#  HTBindexes_from_dates train and test sets indexes for expanding window cross-validation
+#  HTBparam              parameters, defaults or user-provided
 #
 #  FITTING and FORECASTING
-#  SMARTfit                fits SMARTboost with cv (or validation/early stopping) of number of trees and, optionally, depth or other parameter
-#    SMARTfit_single       main function, building block for composite and multi-parameter models 
-#    SMARTfit_hurdle       hurdle models: y continuous, split into y=0 and y /=0   
-#    SMARTfit_multiclass   multiclass classicaition 
-#  SMARTbst                fits SMART when nothing needs to be cross-validated (not even number of trees)
-#  SMARTpredict            prediction from SMARTtrees::SMARTboostTrees
-#    SMARTpredict          output is vector of tuples (composite models)
+#  HTBfit                fits HTBoost with cv (or validation/early stopping) of number of trees and, optionally, depth or other parameter
+#    HTBfit_single       main function, building block for composite and multi-parameter models 
+#    HTBfit_hurdle       hurdle models: y continuous, split into y=0 and y /=0   
+#    HTBfit_multiclass   multiclass classicaition 
+#  HTBbst                fits HTB when nothing needs to be cross-validated (not even number of trees)
+#  HTBpredict            prediction from HTBtrees::HTBoostTrees
+#    HTBpredict          output is vector of tuples (composite models)
 #    preparedata_predict
-#    SMARTpredict_hurdle
-#    SMARTpredict_multiclass
+#    HTBpredict_hurdle
+#    HTBpredict_multiclass
 #
 #  POST-ESTIMATION ANALYSIS
-#  SMARTcoeff              provides information on constant coefficients
+#  HTBcoeff              provides information on constant coefficients
 #    try_loglink
-#  SMARTrelevance          computes feature importance (Breiman et al 1984 relevance)
-#  SMARTpartialplot        partial dependence plots (keeping all other features fixed, not integrating out)
-#  SMARTmarginaleffect     provisional! Numerical computation of marginal effects.
-#  SMARToutput             collects fitted parameters in matrices
+#  HTBrelevance          computes feature importance (Breiman et al 1984 relevance)
+#  HTBpartialplot        partial dependence plots (keeping all other features fixed, not integrating out)
+#  HTBmarginaleffect     provisional! Numerical computation of marginal effects.
+#  HTBoutput             collects fitted parameters in matrices
 #  tight_sparsevs          warns if sparsevs seems to compromise fit 
-#  SMARTweightedtau        computes weighted smoothing parameter
-#  SMARTplotppr            plots projection pursuit regression 
+#  HTBweightedtau        computes weighted smoothing parameter
+#  HTBplotppr            plots projection pursuit regression 
 
 "
-    SMARTinfo()
-Basic information about the main functions in SMARTboost (see help on each function for more details)
+    HTBinfo()
+Basic information about the main functions in HTBoost (see help on each function for more details)
 
 
 # Setting up the model 
-- `SMARTindexes_from_dates` builds train and test sets indexes for expanding window cross-validation
-- `SMARTparam`           parameters, defaults or user-provided.
-- `SMARTdata`            y,x and, optionally, dates, weights, and names of features
+- `HTBindexes_from_dates` builds train and test sets indexes for expanding window cross-validation
+- `HTBparam`           parameters, defaults or user-provided.
+- `HTBdata`            y,x and, optionally, dates, weights, and names of features
 
 # Fitting and forecasting 
-- `SMARTfit`             fits SMARTboost with cv (or validation/early stopping) of number of trees and, optionally, depth or other parameter
-- `SMARTbst`             (rerely needed by user) fits SMARTboost when nothing needs to be cross-validated (not even number of trees)                         
-- `SMARTpredict`         predictions for y or natural parameter
+- `HTBfit`             fits HTBoost with cv (or validation/early stopping) of number of trees and, optionally, depth or other parameter
+- `HTBbst`             (rerely needed by user) fits HTBoost when nothing needs to be cross-validated (not even number of trees)                         
+- `HTBpredict`         predictions for y or natural parameter
 
 #  POST-ESTIMATION ANALYSIS
-- `SMARTcoeff`           provides information on constant coefficients, e.g. dispersion and dof for loss=:t
-- `SMARTrelevance`       computes feature importance (Breiman et al 1984 relevance)
-- `SMARTpartialplot`     partial dependence plots (keeping all other features fixed, not integrating out)
-- `SMARTmarginaleffect`  provisional! Numerical computation of marginal effects.
-- `SMARToutput`          collects fitted parameters in matrices
-- `SMARTweightedtau`     computes weighted smoothing parameter to help assess function smoothness
+- `HTBcoeff`           provides information on constant coefficients, e.g. dispersion and dof for loss=:t
+- `HTBrelevance`       computes feature importance (Breiman et al 1984 relevance)
+- `HTBpartialplot`     partial dependence plots (keeping all other features fixed, not integrating out)
+- `HTBmarginaleffect`  provisional! Numerical computation of marginal effects.
+- `HTBoutput`          collects fitted parameters in matrices
+- `HTBweightedtau`     computes weighted smoothing parameter to help assess function smoothness
 
 Example of use of info function 
 
-    help?> SMARTinfo
+    help?> HTBinfo
     or ...
-    julia> SMARTinfo()
+    julia> HTBinfo()
 
-To find more information about a specific function, e.g. SMARTfit
+To find more information about a specific function, e.g. HTBfit
 
-    help?> SMARTfit
+    help?> HTBfit
 
-Example of basic use of SMARTboost functions with iid data and default settings
+Example of basic use of HTBoost functions with iid data and default settings
 
-    param  = SMARTparam()     # or param = SMARTparam(loss=:logistic)                            
-    data   = SMARTdata(y,x,param)
-    output = SMARTfit(data,param)
-    yf     = SMARTpredict(x_test,output)  
+    param  = HTBparam()     # or param = HTBparam(loss=:logistic)                            
+    data   = HTBdata(y,x,param)
+    output = HTBfit(data,param)
+    yf     = HTBpredict(x_test,output)  
 
 See the files in the folder examples for more examples of use. 
 "
-function SMARTinfo()
+function HTBinfo()
 
-    println("Documentation: $(Base.doc(SMARTinfo))")
+    println("Documentation: $(Base.doc(HTBinfo))")
 
 end
 
 
 
 #=
-    SMARTloglikdivide(df,y_symbol,date_symbol;overlap=0)
+    HTBloglikdivide(df,y_symbol,date_symbol;overlap=0)
 
 loglikdivide is now computed internally, so the user does not need to call this function for lld,
 only if interested in effective_sample_size.
@@ -91,7 +91,7 @@ only if interested in effective_sample_size.
 Old documentation:
 Suggests a value for param.loglikdivide., where nominal sample size/loglikedivide = effective sample size.
 Relevant panel data (longitudinal data) and some time series. 
-The only effect of loglikdivide in SMARTboost is to calibrate the strength of the prior in relation to the likelihood evidence.
+The only effect of loglikdivide in HTBoost is to calibrate the strength of the prior in relation to the likelihood evidence.
 Accounts (roughly) for cross-sectional correlation using a clustered standard errors approach, and for serial correlation induced
 by overlapping observation when y(t) = Y(t+horizon) - Y(t).
 
@@ -106,10 +106,10 @@ by overlapping observation when y(t) = Y(t+horizon) - Y(t).
 - `effective_sample_size::Float`
 
 # Example of use
-    lld,ess =  SMARTloglikdivide(df,:excessret,:date,overlap=h-1)
+    lld,ess =  HTBloglikdivide(df,:excessret,:date,overlap=h-1)
 
 =#
-function SMARTloglikdivide(df::DataFrame,y_symbol,date_symbol;overlap = 0)
+function HTBloglikdivide(df::DataFrame,y_symbol,date_symbol;overlap = 0)
 
     overlap = Int(overlap); y_symbol = Symbol(y_symbol); date_symbol = Symbol(date_symbol)  # required by R wrapper
 
@@ -138,7 +138,7 @@ end
 
 
 
-function SMARTloglikdivide(y::AbstractVector{T},dates_all;overlap=0) where T<:Real
+function HTBloglikdivide(y::AbstractVector{T},dates_all;overlap=0) where T<:Real
 
     overlap = Int(overlap)
     dates   = unique(dates_all)
@@ -167,7 +167,7 @@ end
 
 
 """
-SMARTindexes_from_dates(df::DataFrame,datesymbol::Symbol,first_date::Date,n_reestimate::Int)
+HTBindexes_from_dates(df::DataFrame,datesymbol::Symbol,first_date::Date,n_reestimate::Int)
 
 Computes indexes of training set and test set for cumulative CV and pseudo-real-time forecasting exercises
 
@@ -183,14 +183,14 @@ Computes indexes of training set and test set for cumulative CV and pseudo-real-
 * Example of use
 
 - first_date = Date("2017-12-31", Dates.DateFormat("y-m-d"))
-- indtrain_a,indtest_a = SMARTindexes_from_dates(df,:date,first_date,12)
+- indtrain_a,indtest_a = HTBindexes_from_dates(df,:date,first_date,12)
 
 * NOTES
 
 - Inefficient for large datasets
 
 """
-function SMARTindexes_from_dates(df::DataFrame,datesymbol::Symbol,first_date,n_reestimate)
+function HTBindexes_from_dates(df::DataFrame,datesymbol::Symbol,first_date,n_reestimate)
 
     n_reestimate = Int(n_reestimate)
 
@@ -235,48 +235,48 @@ end
 
 
 """
-    SMARTbst(data::SMARTdata, param::SMARTparam)
-SMARTboost fit, number of trees defined by param.ntrees, not cross-validated.
+    HTBbst(data::HTBdata, param::HTBparam)
+HTBoost fit, number of trees defined by param.ntrees, not cross-validated.
 
 # Output
-- `SMARTtrees::SMARTboostTrees`
+- `HTBtrees::HTBoostTrees`
 
 # Example of use
-    SMARTtrees =  SMARTbst(data,param)
+    HTBtrees =  HTBbst(data,param)
 """
-function SMARTbst(data0::SMARTdata, param::SMARTparam )
+function HTBbst(data0::HTBdata, param::HTBparam )
 
-    # initialize SMARTtrees
-    param,data,meanx,stdx          = preparedataSMART(data0,param)
-    τgrid,μgrid,Info_x,n,p         = preparegridsSMART(data,param,meanx,stdx)
+    # initialize HTBtrees
+    param,data,meanx,stdx          = preparedataHTB(data0,param)
+    τgrid,μgrid,Info_x,n,p         = preparegridsHTB(data,param,meanx,stdx)
 
-    τgrid,μgrid,Info_x,n,p         = preparegridsSMART(data,param,meanx,stdx)
+    τgrid,μgrid,Info_x,n,p         = preparegridsHTB(data,param,meanx,stdx)
 
     gamma0                         = initialize_gamma0(data,param)
     gammafit                       = data0.offset + fill(gamma0,n) 
 
     param          = updatecoeff(param,data.y,gammafit,data.weights,0)
-    SMARTtrees     = SMARTboostTrees(param,gamma0,data0.offset,n,p,meanx,stdx,Info_x)
+    HTBtrees     = HTBoostTrees(param,gamma0,data0.offset,n,p,meanx,stdx,Info_x)
     rh,param       = gradient_hessian( data.y,data.weights,gammafit,param,0)
 
     # prelimiminary run to calibrate coefficients and priors
-    Gβ,trash  = fit_one_tree(data.y,data.weights,SMARTtrees,rh.r,rh.h,data.x,μgrid,Info_x,τgrid,param)
-    param = updatecoeff(param,data.y,SMARTtrees.gammafit+Gβ,data.weights,0) # +Gβ, NOT +λGβ
-    trash,param = gradient_hessian( data.y,data.weights,SMARTtrees.gammafit+Gβ,param,1)
+    Gβ,trash  = fit_one_tree(data.y,data.weights,HTBtrees,rh.r,rh.h,data.x,μgrid,Info_x,τgrid,param)
+    param = updatecoeff(param,data.y,HTBtrees.gammafit+Gβ,data.weights,0) # +Gβ, NOT +λGβ
+    trash,param = gradient_hessian( data.y,data.weights,HTBtrees.gammafit+Gβ,param,1)
 
     for iter in 1:param.ntrees
         displayinfo(param.verbose,iter)
-        Gβ,i,μ,τ,m,β,fi2,σᵧ  = fit_one_tree(data.y,data.weights,SMARTtrees,rh.r,rh.h,data.x,μgrid,Info_x,τgrid,param)
-        param = updatecoeff(param,data.y,SMARTtrees.gammafit+Gβ,data.weights,iter) # +Gβ, NOT +λGβ
-        updateSMARTtrees!(SMARTtrees,Gβ,SMARTtree(i,μ,τ,m,β,fi2,σᵧ),iter,param)          # updates gammafit=gammafit_old+λGβ
-        rh,param = gradient_hessian( data.y,data.weights,SMARTtrees.gammafit,param,2)
+        Gβ,i,μ,τ,m,β,fi2,σᵧ  = fit_one_tree(data.y,data.weights,HTBtrees,rh.r,rh.h,data.x,μgrid,Info_x,τgrid,param)
+        param = updatecoeff(param,data.y,HTBtrees.gammafit+Gβ,data.weights,iter) # +Gβ, NOT +λGβ
+        updateHTBtrees!(HTBtrees,Gβ,HTBtree(i,μ,τ,m,β,fi2,σᵧ),iter,param)          # updates gammafit=gammafit_old+λGβ
+        rh,param = gradient_hessian( data.y,data.weights,HTBtrees.gammafit,param,2)
     end
 
     # bias adjustment
-    bias,SMARTtrees.gammafit = bias_correct(SMARTtrees.gammafit,data.y,SMARTtrees.gammafit,param)
-    SMARTtrees.gamma0 +=  bias
+    bias,HTBtrees.gammafit = bias_correct(HTBtrees.gammafit,data.y,HTBtrees.gammafit,param)
+    HTBtrees.gamma0 +=  bias
 
-    return SMARTtrees
+    return HTBtrees
 
 end
 
@@ -299,31 +299,31 @@ end
 
 
 
-#Forecasts from SMARTboost. Expects x to be standardized, with categorical already transformed
-function SMARTpredict_internal(x::AbstractMatrix,SMARTtrees::SMARTboostTrees,predict;cutoff_parallel=20_000,offset=[])
+#Forecasts from HTBoost. Expects x to be standardized, with categorical already transformed
+function HTBpredict_internal(x::AbstractMatrix,HTBtrees::HTBoostTrees,predict;cutoff_parallel=20_000,offset=[])
 
     n,p = size(x)
-    T   = SMARTtrees.param.T
+    T   = HTBtrees.param.T
  
-    if p != length(SMARTtrees.meanx)
-        @error "In SMARTpredict, the input matrix x has column dimension $p while SMARTfit has been estimated with $(length(SMARTtrees.meanx)) features in data.x"
+    if p != length(HTBtrees.meanx)
+        @error "In HTBpredict, the input matrix x has column dimension $p while HTBfit has been estimated with $(length(HTBtrees.meanx)) features in data.x"
     end
 
     if n>cutoff_parallel
-        gammafit = SMARTpredict_distributed(x,SMARTtrees)
+        gammafit = HTBpredict_distributed(x,HTBtrees)
     else
 
-        gammafit = SMARTtrees.gamma0*ones(T,size(x,1))
+        gammafit = HTBtrees.gamma0*ones(T,size(x,1))
     
-        for j in 1:length(SMARTtrees.trees)
-            tree     =  SMARTtrees.trees[j]          
-            gammafit += SMARTtrees.param.lambda*SMARTtreebuild(x,tree.i,tree.μ,tree.τ,tree.m,tree.β,tree.σᵧ,SMARTtrees.param)    
+        for j in 1:length(HTBtrees.trees)
+            tree     =  HTBtrees.trees[j]          
+            gammafit += HTBtrees.param.lambda*HTBtreebuild(x,tree.i,tree.μ,tree.τ,tree.m,tree.β,tree.σᵧ,HTBtrees.param)    
         end
     end
 
     if !isempty(offset); gammafit = T.(offset) + gammafit; end     
 
-    pred = from_gamma_to_Ey(gammafit,SMARTtrees.param,predict) # from natural parameter to E(y), depending on predict
+    pred = from_gamma_to_Ey(gammafit,HTBtrees.param,predict) # from natural parameter to E(y), depending on predict
 
     return pred
 
@@ -331,29 +331,29 @@ end
 
 
 # Expects x to be standardized, with categories and missing already transformed
-function SMARTpredict_distributed(x::AbstractMatrix,SMARTtrees::SMARTboostTrees)
+function HTBpredict_distributed(x::AbstractMatrix,HTBtrees::HTBoostTrees)
 
-    T       = typeof(SMARTtrees.gamma0)
-    x       = SharedMatrixErrorRobust(x,SMARTtrees.param)
+    T       = typeof(HTBtrees.gamma0)
+    x       = SharedMatrixErrorRobust(x,HTBtrees.param)
 
-    gammafit = @distributed (+) for j = 1:length(SMARTtrees.trees)
-        SMARTtrees.param.lambda*SMARTtreebuild(x,SMARTtrees.trees[j].i,SMARTtrees.trees[j].μ,SMARTtrees.trees[j].τ,SMARTtrees.trees[j].m,SMARTtrees.trees[j].β,SMARTtrees.trees[j].σᵧ,SMARTtrees.param)
+    gammafit = @distributed (+) for j = 1:length(HTBtrees.trees)
+        HTBtrees.param.lambda*HTBtreebuild(x,HTBtrees.trees[j].i,HTBtrees.trees[j].μ,HTBtrees.trees[j].τ,HTBtrees.trees[j].m,HTBtrees.trees[j].β,HTBtrees.trees[j].σᵧ,HTBtrees.param)
     end
 
-    return gammafit + SMARTtrees.gamma0*ones(T,size(x,1))
+    return gammafit + HTBtrees.gamma0*ones(T,size(x,1))
 
 end
 
 
 
 """
-    SMARTpredict(x,output)
-Forecasts from SMARTboost, for y or the natural parameter.
+    HTBpredict(x,output)
+Forecasts from HTBoost, for y or the natural parameter.
 
 # Inputs
 - `x`                           (n,p) DataFrame or Float matrix of forecast origins (type<:real) or p vector of forecast origin
-                                In the same format as the x given as input is SMARTdata(y,x,...). May contain missing or NaN.
-- `output`                      output from SMARTfit
+                                In the same format as the x given as input is HTBdata(y,x,...). May contain missing or NaN.
+- `output`                      output from HTBfit
 
 # Optional inputs
 - `predict`                    [:Ey], :Ey or :Egamma. :Ey returns the forecast of y, :Egamma returns the forecast of the natural parameter.
@@ -376,40 +376,40 @@ Forecasts from SMARTboost, for y or the natural parameter.
 - `ymax`                      (n) vector, ymax[i] is the class value with highest probability at observation i. 
 
 # Example of use
-    output = SMARTfit(data,param)
-    yf     = SMARTpredict(x_oos,output)
-    yf     = SMARTpredict(x_oos,output,best_model=true)
-    yf     = SMARTpredict(x_oos,output,offset = log.(exposure) )
+    output = HTBfit(data,param)
+    yf     = HTBpredict(x_oos,output)
+    yf     = HTBpredict(x_oos,output,best_model=true)
+    yf     = HTBpredict(x_oos,output,offset = log.(exposure) )
 
-    yf,prob0,yf_not0 = SMARTpredict(x_oos,output)  # for hurdle models 
-    yf,class_value,ymax = SMARTpredict(x_oos,output)  # for multiclass 
+    yf,prob0,yf_not0 = HTBpredict(x_oos,output)  # for hurdle models 
+    yf,class_value,ymax = HTBpredict(x_oos,output)  # for multiclass 
 
 """
-function SMARTpredict(x0::Union{AbstractDataFrame,AbstractArray},output::NamedTuple;best_model=false,cutoff_parallel=20_000,predict=:Ey,offset=[])
+function HTBpredict(x0::Union{AbstractDataFrame,AbstractArray},output::NamedTuple;best_model=false,cutoff_parallel=20_000,predict=:Ey,offset=[])
 
-    x = preparedata_predict(x0,output.SMARTtrees)
+    x = preparedata_predict(x0,output.HTBtrees)
 
     if best_model==true || length(output.w)==1
-        gammafit = SMARTpredict_internal(x,output.SMARTtrees,predict,cutoff_parallel=cutoff_parallel,offset=offset)  # SMARTtrees is for best model, SMARTtrees_a collects all
+        gammafit = HTBpredict_internal(x,output.HTBtrees,predict,cutoff_parallel=cutoff_parallel,offset=offset)  # HTBtrees is for best model, HTBtrees_a collects all
     else
         gammafit = zeros(output.bestparam.T,size(x,1))
 
         for i in 1:length(output.w)
 
             if output.w[i]>0
-                gammafit += output.w[i]*SMARTpredict_internal(x,output.SMARTtrees_a[i],predict,cutoff_parallel=cutoff_parallel,offset=offset)
+                gammafit += output.w[i]*HTBpredict_internal(x,output.HTBtrees_a[i],predict,cutoff_parallel=cutoff_parallel,offset=offset)
             end
 
         end
     end
     
-    return gammafit    # gammafit is actually Ey if predict = :Ey in SMARTpredict_internal
+    return gammafit    # gammafit is actually Ey if predict = :Ey in HTBpredict_internal
 
 end 
 
 
-# SMARTpredict when output is not NamedTuple (will typically be a vector of NamedTuple)
-function SMARTpredict(x::Union{AbstractDataFrame,AbstractArray},output;best_model=false,cutoff_parallel=20_000,predict=:Ey,offset=[])
+# HTBpredict when output is not NamedTuple (will typically be a vector of NamedTuple)
+function HTBpredict(x::Union{AbstractDataFrame,AbstractArray},output;best_model=false,cutoff_parallel=20_000,predict=:Ey,offset=[])
 
     # output saves the loss functions of the component models: find the original loss
     loss1,loss2 = output[1].bestparam.loss,output[2].bestparam.loss
@@ -423,11 +423,11 @@ function SMARTpredict(x::Union{AbstractDataFrame,AbstractArray},output;best_mode
     if loss == :hurdlefamily 
 
         if predict==:Egamma; @error " prediction with hurdle models require predict=:Ey"; end 
-        yf,prob0,yf_not0 = SMARTpredict_hurdle(x,output,best_model,cutoff_parallel,predict,offset)
+        yf,prob0,yf_not0 = HTBpredict_hurdle(x,output,best_model,cutoff_parallel,predict,offset)
         return (yf,prob0,yf_not0)
     
     elseif loss == :multiclass 
-        yf,class_values,ymax = SMARTpredict_multiclass(x,output,best_model,cutoff_parallel,predict,offset)
+        yf,class_values,ymax = HTBpredict_multiclass(x,output,best_model,cutoff_parallel,predict,offset)
         return yf,class_values,ymax 
     end 
     
@@ -436,11 +436,11 @@ end
 
 # prediction for hurdle model, where  param.loss in [:hurdleGamma,:hurdleL2loglink,:hurdleL2]
 # The first model is logistic regression for prob, the second is :gamma of :L2 or :L2loglink.
-# yf,prob0,yf_not0 = SMARTpredict_hurdle  
-function SMARTpredict_hurdle(x,output,best_model,cutoff_parallel,predict,offset)
+# yf,prob0,yf_not0 = HTBpredict_hurdle  
+function HTBpredict_hurdle(x,output,best_model,cutoff_parallel,predict,offset)
 
-    yf_0     = SMARTpredict(x,output[1],offset=[],best_model=best_model,cutoff_parallel=cutoff_parallel,predict=predict)   # offset is meant for 
-    yf_not0  = SMARTpredict(x,output[2],offset=offset,best_model=best_model,cutoff_parallel=cutoff_parallel,predict=predict)   # offset is meant for 
+    yf_0     = HTBpredict(x,output[1],offset=[],best_model=best_model,cutoff_parallel=cutoff_parallel,predict=predict)   # offset is meant for 
+    yf_not0  = HTBpredict(x,output[2],offset=offset,best_model=best_model,cutoff_parallel=cutoff_parallel,predict=predict)   # offset is meant for 
 
     yf    = @. yf_0 * yf_not0    # E(y|x)
     prob0  = @. 1 - yf_0          # prob(y=0)
@@ -450,7 +450,7 @@ function SMARTpredict_hurdle(x,output,best_model,cutoff_parallel,predict,offset)
 end 
 
 
-function SMARTpredict_multiclass(x,output,best_model,cutoff_parallel,predict,offset)
+function HTBpredict_multiclass(x,output,best_model,cutoff_parallel,predict,offset)
 
     if predict == :Egamma 
         @error "predict for loss=:multiclass is only available as predict=:Ey (i.e. for probabilities) "
@@ -461,7 +461,7 @@ function SMARTpredict_multiclass(x,output,best_model,cutoff_parallel,predict,off
     prob = Matrix{output[1].bestparam.T}(undef,size(x,1),num_class)
 
     for i in 1:num_class
-        prob[:,i] = SMARTpredict(x,output[i],offset=[],best_model=best_model,cutoff_parallel=cutoff_parallel,predict=predict)
+        prob[:,i] = HTBpredict(x,output[i],offset=[],best_model=best_model,cutoff_parallel=cutoff_parallel,predict=predict)
     end 
 
     prob = prob./sum(prob,dims=2)
@@ -479,25 +479,25 @@ end
 
 
 """
-    SMARTcoeff(output;verbose=true)
+    HTBcoeff(output;verbose=true)
 
 Provides some information on constant coefficients for best model (in the form of a tuple.)
 For example, error variance for :L2, dispersion and dof for :t.
 
 # Inputs
-- `output`                      output from SMARTfit
+- `output`                      output from HTBfit
 
 # Output
 - `coeff`                      named tuple with information on fixed coefficients (e.g. variance for :L2, dispersion and dof for :t)
 
 # Example of use
-    output = SMARTfit(data,param)
-    coeff  = SMARTcoeff(output,verbose=false)
+    output = HTBfit(data,param)
+    coeff  = HTBcoeff(output,verbose=false)
 """
-function SMARTcoeff(output;verbose=true)
+function HTBcoeff(output;verbose=true)
 
     if output.bestparam.loss in [:hurdleGamma, :hurdleL2loglink, :hurdleL2]
-        @error "SMARTcoeff not yet supported for hurdle models"
+        @error "HTBcoeff not yet supported for hurdle models"
     end     
 
     loss = output.bestparam.loss 
@@ -534,10 +534,10 @@ end
 
 
 # Prepare the data, which may come as a DataFrame and have missing and categorical, with the
-# Same transformations as in SMARTdata() and preparedataSMARTfor convenient data manipulation
-function preparedata_predict(x0::Union{AbstractDataFrame,AbstractArray},SMARTtrees::SMARTboostTrees)
+# Same transformations as in HTBdata() and preparedataHTBfor convenient data manipulation
+function preparedata_predict(x0::Union{AbstractDataFrame,AbstractArray},HTBtrees::HTBoostTrees)
 
-    param = SMARTtrees.param
+    param = HTBtrees.param
 
     if typeof(x0) <: AbstractDataFrame
         x = deepcopy(x0)
@@ -551,11 +551,11 @@ function preparedata_predict(x0::Union{AbstractDataFrame,AbstractArray},SMARTtre
     if param.mask_missing == true
         x,fnames = missing_features_extend_x(param,x)      # extend x with dummy features if there were missing in the original dataset
     end 
-    replace_nan_meanx!(x,param,SMARTtrees.meanx)  # only for features NOT in categorical or missing_features
+    replace_nan_meanx!(x,param,HTBtrees.meanx)  # only for features NOT in categorical or missing_features
     
     x = prepares_categorical_predict(x,param)  # categoricals are mapped to target encoding values; new categories allowed 
                                                # columns are added if param.cat_representation_dimension>1
-    x = (x .- SMARTtrees.meanx)./SMARTtrees.stdx
+    x = (x .- HTBtrees.meanx)./HTBtrees.stdx
     x = convert_df_matrix(x,param.T)
 
     return x
@@ -563,23 +563,23 @@ end
 
 
 
-# This function is used only in SMARTfit to compute residuals for cv_different_loss
-function SMARTpredict(x0::Union{AbstractDataFrame,AbstractArray},SMARTtrees::SMARTboostTrees;cutoff_parallel=20_000,predict=:Ey)
+# This function is used only in HTBfit to compute residuals for cv_different_loss
+function HTBpredict(x0::Union{AbstractDataFrame,AbstractArray},HTBtrees::HTBoostTrees;cutoff_parallel=20_000,predict=:Ey)
 
-    x        = preparedata_predict(x0,SMARTtrees)
-    gammafit = SMARTpredict_internal(x,SMARTtrees,predict,cutoff_parallel=cutoff_parallel)  # SMARTtrees is for best model, SMARTtrees_a collects all
+    x        = preparedata_predict(x0,HTBtrees)
+    gammafit = HTBpredict_internal(x,HTBtrees,predict,cutoff_parallel=cutoff_parallel)  # HTBtrees is for best model, HTBtrees_a collects all
 
-    return gammafit    # gammafit is actually Ey if predict = :Ey in SMARTpredict_internal
+    return gammafit    # gammafit is actually Ey if predict = :Ey in HTBpredict_internal
 
 end 
 
 
-# This version takes in SMARTdata type and SMARTboosTrees, assumes one model.
-# Used only in one place, to produce forecasts within SMARTfit. Get rid of it?   
-function SMARTpredict_internal(data::SMARTdata,SMARTtrees::SMARTboostTrees,predict;cutoff_parallel=20_000)
+# This version takes in HTBdata type and HTBoostrees, assumes one model.
+# Used only in one place, to produce forecasts within HTBfit. Get rid of it?   
+function HTBpredict_internal(data::HTBdata,HTBtrees::HTBoostTrees,predict;cutoff_parallel=20_000)
 
     # Prepare the data, which may come as a DataFrame and have missing and categorical
-    param = deepcopy(SMARTtrees.param)
+    param = deepcopy(HTBtrees.param)
     x = copy(data.x)
     x = replace_nan_with_missing(x)
     convert_dates_to_real!(x,param,predict=true)   
@@ -587,7 +587,7 @@ function SMARTpredict_internal(data::SMARTdata,SMARTtrees::SMARTboostTrees,predi
     map_cat_convert_to_float!(x,param)      # categorical are now in the form 0,1,2...
     x = replace_missing_with_nan(x)         # SharedArray do not accept missing.
     # replace categoricals with target encoding values, and standardize all features
-    x = preparedataSMART_test(x,param,SMARTtrees.meanx,SMARTtrees.stdx)
+    x = preparedataHTB_test(x,param,HTBtrees.meanx,HTBtrees.stdx)
  
     if typeof(x)<:AbstractDataFrame
         x = convert_df_matrix(x,param.T)
@@ -597,7 +597,7 @@ function SMARTpredict_internal(data::SMARTdata,SMARTtrees::SMARTboostTrees,predi
         x=convert(Matrix,reshape(x0,length(x0),1))
     end
 
-    gammafit = SMARTpredict_internal(x,SMARTtrees,predict,cutoff_parallel=cutoff_parallel)  # SMARTtrees is for best model, SMARTtrees_a collects all
+    gammafit = HTBpredict_internal(x,HTBtrees,predict,cutoff_parallel=cutoff_parallel)  # HTBtrees is for best model, HTBtrees_a collects all
 
     return gammafit
 
@@ -636,9 +636,9 @@ end
 
 
 """
-    SMARTfit(data,param;cv_grid=[],cv_sparsity=:Auto,cv_depthppr=:Auto)
+    HTBfit(data,param;cv_grid=[],cv_sparsity=:Auto,cv_depthppr=:Auto)
 
-Fits SMARTboost with with k-fold cross-validation of number of trees and depth, and possibly a few more models.
+Fits HTBoost with with k-fold cross-validation of number of trees and depth, and possibly a few more models.
 
 If param.modality is :fast or :fastest, fits one model, at param, and if needed a second where sharp splits are 
 forced on features with high average values of τ. For param.modality=:accurate or :compromise,  
@@ -651,8 +651,8 @@ may then cross-validate the following hyperparamters:
 These cv of these hyperparameters is de-activated by:
 
 1) Setting modality = :fast or :fastest.
-2) Setting modality = :fast or :fastest, or providing a grid cv_grid, e.g. cv_grid = [6] or cv_grid = [3,5], as in SMARTfit(data,param,cv_grid=[3,5])
-3) Setting modality = :fast or :fastest, or SMARTfit(data,param,cv_sparsity=false)
+2) Setting modality = :fast or :fastest, or providing a grid cv_grid, e.g. cv_grid = [6] or cv_grid = [3,5], as in HTBfit(data,param,cv_grid=[3,5])
+3) Setting modality = :fast or :fastest, or HTBfit(data,param,cv_sparsity=false)
 
 If param.modality=:accurate, lambda for all models is set set min(lambda,0.1). If modality=:compromise, the default learning rate
 lambda=0.2 is used, and the best model is then refitted with lambda = 0.1. 
@@ -662,8 +662,8 @@ Finally, all the estimated models considered are stacked, with weights chosen to
 
 
 # Inputs
-- `data::SMARTdata`
-- `param::SMARTparam`
+- `data::HTBdata`
+- `param::HTBparam`
 
 # Optional inputs
 
@@ -685,8 +685,8 @@ Finally, all the estimated models considered are stacked, with weights chosen to
 - `meanloss:Vector{Float}`        mean cv loss at bestvalue of param for param.ntrees = 1,2,....
 - `stdeloss:Vector{Float}`        standard errror of cv loss at bestvalue of param for param.ntrees = 1,2,....
 - `lossgrid::Vector{Float}`       cv loss for best tree size for each grid value 
-- `SMARTtrees::SMARTboostTrees`   for the best cv value of param and ntrees
-- `SMARTtrees_a`                  length(cv_grid) vector of SMARTtrees
+- `HTBtrees::HTBoostTrees`   for the best cv value of param and ntrees
+- `HTBtrees_a`                  length(cv_grid) vector of HTBtrees
 - `i`                             (ntrees,depth) matrix of threshold features for best model
 - `mu`                            (ntrees,depth) matrix of threshold points  for best model
 - `tau`                           (ntrees,depth) matrix of sigmoid parameters for best model
@@ -699,9 +699,9 @@ Finally, all the estimated models considered are stacked, with weights chosen to
 - The following options for cross-validation are specified in param: randomizecv, nfold, sharevalidation, stderulestop
 
 # Examples of use:
-    param = SMARTparam()
-    data   = SMARTdata(y,x,param)
-    output = SMARTfit(data,param)
+    param = HTBparam()
+    data   = HTBdata(y,x,param)
+    output = HTBfit(data,param)
     ntrees = output.ntrees 
     best_depth = output.bestvalue 
 
@@ -710,17 +710,17 @@ Finally, all the estimated models considered are stacked, with weights chosen to
     ntrees_not0 = output[2].ntrees   # number of trees for gamma or L2 loss
 
 """
-function SMARTfit(data::SMARTdata, param::SMARTparam; cv_grid=[],cv_different_loss::Bool=false,cv_sharp::Bool=false,
+function HTBfit(data::HTBdata, param::HTBparam; cv_grid=[],cv_different_loss::Bool=false,cv_sharp::Bool=false,
     cv_sparsity=:Auto,cv_hybrid=true,cv_depthppr=:Auto,skip_full_sample=false)   # skip_full_sample enforces nofullsample even if nfold=1 (used in other functions, not by user)
 
     if param.loss in [:hurdleGamma,:hurdleL2loglink,:hurdleL2]
-        output = SMARTfit_hurdle(data,param,cv_grid=cv_grid,cv_different_loss=cv_different_loss,cv_sharp=cv_sharp,cv_sparsity=cv_sparsity,
+        output = HTBfit_hurdle(data,param,cv_grid=cv_grid,cv_different_loss=cv_different_loss,cv_sharp=cv_sharp,cv_sparsity=cv_sparsity,
                                 cv_hybrid=cv_hybrid,cv_depthppr=cv_depthppr,skip_full_sample=skip_full_sample)
     elseif param.loss == :multiclass
-        output = SMARTfit_multiclass(data,param,cv_grid=cv_grid,cv_different_loss=cv_different_loss,cv_sharp=cv_sharp,cv_sparsity=cv_sparsity,
+        output = HTBfit_multiclass(data,param,cv_grid=cv_grid,cv_different_loss=cv_different_loss,cv_sharp=cv_sharp,cv_sparsity=cv_sparsity,
                                 cv_hybrid=cv_hybrid,cv_depthppr=cv_depthppr,skip_full_sample=skip_full_sample)
     else 
-        output = SMARTfit_single(data,param,cv_grid=cv_grid,cv_different_loss=cv_different_loss,cv_sharp=cv_sharp,cv_sparsity=cv_sparsity,
+        output = HTBfit_single(data,param,cv_grid=cv_grid,cv_different_loss=cv_different_loss,cv_sharp=cv_sharp,cv_sparsity=cv_sparsity,
                        cv_hybrid=cv_hybrid,cv_depthppr=cv_depthppr,skip_full_sample=skip_full_sample)
     end 
 
@@ -728,8 +728,8 @@ function SMARTfit(data::SMARTdata, param::SMARTparam; cv_grid=[],cv_different_lo
 end 
 
 
-# SMARTfit for a single model.  
-function SMARTfit_single(data::SMARTdata, param::SMARTparam; cv_grid=[],cv_different_loss::Bool=false,cv_sharp::Bool=false,
+# HTBfit for a single model.  
+function HTBfit_single(data::HTBdata, param::HTBparam; cv_grid=[],cv_different_loss::Bool=false,cv_sharp::Bool=false,
         cv_sparsity=:Auto,cv_hybrid=true,cv_depthppr=false,skip_full_sample=false)   # skip_full_sample enforces nofullsample even if nfold=1 (used in other functions, not by user)
     
     T,I = param.T,param.I
@@ -781,7 +781,7 @@ function SMARTfit_single(data::SMARTdata, param::SMARTparam; cv_grid=[],cv_diffe
 
     treesize, lossgrid    = Array{I}(undef,length(cvgrid)), fill(T(Inf),length(cvgrid))  
     meanloss_a,stdeloss_a = Array{Array{T}}(undef,length(cvgrid)), Array{Array{T}}(undef,length(cvgrid))
-    SMARTtrees_a          = Array{SMARTboostTrees}(undef,length(cvgrid))
+    HTBtrees_a          = Array{HTBoostTrees}(undef,length(cvgrid))
     gammafit_test_a       = Vector{Vector{T}}(undef,length(cvgrid))
     y_test_a              = T[]
     indtest_a             = I[]
@@ -799,10 +799,10 @@ function SMARTfit_single(data::SMARTdata, param::SMARTparam; cv_grid=[],cv_diffe
             param_given_data!(param,data)
             param_constraints!(param)
 
-            ntrees,loss,meanloss,stdeloss,SMARTtrees1st,indtest,gammafit_test,y_test,problems = SMARTsequentialcv(data,param,indices=indices)
+            ntrees,loss,meanloss,stdeloss,HTBtrees1st,indtest,gammafit_test,y_test,problems = HTBsequentialcv(data,param,indices=indices)
 
             i = d
-            treesize[i],lossgrid[i],meanloss_a[i],stdeloss_a[i],SMARTtrees_a[i],gammafit_test_a[i],indtest_a,y_test_a = ntrees,loss,meanloss,stdeloss,SMARTtrees1st,gammafit_test,indtest,y_test 
+            treesize[i],lossgrid[i],meanloss_a[i],stdeloss_a[i],HTBtrees_a[i],gammafit_test_a[i],indtest_a,y_test_a = ntrees,loss,meanloss,stdeloss,HTBtrees1st,gammafit_test,indtest,y_test 
             problems_somewhere = problems_somewhere + problems
             end    
     end 
@@ -823,10 +823,10 @@ function SMARTfit_single(data::SMARTdata, param::SMARTparam; cv_grid=[],cv_diffe
                 param_given_data!(param,data)
                 param_constraints!(param)
 
-                ntrees,loss,meanloss,stdeloss,SMARTtrees1st,indtest,gammafit_test,y_test,problems = SMARTsequentialcv(data,param,indices=indices)
+                ntrees,loss,meanloss,stdeloss,HTBtrees1st,indtest,gammafit_test,y_test,problems = HTBsequentialcv(data,param,indices=indices)
 
                 i = d
-                treesize[i],lossgrid[i],meanloss_a[i],stdeloss_a[i],SMARTtrees_a[i],gammafit_test_a[i],indtest_a,y_test_a = ntrees,loss,meanloss,stdeloss,SMARTtrees1st,gammafit_test,indtest,y_test 
+                treesize[i],lossgrid[i],meanloss_a[i],stdeloss_a[i],HTBtrees_a[i],gammafit_test_a[i],indtest_a,y_test_a = ntrees,loss,meanloss,stdeloss,HTBtrees1st,gammafit_test,indtest,y_test 
                 problems_somewhere = problems_somewhere + problems
 
             end     
@@ -845,14 +845,14 @@ function SMARTfit_single(data::SMARTdata, param::SMARTparam; cv_grid=[],cv_diffe
     # Additional models: Fit model with sparsity-inducing penalization, on best model fitted so far 
 
     best_i      = argmin(lossgrid)
-    param       = deepcopy(SMARTtrees_a[best_i].param)
-    n,p         = size(data.x)   # not quite the correct #var if, as for categoricals, more are created by SMARTdata, but good enough 
+    param       = deepcopy(HTBtrees_a[best_i].param)
+    n,p         = size(data.x)   # not quite the correct #var if, as for categoricals, more are created by HTBdata, but good enough 
 
     sparsity_grid = T.([0.7,1.1,1.5])           
 
     if cv_sparsity == :Auto      
 
-        yfit = SMARTpredict(data.x,SMARTtrees_a[best_i],predict=:Ey)    
+        yfit = HTBpredict(data.x,HTBtrees_a[best_i],predict=:Ey)    
         R2   = var(yfit)/var(data.y)
         ess50 = (n/param.loglikdivide)*(R2/(1-R2))       # approximate effective sample size corresponding to R2 at 50%.
         np_ratio = ess50/p 
@@ -869,7 +869,7 @@ function SMARTfit_single(data::SMARTdata, param::SMARTparam; cv_grid=[],cv_diffe
 
     if cv_sparsity==true 
 
-        fnames,fi,fnames_sorted,fi_sorted,sortedindx = SMARTrelevance(SMARTtrees_a[best_i],data)
+        fnames,fi,fnames_sorted,fi_sorted,sortedindx = HTBrelevance(HTBtrees_a[best_i],data)
         #s2 = sqrt(sum(fi.^2)/p)   # L2 measure of std
         #s1 = 1.25*mean(fi)        # L1 measure of std, here just 125/p
         # s2/s1= 1 for Gaussian, <1 is playtokurtic, and >1 if leptokurtic, suggesting sparsity
@@ -882,16 +882,16 @@ function SMARTfit_single(data::SMARTdata, param::SMARTparam; cv_grid=[],cv_diffe
             param_given_data!(param,data)
             param_constraints!(param)
 
-            ntrees,loss,meanloss,stdeloss,SMARTtrees1st,indtest,gammafit_test,y_test,problems = SMARTsequentialcv(data,param,indices=indices)
+            ntrees,loss,meanloss,stdeloss,HTBtrees1st,indtest,gammafit_test,y_test,problems = HTBsequentialcv(data,param,indices=indices)
 
             if j<length(sparsity_grid)
-                fnames,fi,fnames_sorted,fi_sorted,sortedindx = SMARTrelevance(SMARTtrees1st,data)
+                fnames,fi,fnames_sorted,fi_sorted,sortedindx = HTBrelevance(HTBtrees1st,data)
             end     
 
             i = length(cvgrid0)+j                                  
             cvgrid[i]   = cvgrid[best_i]
             treesize[i],lossgrid[i],meanloss_a[i],stdeloss_a[i]     = ntrees, loss, meanloss,stdeloss
-            SMARTtrees_a[i],gammafit_test_a[i]                      = SMARTtrees1st, gammafit_test
+            HTBtrees_a[i],gammafit_test_a[i]                      = HTBtrees1st, gammafit_test
             problems_somewhere = problems_somewhere + problems
 
             #If either 0.7 or 1.1 is better than 0.3, try 1.5. If neither is better, try 0.0.  
@@ -903,12 +903,12 @@ function SMARTfit_single(data::SMARTdata, param::SMARTparam; cv_grid=[],cv_diffe
                 param_given_data!(param,data)
                 param_constraints!(param)
 
-                ntrees,loss,meanloss,stdeloss,SMARTtrees1st,indtest,gammafit_test,y_test,problems = SMARTsequentialcv(data,param,indices=indices)
+                ntrees,loss,meanloss,stdeloss,HTBtrees1st,indtest,gammafit_test,y_test,problems = HTBsequentialcv(data,param,indices=indices)
 
                 i = length(cvgrid0)+2 
                 cvgrid[i]   = cvgrid[best_i]
                 treesize[i],lossgrid[i],meanloss_a[i],stdeloss_a[i]     = ntrees, loss, meanloss,stdeloss
-                SMARTtrees_a[i],gammafit_test_a[i]                      = SMARTtrees1st, gammafit_test
+                HTBtrees_a[i],gammafit_test_a[i]                      = HTBtrees1st, gammafit_test
                 problems_somewhere = problems_somewhere + problems
 
                 break
@@ -924,12 +924,12 @@ function SMARTfit_single(data::SMARTdata, param::SMARTparam; cv_grid=[],cv_diffe
   
         best_i      = argmin(lossgrid)
         bestvalue   = cvgrid[best_i]
-        force_sharp_splits = 10 .< mean_weighted_tau(SMARTtrees_a[best_i]) .<100 # 100 indicates that the split is always sharp anyway
-        fnames,fi,fnames_sorted,fi_sorted,sortedindx = SMARTrelevance(SMARTtrees_a[best_i],data)
+        force_sharp_splits = 10 .< mean_weighted_tau(HTBtrees_a[best_i]) .<100 # 100 indicates that the split is always sharp anyway
+        fnames,fi,fnames_sorted,fi_sorted,sortedindx = HTBrelevance(HTBtrees_a[best_i],data)
         fi_sharp = sort(fi[force_sharp_splits.==true],rev=true)
         p_sharp = length(fi_sharp)
 
-        force_smooth_splits = mean_weighted_tau(SMARTtrees_a[best_i]).<3       
+        force_smooth_splits = mean_weighted_tau(HTBtrees_a[best_i]).<3       
         fi_smooth = sort(fi[force_smooth_splits.==true],rev=true)
         p_smooth  = length(fi_smooth )
 
@@ -958,16 +958,16 @@ function SMARTfit_single(data::SMARTdata, param::SMARTparam; cv_grid=[],cv_diffe
          if (p_sharp)>0 && condition_sharp                  # fit hybrid model 
             i = length(cvgrid0)+3+1                         # 3 is length(sparsity_grid)
             cvgrid[i]  = bestvalue        
-            param      = deepcopy(SMARTtrees_a[best_i].param)
+            param      = deepcopy(HTBtrees_a[best_i].param)
             param.force_sharp_splits = force_sharp_splits
             #param.force_smooth_splits = force_smooth_splits
 
             param_given_data!(param,data)
             param_constraints!(param)
 
-            ntrees,loss,meanloss,stdeloss,SMARTtrees1st,indtest,gammafit_test,y_test,problems = SMARTsequentialcv(data,param,indices=indices)
+            ntrees,loss,meanloss,stdeloss,HTBtrees1st,indtest,gammafit_test,y_test,problems = HTBsequentialcv(data,param,indices=indices)
             treesize[i],lossgrid[i],meanloss_a[i],stdeloss_a[i]   = ntrees,loss,meanloss,stdeloss
-            SMARTtrees_a[i],gammafit_test_a[i]                    = SMARTtrees1st,gammafit_test
+            HTBtrees_a[i],gammafit_test_a[i]                    = HTBtrees1st,gammafit_test
             problems_somewhere = problems_somewhere + problems
         end 
 
@@ -981,15 +981,15 @@ function SMARTfit_single(data::SMARTdata, param::SMARTparam; cv_grid=[],cv_diffe
     if cv_depthppr 
         i = length(cvgrid0)+3+2                         # 3 is length(sparsity_grid)
         cvgrid[i]  = bestvalue        
-        param      = deepcopy(SMARTtrees_a[best_i].param)
+        param      = deepcopy(HTBtrees_a[best_i].param)
         param.depthppr = param.I(0)
 
         param_given_data!(param,data)
         param_constraints!(param)
 
-        ntrees,loss,meanloss,stdeloss,SMARTtrees1st,indtest,gammafit_test,y_test,problems = SMARTsequentialcv(data,param,indices=indices)
+        ntrees,loss,meanloss,stdeloss,HTBtrees1st,indtest,gammafit_test,y_test,problems = HTBsequentialcv(data,param,indices=indices)
         treesize[i],lossgrid[i],meanloss_a[i],stdeloss_a[i]   = ntrees,loss,meanloss,stdeloss
-        SMARTtrees_a[i],gammafit_test_a[i]                    = SMARTtrees1st,gammafit_test
+        HTBtrees_a[i],gammafit_test_a[i]                    = HTBtrees1st,gammafit_test
         problems_somewhere = problems_somewhere + problems
     end 
 
@@ -1000,31 +1000,31 @@ function SMARTfit_single(data::SMARTdata, param::SMARTparam; cv_grid=[],cv_diffe
     if param.priortype==:hybrid && cv_sharp 
 
         best_i      = argmin(lossgrid)
-        param = deepcopy(SMARTtrees_a[best_i].param)
+        param = deepcopy(HTBtrees_a[best_i].param)
         param.priortype = :sharp
         i = length(cvgrid0)+3+3             # 3 is length(sparsity_grid)
         cvgrid[i]  = cvgrid[best_i]        
 
-        ntrees,loss,meanloss,stdeloss,SMARTtrees1st,indtest,gammafit_test,y_test,problems = SMARTsequentialcv(data,param,indices=indices)
+        ntrees,loss,meanloss,stdeloss,HTBtrees1st,indtest,gammafit_test,y_test,problems = HTBsequentialcv(data,param,indices=indices)
         treesize[i],lossgrid[i],meanloss_a[i],stdeloss_a[i]   = ntrees,loss,meanloss,stdeloss
-        SMARTtrees_a[i],gammafit_test_a[i]                    = SMARTtrees1st,gammafit_test
+        HTBtrees_a[i],gammafit_test_a[i]                    = HTBtrees1st,gammafit_test
         problems_somewhere = problems_somewhere + problems
 
     end 
 
     # Before trying a different distribution, store param from the best solution. This will be used in 
-    # SMARTmodelweights, which for some loss functions involving additional coefficients (:t,:gamma,...)
+    # HTBmodelweights, which for some loss functions involving additional coefficients (:t,:gamma,...)
     # needs values of these coefficients, which param0 does not have.
-    bestparam_original_loss = SMARTtrees_a[argmin(lossgrid)].param
+    bestparam_original_loss = HTBtrees_a[argmin(lossgrid)].param
 
     # Additional model: try a different distribution (loss), at previous best values of depth and sparsity
     best_i = argmin(lossgrid)
-    param  = deepcopy(SMARTtrees_a[best_i].param)
+    param  = deepcopy(HTBtrees_a[best_i].param)
 
     if cv_different_loss 
         if param.loss == :L2   # fit a t distribution to residuals, and leave :L2 unless dof<10. 
  
-            yfit = SMARTpredict(data.x,SMARTtrees_a[best_i],predict=:Ey) 
+            yfit = HTBpredict(data.x,HTBtrees_a[best_i],predict=:Ey) 
             res = Newton_MAP(data.y - yfit,gH_student,start_value_student,w=data.weights)
             dof = exp(res.minimizer[2])
 
@@ -1035,18 +1035,18 @@ function SMARTfit_single(data::SMARTdata, param::SMARTparam; cv_grid=[],cv_diffe
 
     # Experimental. Not well tested yet. 
     # NB: cv loss may NOT comparable across different distributions.
-    if cv_different_loss==true && (param.loss != SMARTtrees_a[best_i].param.loss) 
+    if cv_different_loss==true && (param.loss != HTBtrees_a[best_i].param.loss) 
  
         param_given_data!(param,data)
         param_constraints!(param)
 
-        ntrees,loss,meanloss,stdeloss,SMARTtrees1st,indtest,gammafit_test,y_test,problems = SMARTsequentialcv(data,param,indices=indices)
+        ntrees,loss,meanloss,stdeloss,HTBtrees1st,indtest,gammafit_test,y_test,problems = HTBsequentialcv(data,param,indices=indices)
 
         i = length(cvgrid0)+3+4        # 3 is length(sparsity_grid)
         cvgrid[i]   = cvgrid[best_i]
         lossgrid[i],meanloss_a[i], stdeloss_a[i] = loss,meanloss,stdeloss  # The loss is NOT comparable. 
         treesize[i]     = ntrees
-        SMARTtrees_a[i],gammafit_test_a[i] = SMARTtrees1st, gammafit_test
+        HTBtrees_a[i],gammafit_test_a[i] = HTBtrees1st, gammafit_test
         problems_somewhere = problems_somewhere + problems
     
     end    
@@ -1055,12 +1055,12 @@ function SMARTfit_single(data::SMARTdata, param::SMARTparam; cv_grid=[],cv_diffe
     # If model with lowest loss does not have the user-specified distribution, takes the model with the highest stacking weight 
     best_i = argmin(lossgrid)
 
-    if SMARTtrees_a[best_i].param.loss != param0.loss
-        w,lossw = SMARTmodelweights(lossgrid,y_test_a,indtest_a,gammafit_test_a,data,bestparam_original_loss)
+    if HTBtrees_a[best_i].param.loss != param0.loss
+        w,lossw = HTBmodelweights(lossgrid,y_test_a,indtest_a,gammafit_test_a,data,bestparam_original_loss)
         best_i = argmax(w)
     end     
     
-    param       = deepcopy(SMARTtrees_a[best_i].param)
+    param       = deepcopy(HTBtrees_a[best_i].param)
                
     if modality==:compromise && param.lambda>0.1
         
@@ -1069,7 +1069,7 @@ function SMARTfit_single(data::SMARTdata, param::SMARTparam; cv_grid=[],cv_diffe
         param_given_data!(param,data)
         param_constraints!(param)
 
-        ntrees,loss,meanloss,stdeloss,SMARTtrees1st,indtest,gammafit_test,y_test,problems = SMARTsequentialcv(data,param,indices=indices)
+        ntrees,loss,meanloss,stdeloss,HTBtrees1st,indtest,gammafit_test,y_test,problems = HTBsequentialcv(data,param,indices=indices)
         gammafit_test = from_gamma_to_Ey(gammafit_test,param,:Ey)    #  gammafit_test now comparable.
 
         i = best_i   # replaces the best model
@@ -1077,7 +1077,7 @@ function SMARTfit_single(data::SMARTdata, param::SMARTparam; cv_grid=[],cv_diffe
         if loss<lossgrid[i]   # exceptions may happen when interacting with sparsity_penalization, which is ideally calibrated at the final lambda
             lossgrid[i],meanloss_a[i],stdeloss_a[i] = loss,meanloss,stdeloss 
             treesize[i]     = ntrees
-            SMARTtrees_a[i],gammafit_test_a[i] = SMARTtrees1st, gammafit_test
+            HTBtrees_a[i],gammafit_test_a[i] = HTBtrees1st, gammafit_test
             problems_somewhere = problems_somewhere + problems
         end     
 
@@ -1085,7 +1085,7 @@ function SMARTfit_single(data::SMARTdata, param::SMARTparam; cv_grid=[],cv_diffe
 
     # If there is a NaN in lossgrid, Julia takes it as the minimum, hence...
     if isnan(minimum(lossgrid))
-        @warn "In SMARTfit, some output is NaN. "
+        @warn "In HTBfit, some output is NaN. "
         problems_somewhere = problems_somewhere + 1 
     end
 
@@ -1094,8 +1094,8 @@ function SMARTfit_single(data::SMARTdata, param::SMARTparam; cv_grid=[],cv_diffe
     # select model with lowest loss. If this does not have the user-specified distribution, takes the model with the highest stacking weight 
     best_i = argmin(lossgrid)
 
-    if SMARTtrees_a[best_i].param.loss != param0.loss
-        w,lossw = SMARTmodelweights(lossgrid,y_test_a,indtest_a,gammafit_test_a,data,bestparam_original_loss)
+    if HTBtrees_a[best_i].param.loss != param0.loss
+        w,lossw = HTBmodelweights(lossgrid,y_test_a,indtest_a,gammafit_test_a,data,bestparam_original_loss)
         best_i = argmax(w)
     end     
 
@@ -1105,7 +1105,7 @@ function SMARTfit_single(data::SMARTdata, param::SMARTparam; cv_grid=[],cv_diffe
     # with weight>=0.1 (to reduce computing time). 
     if (param0.nofullsample==false || param0.nfold>1) && skip_full_sample==false
 
-        w,lossw = SMARTmodelweights(lossgrid,y_test_a,indtest_a,gammafit_test_a,data,bestparam_original_loss)
+        w,lossw = HTBmodelweights(lossgrid,y_test_a,indtest_a,gammafit_test_a,data,bestparam_original_loss)
         w[best_i]=max(w[best_i],0.1)   # the best model should be refitted
         w = w.*(w .>= 0.1)
         w = w/sum(w)
@@ -1117,19 +1117,19 @@ function SMARTfit_single(data::SMARTdata, param::SMARTparam; cv_grid=[],cv_diffe
         
             if w[i]>0
 
-                param = deepcopy(SMARTtrees_a[i].param)    
+                param = deepcopy(HTBtrees_a[i].param)    
                 param.ntrees   = Int(floor(treesize[i]*m))
 
                 param_given_data!(param,data)
                 param_constraints!(param)
 
-                SMARTtrees_a[i]  = SMARTbst(data,param)
+                HTBtrees_a[i]  = HTBbst(data,param)
             end
 
         end
-        SMARTtrees = SMARTtrees_a[best_i]
+        HTBtrees = HTBtrees_a[best_i]
     else
-        SMARTtrees = SMARTtrees_a[best_i]
+        HTBtrees = HTBtrees_a[best_i]
     end
 
     # Ensembles of stacked trees.
@@ -1138,24 +1138,24 @@ function SMARTfit_single(data::SMARTdata, param::SMARTparam; cv_grid=[],cv_diffe
         w = zeros(T,length(lossgrid))
         w[argmin(lossgrid)] = T(1)
     else
-        w,lossw = SMARTmodelweights(lossgrid,y_test_a,indtest_a,gammafit_test_a,data,bestparam_original_loss)
+        w,lossw = HTBmodelweights(lossgrid,y_test_a,indtest_a,gammafit_test_a,data,bestparam_original_loss)
     end
 
     # provide some additional output
-    i,μ,τ,fi2=SMARToutput(SMARTtrees)  # on the best value
-    avglntau,varlntau,mselntau,postprob2 = tau_info(SMARTtrees)
-    ratio_actual_max = tight_sparsevs(ntrees,SMARTtrees.param) # ratio of actual vs max number of candidate features
+    i,μ,τ,fi2=HTBoutput(HTBtrees)  # on the best value
+    avglntau,varlntau,mselntau,postprob2 = tau_info(HTBtrees)
+    ratio_actual_max = tight_sparsevs(ntrees,HTBtrees.param) # ratio of actual vs max number of candidate features
 
     for i in eachindex(lossgrid)   # done to trigger warning if sparsevs seems too tight in ANY of the model
         if lossgrid[i]<Inf
-            aux = tight_sparsevs(treesize[i],SMARTtrees_a[i].param)
+            aux = tight_sparsevs(treesize[i],HTBtrees_a[i].param)
         end 
     end
 
     additional_info = [[T(NaN)]]
 
-    return ( indtest=indtest_a,bestvalue=bestvalue,bestparam=SMARTtrees.param,ntrees=ntrees,loss=loss,meanloss=meanloss,stdeloss=stdeloss,lossgrid=lossgrid,SMARTtrees=SMARTtrees,
-    i=i,mu=μ,tau=τ,fi2=fi2,avglntau=avglntau,SMARTtrees_a=SMARTtrees_a,w=w,lossw=lossw,problems=(problems_somewhere>0),ratio_actual_max=ratio_actual_max,additional_info=additional_info)
+    return ( indtest=indtest_a,bestvalue=bestvalue,bestparam=HTBtrees.param,ntrees=ntrees,loss=loss,meanloss=meanloss,stdeloss=stdeloss,lossgrid=lossgrid,HTBtrees=HTBtrees,
+    i=i,mu=μ,tau=τ,fi2=fi2,avglntau=avglntau,HTBtrees_a=HTBtrees_a,w=w,lossw=lossw,problems=(problems_somewhere>0),ratio_actual_max=ratio_actual_max,additional_info=additional_info)
 
 end
 
@@ -1164,7 +1164,7 @@ end
 # a logistic regression for 0-not0, coupled with :gamma, :L2loglink or :L2 loss for y /=0 data (a subset).
 # The two models can be fit separately with no loss since the continuous distribution has zero mass at 0. 
 # The cv is completely independent for the two models. 
-function SMARTfit_hurdle(data::SMARTdata, param::SMARTparam; cv_grid=[],cv_different_loss::Bool=false,cv_sharp::Bool=false,
+function HTBfit_hurdle(data::HTBdata, param::HTBparam; cv_grid=[],cv_different_loss::Bool=false,cv_sharp::Bool=false,
     cv_sparsity=true,cv_hybrid=true,cv_depthppr=false,skip_full_sample=false)   # skip_full_sample enforces nofullsample even if nfold=1 (used in other functions, not by user)
 
     if param.loss == :hurdleGamma
@@ -1183,15 +1183,15 @@ function SMARTfit_hurdle(data::SMARTdata, param::SMARTparam; cv_grid=[],cv_diffe
 
     param_0      = deepcopy(param)
     param_0.loss = :logistic
-    output_0 = SMARTfit_single(data_0,param_0,cv_grid=cv_grid,cv_different_loss=cv_different_loss,cv_sharp=cv_sharp,cv_sparsity=cv_sparsity,
+    output_0 = HTBfit_single(data_0,param_0,cv_grid=cv_grid,cv_different_loss=cv_different_loss,cv_sharp=cv_sharp,cv_sparsity=cv_sparsity,
                             cv_hybrid=cv_hybrid,skip_full_sample=skip_full_sample) 
     data_0 = 0  # free memory 
 
     # y /=0  
-    data_not0 = SMARTdata_subset(data,param,data.y .!= 0)
+    data_not0 = HTBdata_subset(data,param,data.y .!= 0)
     param_not0 = deepcopy(param)
     param_not0.loss = loss_not0 
-    output_not0 = SMARTfit_single(data_not0,param_not0,cv_grid=cv_grid,cv_different_loss=cv_different_loss,cv_sharp=cv_sharp,cv_sparsity=cv_sparsity,
+    output_not0 = HTBfit_single(data_not0,param_not0,cv_grid=cv_grid,cv_different_loss=cv_different_loss,cv_sharp=cv_sharp,cv_sparsity=cv_sparsity,
                        cv_hybrid=cv_hybrid,cv_depthppr=cv_depthppr,skip_full_sample=skip_full_sample) 
 
                         
@@ -1201,7 +1201,7 @@ function SMARTfit_hurdle(data::SMARTdata, param::SMARTparam; cv_grid=[],cv_diffe
 end 
 
 
-function SMARTfit_multiclass(data::SMARTdata, param::SMARTparam; cv_grid=[],cv_different_loss::Bool=false,cv_sharp::Bool=false,
+function HTBfit_multiclass(data::HTBdata, param::HTBparam; cv_grid=[],cv_different_loss::Bool=false,cv_sharp::Bool=false,
     cv_sparsity=true,cv_hybrid=true,cv_depthppr=false,skip_full_sample=false)   # skip_full_sample enforces nofullsample even if nfold=1 (used in other functions, not by user)
 
     num_classes  = length(param.class_values)
@@ -1216,7 +1216,7 @@ function SMARTfit_multiclass(data::SMARTdata, param::SMARTparam; cv_grid=[],cv_d
 
         new_class_value = T(i-1)          # original class values converted to 0,1,2...
         @. data.y = y0 == new_class_value    
-        output[i] = SMARTfit_single(data,param_i,cv_grid=cv_grid,cv_different_loss=cv_different_loss,cv_sharp=cv_sharp,cv_sparsity=cv_sparsity,
+        output[i] = HTBfit_single(data,param_i,cv_grid=cv_grid,cv_different_loss=cv_different_loss,cv_sharp=cv_sharp,cv_sparsity=cv_sparsity,
                          cv_hybrid=cv_hybrid,cv_depthppr=cv_depthppr,skip_full_sample=skip_full_sample)      
     end 
  
@@ -1227,9 +1227,9 @@ end
 
 
 
-function SMARTrelevance(SMARTtrees::SMARTboostTrees,data::SMARTdata )
+function HTBrelevance(HTBtrees::HTBoostTrees,data::HTBdata )
 
-    fi2 = deepcopy(SMARTtrees.fi2) 
+    fi2 = deepcopy(HTBtrees.fi2) 
     @. fi2 = abs( fi2*(fi2>=0) )   # Ocassional (tiny) negative numbers set to zero
 
     fi         = sqrt.(fi2)
@@ -1242,7 +1242,7 @@ end
 
 
 """
-    SMARTrelevance(output,data::SMARTdata;verbose=true,best_model=false)
+    HTBrelevance(output,data::HTBdata;verbose=true,best_model=false)
 
 Computes feature importance (summing to 100), defined by the relevance measure of Breiman et al. (1984), equation 10.42 in
 Hastie et al., "The Elements of Statistical Learning", second edition, except that the normalization is for sum = 100, not for largest = 100.
@@ -1258,22 +1258,22 @@ best_model=true for single model with lowest CV loss, best_model= false for weig
 
 
 # Example of use
-    output = SMARTfit(data,param)
-    fnames,fi,fnames_sorted,fi_sorted,sortedindx = SMARTrelevance(output,data,verbose = false)
-    fnames,fi,fnames_sorted,fi_sorted,sortedindx = SMARTrelevance(output,data,best_model=true)
+    output = HTBfit(data,param)
+    fnames,fi,fnames_sorted,fi_sorted,sortedindx = HTBrelevance(output,data,verbose = false)
+    fnames,fi,fnames_sorted,fi_sorted,sortedindx = HTBrelevance(output,data,best_model=true)
 
 """
-function SMARTrelevance(output,data::SMARTdata;verbose=true,best_model=false )
+function HTBrelevance(output,data::HTBdata;verbose=true,best_model=false )
 
     if output.bestparam.loss in [:hurdleGamma, :hurdleL2loglink, :hurdleL2]
-        @error "SMARTrelevance not yet supported for hurdle models"
+        @error "HTBrelevance not yet supported for hurdle models"
     end     
 
     T   = output.bestparam.T 
     w   = output.w
 
-    if best_model==true   # SMARTtrees for best model, SMARTtrees_a for all
-        fi2 = deepcopy(output.SMARTtrees.fi2) 
+    if best_model==true   # HTBtrees for best model, HTBtrees_a for all
+        fi2 = deepcopy(output.HTBtrees.fi2) 
         @. fi2 = abs( fi2*(fi2>=0) )   # Ocassional (tiny) negative numbers set to zero
     else
         fi2 = zeros(T,size(data.x,2))
@@ -1281,7 +1281,7 @@ function SMARTrelevance(output,data::SMARTdata;verbose=true,best_model=false )
         for i in eachindex(w)
 
             if w[i]>0
-                fi2 = deepcopy(output.SMARTtrees_a[i].fi2)
+                fi2 = deepcopy(output.HTBtrees_a[i].fi2)
                 fi2 += w[i]*(abs.(fi2.*(fi2 .>=0) ))    
             end 
         end
@@ -1308,13 +1308,13 @@ end
 
 
 """
-    SMARTpartialplot(data::SMARTdata,output,features::Vector{Int64};,predict=:Egamma,best_model=false,other_xs::Vector=[],q1st=0.01,npoints=1000))
+    HTBpartialplot(data::HTBdata,output,features::Vector{Int64};,predict=:Egamma,best_model=false,other_xs::Vector=[],q1st=0.01,npoints=1000))
 Partial dependence plot for selected features. Notice: Default is for natural parameter (gamma) rather than y.
 For feature i, computes gamma(x_i) - gamma(x_i=mean(x_i)) for x_i between q1st and 1-q1st quantile, with all other features at their mean.
 
 # Inputs
 
-- `data::SMARTdata`
+- `data::HTBdata`
 - `output`
 - `features::Vector{Int}`        position index (in data.x) of features to compute partial dependence plot for
 - `other_xs::Vector{Float}`      (keyword), a size(data.x)[1] vector of values at which to evaluate the responses. []
@@ -1331,34 +1331,34 @@ For feature i, computes gamma(x_i) - gamma(x_i=mean(x_i)) for x_i between q1st a
 - `pdp::Matrix`                 (npoints,length(features)), values of f(x_i)
 
 # Example of use 
-    output = SMARTfit(data,param)
-    q,pdp  = SMARTpartialplot(data,output.SMARTtrees,sortedindx[1,2],q1st=0.001)
+    output = HTBfit(data,param)
+    q,pdp  = HTBpartialplot(data,output.HTBtrees,sortedindx[1,2],q1st=0.001)
 """
-function SMARTpartialplot(data::SMARTdata,output,features;best_model=false,other_xs::Vector =[],q1st=0.01,npoints = 1000,predict=:Egamma)
+function HTBpartialplot(data::HTBdata,output,features;best_model=false,other_xs::Vector =[],q1st=0.01,npoints = 1000,predict=:Egamma)
 
     if output.bestparam.loss in [:hurdleGamma, :hurdleL2loglink, :hurdleL2]
-        @error "SMARTpartialplot not yet supported for hurdle models"
+        @error "HTBpartialplot not yet supported for hurdle models"
     end     
 
     # data.x is SharedMatrix, not standardized, categoricals are 0,1,2 .... dates are [0,1]
     # replace categoricals with target encoding values, and standardize all features
-    x = preparedataSMART_test(data.x,output.SMARTtrees.param,output.SMARTtrees.meanx,output.SMARTtrees.stdx)
+    x = preparedataHTB_test(data.x,output.HTBtrees.param,output.HTBtrees.meanx,output.HTBtrees.stdx)
 
-    if best_model==true || length(output.SMARTtrees_a)==1
-        q,pdp  = SMARTpartialplot(x,output.SMARTtrees,features,predict,other_xs=other_xs,q1st=q1st,npoints=npoints)
+    if best_model==true || length(output.HTBtrees_a)==1
+        q,pdp  = HTBpartialplot(x,output.HTBtrees,features,predict,other_xs=other_xs,q1st=q1st,npoints=npoints)
     else
         T = output.bestparam.T
         pdp = zeros(T,npoints,length(features) )
 
-        for i in 1:length(output.SMARTtrees_a)
+        for i in 1:length(output.HTBtrees_a)
             if output.w[i]>0
-                q,pdp_i=SMARTpartialplot(x,output.SMARTtrees_a[i],features,predict,other_xs=other_xs,q1st=q1st,npoints=npoints)
+                q,pdp_i=HTBpartialplot(x,output.HTBtrees_a[i],features,predict,other_xs=other_xs,q1st=q1st,npoints=npoints)
                 pdp  += output.w[i]*pdp_i
             end
         end
     end
 
-    meanx,stdx = output.SMARTtrees.meanx,output.SMARTtrees.stdx
+    meanx,stdx = output.HTBtrees.meanx,output.HTBtrees.stdx
     q = q.*stdx[features]' .+ meanx[features]'      # convert back to original scale
 
     return q,pdp
@@ -1367,9 +1367,9 @@ end
 
 
 # x is standardized (and previously categoricals replaced by target encoding values)
-function SMARTpartialplot(x::AbstractArray,SMARTtrees::SMARTboostTrees,features,predict;other_xs::Vector =[],q1st=0.01,npoints = 1000)
+function HTBpartialplot(x::AbstractArray,HTBtrees::HTBoostTrees,features,predict;other_xs::Vector =[],q1st=0.01,npoints = 1000)
 
-    T = SMARTtrees.param.T
+    T = HTBtrees.param.T
     features = Int.(features)
     npoints = Int(npoints)
  
@@ -1390,7 +1390,7 @@ function SMARTpartialplot(x::AbstractArray,SMARTtrees::SMARTboostTrees,features,
         h = ones(T,length(p)).*other_xs
         h0 = copy(h)
         h[:,f] = q[:,i]
-        pdp[:,i] = SMARTpredict_internal(h,SMARTtrees,predict) - SMARTpredict_internal(h0,SMARTtrees,predict)
+        pdp[:,i] = HTBpredict_internal(h,HTBtrees,predict) - HTBpredict_internal(h0,HTBtrees,predict)
     end
 
     return q,pdp
@@ -1414,13 +1414,13 @@ end
 
 
 """
-    SMARTmarginaleffect(data::SMARTdata,output,features::Vector{Int64};predict=:Egamma,best_model=false,other_xs::Vector =[],q1st=0.01,npoints=50,epsilon=0.02)
+    HTBmarginaleffect(data::HTBdata,output,features::Vector{Int64};predict=:Egamma,best_model=false,other_xs::Vector =[],q1st=0.01,npoints=50,epsilon=0.02)
 APPROXIMATE Computation of marginal effects using NUMERICAL derivatives (default ϵ=0.01)
 
 # Inputs
 
-- `data::SMARTdata`
-- `SMARTtrees::SMARTboostTrees`
+- `data::HTBdata`
+- `HTBtrees::HTBoostTrees`
 - `features::Vector{Int}`        position index (in data.x) of features to compute partial dependence plot for
 - `other_xs::Vector{Float}`      (keyword), a size(data.x)[1] vector of values at which to evaluate the marginal effect. []
                                  Note: other_xs should be expressed in standardized units, i.e. for (x_i-mean(x_i))/std(x_i)   
@@ -1442,46 +1442,46 @@ APPROXIMATE Computation of marginal effects using NUMERICAL derivatives (default
 # NOTE: To compute marginal effect at one point x0 rather than over a grid, set npoints = 1 and other_xs = x0 (a p vector, p the number of features)
 
 # Example
-    output = SMARTfit(data,param)
-    q,m    = SMARTmarginaleffect(data,output.SMARTtrees,[1,3])
+    output = HTBfit(data,param)
+    q,m    = HTBmarginaleffect(data,output.HTBtrees,[1,3])
 
 # Example
-    q,m  = SMARTmarginaleffect(data,output.SMARTtrees,[1,2,3,4],other_xs = zeros(p),npoints = 1)
+    q,m  = HTBmarginaleffect(data,output.HTBtrees,[1,2,3,4],other_xs = zeros(p),npoints = 1)
 
 # Example
-    output = SMARTfit(data,param)
-    fnames,fi,fnames_sorted,fi_sorted,sortedindx = SMARTrelevance(output.SMARTtrees,data,verbose=false)
-    q,m  = SMARTmarginaleffect(data,output,sortedindx[1,2],q1st=0.001)
+    output = HTBfit(data,param)
+    fnames,fi,fnames_sorted,fi_sorted,sortedindx = HTBrelevance(output.HTBtrees,data,verbose=false)
+    q,m  = HTBmarginaleffect(data,output,sortedindx[1,2],q1st=0.001)
 
 """
-function SMARTmarginaleffect(data::SMARTdata,output,features;best_model=false,other_xs::Vector =[],q1st=0.01,npoints = 50,epsilon=0.02,predict=:Egamma)
+function HTBmarginaleffect(data::HTBdata,output,features;best_model=false,other_xs::Vector =[],q1st=0.01,npoints = 50,epsilon=0.02,predict=:Egamma)
 
     if output.bestparam.loss in [:hurdleGamma, :hurdleL2loglink, :hurdleL2]
         @error "marginal effects not yet supported for hurdle models"
     end     
 
-    if output.SMARTtrees.param.priortype !== :smooth
-        @warn "Derivatives computed in SMARTmarginaleffects may not be defined unless param.priortype=:smooth"
+    if output.HTBtrees.param.priortype !== :smooth
+        @warn "Derivatives computed in HTBmarginaleffects may not be defined unless param.priortype=:smooth"
     end    
 
-    x = preparedataSMART_test(data.x,output.SMARTtrees.param,output.SMARTtrees.meanx,output.SMARTtrees.stdx)
+    x = preparedataHTB_test(data.x,output.HTBtrees.param,output.HTBtrees.meanx,output.HTBtrees.stdx)
 
-    if best_model==true || length(output.SMARTtrees_a)==1
-        q,m  = SMARTmarginaleffect(x,output.SMARTtrees,features,predict,q1st=q1st,npoints=npoints,epsilon=epsilon)
+    if best_model==true || length(output.HTBtrees_a)==1
+        q,m  = HTBmarginaleffect(x,output.HTBtrees,features,predict,q1st=q1st,npoints=npoints,epsilon=epsilon)
     else
         T = typeof(data.y[1])
         m = zeros(T,npoints,length(features) )
 
-        for i in 1:length(output.SMARTtrees_a)
+        for i in 1:length(output.HTBtrees_a)
             if output.w[i]>0
-                q,m_i  = SMARTmarginaleffect(x,output.SMARTtrees_a[i],features,predict,q1st=q1st,npoints=npoints,epsilon=epsilon)
+                q,m_i  = HTBmarginaleffect(x,output.HTBtrees_a[i],features,predict,q1st=q1st,npoints=npoints,epsilon=epsilon)
                 m    = m + output.w[i]*m_i
             end
         end
 
     end
 
-    meanx,stdx = output.SMARTtrees.meanx,output.SMARTtrees.stdx
+    meanx,stdx = output.HTBtrees.meanx,output.HTBtrees.stdx
     q = q.*stdx[features]' .+ meanx[features]'      # convert back to original scale
 
     return q,m
@@ -1489,11 +1489,11 @@ end
 
 
 # expects x to be standardized, with categoricals replaced by target encoding values
-function SMARTmarginaleffect(x::AbstractArray,SMARTtrees::SMARTboostTrees,features,predict;other_xs::Vector =[],q1st=0.01,npoints = 50,epsilon=0.01)
+function HTBmarginaleffect(x::AbstractArray,HTBtrees::HTBoostTrees,features,predict;other_xs::Vector =[],q1st=0.01,npoints = 50,epsilon=0.01)
 
-    param = SMARTtrees.param
+    param = HTBtrees.param
     I = param.I
-    T = SMARTtrees.param.T
+    T = HTBtrees.param.T
     features = I.(features)
     npoints = I(npoints)
 
@@ -1515,13 +1515,13 @@ function SMARTmarginaleffect(x::AbstractArray,SMARTtrees::SMARTboostTrees,featur
             h2 = copy(other_xs)
             h1[f] = h1[f] + T(epsilon)
             h2[f] = h2[f] - T(epsilon)
-            d[i] = (( SMARTpredict_internal(h1,SMARTtrees,predict) - SMARTpredict_internal(h2,SMARTtrees,predict) )/T(2*epsilon))[1]
+            d[i] = (( HTBpredict_internal(h1,HTBtrees,predict) - HTBpredict_internal(h2,HTBtrees,predict) )/T(2*epsilon))[1]
         end
 
         return q,d
 
     else
-        q,pdp   = SMARTpartialplot(x,SMARTtrees,features,predict,other_xs = other_xs,q1st = q1st,npoints = npoints+2)
+        q,pdp   = HTBpartialplot(x,HTBtrees,features,predict,other_xs = other_xs,q1st = q1st,npoints = npoints+2)
         n       = size(q,1)
         d       = (pdp[1:n-2,:] - pdp[3:n,:])./(q[1:n-2,:] - q[3:n,:] )  # numerical derivatives at q[i]: f(q[i+1]-f(q[i-1])/(q[i+1]-q[i-1]) )
         return q[2:n-1,:],d
@@ -1533,7 +1533,7 @@ end
 
 """
 
-    SMARToutput(SMARTtrees::SMARTboostTrees;exclude_pp = true)
+    HTBoutput(HTBtrees::HTBoostTrees;exclude_pp = true)
 
 Output fitted parameters estimated from each tree, collected in matrices. Excluded projection pursuit regression parameters.
 
@@ -1547,16 +1547,16 @@ Output fitted parameters estimated from each tree, collected in matrices. Exclud
 - `fi2`       (ntrees,depth) matrix of feature importance, increase in R2 at each split
 
 # Example of use
-output = SMARTfit(data,param)
-i,μ,τ,fi2 = SMARToutput(output.SMARTtrees)
+output = HTBfit(data,param)
+i,μ,τ,fi2 = HTBoutput(output.HTBtrees)
 
 """
-function SMARToutput(SMARTtrees::SMARTboostTrees;exclude_pp = true)
+function HTBoutput(HTBtrees::HTBoostTrees;exclude_pp = true)
 
-    I = typeof(SMARTtrees.param.depth)
-    T = typeof(SMARTtrees.param.lambda)
-    ntrees = length(SMARTtrees.trees)
-    d = length(SMARTtrees.trees[1].τ)
+    I = typeof(HTBtrees.param.depth)
+    T = typeof(HTBtrees.param.lambda)
+    ntrees = length(HTBtrees.trees)
+    d = length(HTBtrees.trees[1].τ)
 
     i   = Matrix{I}(undef,ntrees,d)
     μ   = Matrix{T}(undef,ntrees,d)
@@ -1564,13 +1564,13 @@ function SMARToutput(SMARTtrees::SMARTboostTrees;exclude_pp = true)
     fi2 = Matrix{T}(undef,ntrees,d)
 
     for j in 1:ntrees
-        tree = SMARTtrees.trees[j]
+        tree = HTBtrees.trees[j]
         i[j,:],μ[j,:],τ[j,:],fi2[j,:] = tree.i,tree.μ,tree.τ,tree.fi2
     end
 
     # delete the columns that refer to projection pursuit regression
-    depthppr = SMARTtrees.param.depthppr 
-    depth   = SMARTtrees.param.depth
+    depthppr = HTBtrees.param.depthppr 
+    depth   = HTBtrees.param.depth
 
     if depthppr>0 && exclude_pp
         i = i[:,1:depth]
@@ -1607,7 +1607,7 @@ end
 
 """ 
 
-    SMARTweightedtau(output,data;verbose=true,best_model=false)
+    HTBweightedtau(output,data;verbose=true,best_model=false)
 
 Computes weighted (by variance importance gain at each split) smoothing parameter τ for each
 feature, and for the entire model (features are averaged by variance importance)
@@ -1615,8 +1615,8 @@ statistics for each feature, averaged over all trees. Sharp thresholds (τ=Inf) 
 best_model=true for single model with lowest CV loss, best_model= false for weighted average (weights optimized by stacking)
 
 # Input 
-- `output`   output from SMARTfit
-- `data`     data input to SMARTfit
+- `output`   output from HTBfit
+- `data`     data input to HTBfit
 
 # Optional inputs 
 - `verbose`   [true]  prints out the results to screen as DataFrame
@@ -1630,34 +1630,34 @@ best_model=true for single model with lowest CV loss, best_model= false for weig
 - `g_plot`         y-axis to plot sigmoid for avgtau 
 
 # Example of use
-output = SMARTfit(data,param)
-avgtau,avg_explogtau,avgtau_a,dftau,x_plot,g_plot = SMARTweightedtau(output,data)
-avgtau,avg_explogtau,avgtau_a,dftau,x_plot,g_plot = SMARTweightedtau(output,data,verbose=false,plot_tau=false,best_model=true)
+output = HTBfit(data,param)
+avgtau,avg_explogtau,avgtau_a,dftau,x_plot,g_plot = HTBweightedtau(output,data)
+avgtau,avg_explogtau,avgtau_a,dftau,x_plot,g_plot = HTBweightedtau(output,data,verbose=false,plot_tau=false,best_model=true)
 
 
 using Plots
 plot(x_plot,g_plot,title="avg smoothness of splits",xlabel="standardized x",label=:none,legend=:bottomright)
 """
-function SMARTweightedtau(output,data;verbose::Bool=true,plot_tau::Bool=true,best_model::Bool=false)
+function HTBweightedtau(output,data;verbose::Bool=true,plot_tau::Bool=true,best_model::Bool=false)
 
     T = Float64
-    SMARTtrees = output.SMARTtrees
-    p = max(length(SMARTtrees.infeatures),length(SMARTtrees.meanx))  # they should be the same ...
+    HTBtrees = output.HTBtrees
+    p = max(length(HTBtrees.infeatures),length(HTBtrees.meanx))  # they should be the same ...
     
     if best_model==true
-        avgtau_a = mean_weighted_tau(SMARTtrees)
+        avgtau_a = mean_weighted_tau(HTBtrees)
     else     
         avgtau_a = zeros(p)
         w        = output.w
         
         for i in eachindex(w)
             if w[i]>0 
-                avgtau_a += w[i]*mean_weighted_tau(output.SMARTtrees_a[i])
+                avgtau_a += w[i]*mean_weighted_tau(output.HTBtrees_a[i])
             end 
         end 
     end     
 
-    fnames,fi,fnames_sorted,fi_sorted,sortedindx = SMARTrelevance(output,data,verbose=false,best_model=best_model)
+    fnames,fi,fnames_sorted,fi_sorted,sortedindx = HTBrelevance(output,data,verbose=false,best_model=best_model)
     
     avgtau  = sum(avgtau_a.*fi)/sum(fi)
     exp_avglogtau = exp( sum(log.(avgtau_a).*fi)/sum(fi) )
@@ -1671,9 +1671,9 @@ function SMARTweightedtau(output,data;verbose::Bool=true,plot_tau::Bool=true,bes
         display(df)
         println("\n Average smoothing parameter τ is $(round(avgtau,digits=1)).")
         println("\n In sufficiently large samples, and if modality=:compromise or :accurate")
-        println("\n - Values above 20-25 suggest little smoothness in important features. SMARTboost's performance may slightly outperform or slightly underperform other gradient boosting machines.")
-        println(" - At 10-15 or lower, SMARTboost should outperform other gradient boosting machines, or at least be worth including in an ensemble.")
-        println(" - At 5-7 or lower, SMARTboost should strongly outperform other gradient boosting machines.")
+        println("\n - Values above 20-25 suggest little smoothness in important features. HTBoost's performance may slightly outperform or slightly underperform other gradient boosting machines.")
+        println(" - At 10-15 or lower, HTBoost should outperform other gradient boosting machines, or at least be worth including in an ensemble.")
+        println(" - At 5-7 or lower, HTBoost should strongly outperform other gradient boosting machines.")
 
     else 
         df = nothing     
@@ -1690,14 +1690,14 @@ end
 # Visualize impact of projection pursuit.
 # Use: 
 # if depthppr>0
-#    yf1,yf0 = SMARTplot_ppr(output,which_tree=1)
+#    yf1,yf0 = HTBplot_ppr(output,which_tree=1)
 #    plot(yf0,yf1,title="depthppr=$(param.depthppr)")
 # end
 # 
 # where yf0 is the standardized prediction from the tree, and yf1 is the (non-standardized) prediction after ppr      
-function SMARTplot_ppr(output;which_tree=1)
+function HTBplot_ppr(output;which_tree=1)
 
-    t = output.SMARTtrees.trees[which_tree]
+    t = output.HTBtrees.trees[which_tree]
     param = output.bestparam
     depthppr = param.depthppr
 

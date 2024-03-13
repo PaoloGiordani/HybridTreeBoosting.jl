@@ -5,19 +5,19 @@
 
 - Comparison with lightGBM on a logistic regression problem with simulated data.
 - param.modality as the most important user's choice.
-- In default modality, SMARTboost performs automatic hyperparameter tuning.
+- In default modality, HTBoost performs automatic hyperparameter tuning.
 
 
 **Extensive description:** 
 
-Sketch of a comparison of SMARTboost and lightGBM on a logistic regression problem.
-The comparison with LightGBM is biased toward SMARTboost if the function generating the data is 
+Sketch of a comparison of HTBoost and lightGBM on a logistic regression problem.
+The comparison with LightGBM is biased toward HTBoost if the function generating the data is 
 smooth in some features (this is easily changed by the user). lightGBM is cross-validated over max_depth and num_leaves,
 with the number of trees set to 1000 and found by early stopping.
 
-Options for SMARTboost: modality is the key parameter guiding hyperparameter tuning and learning rate.
+Options for HTBoost: modality is the key parameter guiding hyperparameter tuning and learning rate.
 :fast and :fastest only fit one model at default parameters, while :compromise and :accurate perform
-automatic hyperparameter tuning. In SMARTboost, it is not recommended that the user performs 
+automatic hyperparameter tuning. In HTBoost, it is not recommended that the user performs 
 hyperparameter tuning by cross-validation, because this process is done automatically if modality is
 :compromise or :accurate. The recommended process is to first run in modality=:fast or :fastest,
 for exploratory analysis and to gauge computing time, and then switch to :compromise (default)
@@ -28,7 +28,7 @@ number_workers  = 8  # desired number of workers
 
 using Distributed
 nprocs()<number_workers ? addprocs( number_workers - nprocs()  ) : addprocs(0)
-@everywhere using SMARTboostPrivate
+@everywhere using HTBoost
 
 using Random,Statistics
 using LightGBM
@@ -42,7 +42,7 @@ n         = 10_000
 p         = 10      # mumber of features. p>=4. Only the first 4 variables are used in the function f(x) below 
 nsimul    = 1       # number of simulated datasets. 
 
-# Options for SMARTboost: modality is the key parameter guiding hyperparameter tuning and learning rate.
+# Options for HTBoost: modality is the key parameter guiding hyperparameter tuning and learning rate.
 # :fast and :fastest only fit one model at default parameters, while :compromise and :accurate perform
 # automatic hyperparameter tuning. 
 
@@ -66,11 +66,11 @@ function simul_logistic(n,p,nsimul,modality,dgp)
  n_test = 100_000
  loss = :logistic
 
- # initialize containers and parameters for SMARTboost and lightGBM
+ # initialize containers and parameters for HTBoost and lightGBM
  MSE1 = zeros(nsimul)
  MSE2 = zeros(nsimul)
 
- param  = SMARTparam(loss=loss,nfold=1,nofullsample=true,modality=modality,warnings=:Off,newton_gaussian_approx =true)
+ param  = HTBparam(loss=loss,nfold=1,nofullsample=true,modality=modality,warnings=:Off,newton_gaussian_approx =true)
 
  # Create an estimator with the desired parameters—leave other parameters at the default values.
  estimator = LGBMClassification(   # LGBMRegression(...)
@@ -96,10 +96,10 @@ function simul_logistic(n,p,nsimul,modality,dgp)
     ftrue_test  = dgp(x_test)
 
     y = (exp.(ftrue)./(1.0 .+ exp.(ftrue))).>rand(n) 
-    data   = SMARTdata(y,x,param)
+    data   = HTBdata(y,x,param)
 
-    output = SMARTfit(data,param)
-    yf     = SMARTpredict(x_test,output,predict=:Egamma)  # predict the natural parameter
+    output = HTBfit(data,param)
+    yf     = HTBpredict(x_test,output,predict=:Egamma)  # predict the natural parameter
     MSE1[simul]    = sum((yf - ftrue_test).^2)/n_test
 
     # lightGBM
@@ -143,6 +143,6 @@ end
 MSE1,MSE2 = simul_logistic(n,p,nsimul,modality,dgp)
 
 println("\n n = $n, p = $p, number of simulations = $nsimul, modality = $modality")
-println(" avg out-of-sample RMSE from true natural parameter, SMARTboost    ", sqrt(mean(MSE1)) )
+println(" avg out-of-sample RMSE from true natural parameter, HTBoost    ", sqrt(mean(MSE1)) )
 println(" avg out-of-sample RMSE from true natural parameter, lightGBM      ", sqrt(mean(MSE2)) )
 

@@ -9,7 +9,7 @@
 # 
 #
 # The following functions in data_preparation.jl are also used to detect categorical data:
-# they are applied once, when SMARTdata() is first called, so that all possible categories can be listed.
+# they are applied once, when HTBdata() is first called, so that all possible categories can be listed.
 #
 # - categorical_features!()         modifies param.cat_features (to a vector of I) 
 # - map_cat_convert_to_float!()     converts categorical features (as from param.cat_features) to 0,1,... by mapping each unique value to a number,
@@ -75,7 +75,7 @@ end
 # Replaces categoricals column with target encoding values stored in param.cat_values, unless the variable is dichotomous. 
 # NOTE: assumes categorical information is encoed in one column.
 # If some categorial features requires an extensive (>1 column) representation, it adds columns to x 
-function target_encoding(x0::AbstractMatrix,param::SMARTparam)  # modifies only x 
+function target_encoding(x0::AbstractMatrix,param::HTBparam)  # modifies only x 
 
     if isempty(param.cat_features)
         return x0 
@@ -122,7 +122,7 @@ end
 # Computes/draws target encoding values for categorical features.   
 # Updates param.cat_values with draws of the conditional mean (or other transformation) of y given xj for each category
 # Features with two categories are left at 0,1 and treated as dummies. 
-function target_encoding_values!(param::SMARTparam,data::SMARTdata)    # modifies param, not data 
+function target_encoding_values!(param::HTBparam,data::HTBdata)    # modifies param, not data 
 
     global_stats!(param,data)     # updates param.cat_globalstats    
     param.cat_values = Vector{NamedTuple}(undef,length(param.cat_features))
@@ -141,7 +141,7 @@ end
 
 
 # Computes some statistics on the full sample, and calls the appropriate function given param.loss
-function draw_categoricals(globalstats::NamedTuple,y::Vector{T},xj::Vector{T},i::Int,param::SMARTparam) where T<:AbstractFloat   
+function draw_categoricals(globalstats::NamedTuple,y::Vector{T},xj::Vector{T},i::Int,param::HTBparam) where T<:AbstractFloat   
  
     I = param.I
     n = length(y)
@@ -438,7 +438,7 @@ end
 
 
 
-# prior is stronger for smaller quantile: In SMARTparam, param.n0_cat = param.n0_cat/minimum([τ,1-τ])
+# prior is stronger for smaller quantile: In HTBparam, param.n0_cat = param.n0_cat/minimum([τ,1-τ])
 # if there are too few obs, quantile() will take the min or max, but here I use the global value instead
 function cat_posterior_quantile(y,ind,globalstats)    
 

@@ -6,18 +6,18 @@
 - Show how Huber loss functions leads to biased fitted and predicted values when the errors have a skewed distribution,
   and the resulting mse can be much higher than for L2 loss even if the errors are fat-tailed.
 - In contrast, if the errors are fat-tailed but symmetric, the lightGBM Huber loss tends to outperform L2 loss.
-- SMARTboost with loss = :t and loss=:Huber automatically corrects for biases due to skewed errors. (t recommended over Huber)
-- In SMARTboost, the t loss (plus de-biasing) improves on the L2 loss in this settings (due to IID errors) 
+- HTBoost with loss = :t and loss=:Huber automatically corrects for biases due to skewed errors. (t recommended over Huber)
+- In HTBoost, the t loss (plus de-biasing) improves on the L2 loss in this settings (due to IID errors) 
 - Correcting the bias improves the mse of lightGBM predictions compared to the original version, but
   the rmse is often inferior to L2 loss. 
 - The impact of the bias is stronger if signal-to-noise is low. 
 - With high signal-to-noise, the lightGBM Huber loss gives, after de-biasing, nearly identical results to the L2 loss, because the 
-  robustness parameter is calibrated once on the unconditional data. In contrast, SMARTboost re-estimates all parameters
+  robustness parameter is calibrated once on the unconditional data. In contrast, HTBoost re-estimates all parameters
   after each tree, so that the t loss outperforms the L2 loss for any signal-to-noise (with IID errors). 
 
 Note:
 
-LightGBM is only fitted at default parameters, since the main interest here is not the comparison with SMARTboost but 
+LightGBM is only fitted at default parameters, since the main interest here is not the comparison with HTBoost but 
 the performance of Huber loss and of bias correction. 
 
 """
@@ -25,7 +25,7 @@ number_workers  = 8  # desired number of workers
 
 using Distributed
 nprocs()<number_workers ? addprocs( number_workers - nprocs()  ) : addprocs(0)
-@everywhere using SMARTboostPrivate
+@everywhere using HTBoost
 
 using Random,Statistics,Plots
 using LightGBM
@@ -41,13 +41,13 @@ stde      = 5      # e.g. 1 for high SNR, 5 for lowish, 10 for low (R2 around 4%
 
 m2        = 3*stde  # mean of second component of mixture of normal. 0 for symmetric fat tails, 3*stde for skewed
 
-# Options for SMARTboost: modality is the key parameter guiding hyperparameter tuning and learning rate.
+# Options for HTBoost: modality is the key parameter guiding hyperparameter tuning and learning rate.
 # :fast and :fastest only fit one model at default parameters, while :compromise and :accurate perform
 # automatic hyperparameter tuning. 
 
-loss      = :t      # :t (recommended) or :Huber for SMARTboost. :t automatically estimates degrees of freedom and can recover a Gaussian 
+loss      = :t      # :t (recommended) or :Huber for HTBoost. :t automatically estimates degrees of freedom and can recover a Gaussian 
 modality  = :fast   # :accurate, :compromise (default), :fast, :fastest
-ntrees    = 200     # maximum number of trees for SMARTboost. 
+ntrees    = 200     # maximum number of trees for HTBoost. 
 
 # define the function dgp(x), here the Friedman's function for x~U  
 dgp(x) = 10.0*sin.(π*x[:,1].*x[:,2]) + 20.0*(x[:,3].-0.5).^2 + 10.0*x[:,4] + 5.0*x[:,5]
@@ -70,9 +70,9 @@ y      = ftrue + u
 
 histogram(u,title="errors",label="")
 
-# SMARTboost parameters
-param  = SMARTparam(loss=loss,nfold=1,ntrees=ntrees,nofullsample=true,modality=modality,verbose=:Off)
-data   = SMARTdata(y,x,param)
+# HTBoost parameters
+param  = HTBparam(loss=loss,nfold=1,ntrees=ntrees,nofullsample=true,modality=modality,verbose=:Off)
+data   = HTBdata(y,x,param)
 
 # ligthGBM parameters 
 estimator = LGBMRegression(
@@ -132,18 +132,18 @@ println("\n oos RMSE from true f(x), lightGBM, Huber loss                    ", 
 println(" oos RMSE from true f(x), lightGBM, Huber loss, de-biased         ", sqrt(MSE4) )
 println(" oos RMSE from true f(x), lightGBM, L2 loss                       ", sqrt(MSE2) )
 
-# Fit SMARTboost, :t (or :Huber) 
-output = SMARTfit(data,param)
-yf     = SMARTpredict(x_test,output)  
+# Fit HTBoost, :t (or :Huber) 
+output = HTBfit(data,param)
+yf     = HTBpredict(x_test,output)  
 MSE1    = sum((yf - ftrue_test).^2)/n_test
 
-println(" oos RMSE from true f(x) parameter, SMARTboost, loss=$loss            ", sqrt(MSE1) )
+println(" oos RMSE from true f(x) parameter, HTBoost, loss=$loss            ", sqrt(MSE1) )
 
-# Fit SMARTboost, :L2 
+# Fit HTBoost, :L2 
 param.loss = :L2 
-output = SMARTfit(data,param)
-yf     = SMARTpredict(x_test,output)  
+output = HTBfit(data,param)
+yf     = HTBpredict(x_test,output)  
 MSE0    = sum((yf - ftrue_test).^2)/n_test
 
-println(" oos RMSE from true f(x) parameter, SMARTboost, loss=L2           ", sqrt(MSE0) )
+println(" oos RMSE from true f(x) parameter, HTBoost, loss=L2           ", sqrt(MSE0) )
 

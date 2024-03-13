@@ -1,17 +1,17 @@
 """ 
 
-**SMARTboost handles missing values automatically. Imputation is optional.** 
+**HTBoost handles missing values automatically. Imputation is optional.** 
 
 This example reproduces the set-up in the simulations i) Experiment 1 and ii) Model 2 and Model 3 in Experiment 2 in the paper:
 "On the consistency of supervised learning with missing values" by Josse et al., 2020. 
 Data can be missing at random, or missing not at random as a function of x only, or missing not at random as a function of E(y).
 
-- The approach to missing values in SMARTboost is Block Propagation (see Josse et al.).
+- The approach to missing values in HTBoost is Block Propagation (see Josse et al.).
 - There is a however a a key difference compared to lightGBM and other GBM when the split is soft (τ < Inf): the value
   m at which to set all missing is estimated/optimized at each node. With standard trees (sharp splits), it only matters whether
-  missing are sent to the left or right branch, but in SMARTboost the allocation of missing values is also smooth (as long as the split is smooth),
+  missing are sent to the left or right branch, but in HTBoost the allocation of missing values is also smooth (as long as the split is smooth),
   and the proportion to which missings are sent left AND right is decided by a new split parameter m, distinct from μ. 
-  The result is more efficient inference with missing values. When the split is sharp or the feature takes only two values, SMARTboost
+  The result is more efficient inference with missing values. When the split is sharp or the feature takes only two values, HTBoost
   assigns missing in the same way as LigthGBM (by Block Propagation).
 - The native procedure to handle missing values is Bayes consistent (see Josse et al.), i.e. efficient in large samples,
   and is convenient in that it can handle data of mixed types (continuous, discrete, categorical).
@@ -19,7 +19,7 @@ Data can be missing at random, or missing not at random as a function of x only,
   high predictability of missing values from non-missing values, linear or quasi-linear f(x), and missing at random (in line
   with the results of Josse et al.)  
  
-The comparison with LightGBM is biased toward SMARTboost if the function generating the data is smooth in some features.
+The comparison with LightGBM is biased toward HTBoost if the function generating the data is smooth in some features.
 LightGBM is cross-validated over max_depth and num_leaves, with the number of trees set to 1000 and found by early stopping.
     
 
@@ -28,7 +28,7 @@ number_workers  = 8  # desired number of workers
 
 using Distributed
 nprocs()<number_workers ? addprocs( number_workers - nprocs()  ) : addprocs(0)
-@everywhere using SMARTboostPrivate
+@everywhere using HTBoost
 
 using DataFrames, Random, Statistics
 using LinearAlgebra,Plots, Distributions
@@ -45,7 +45,7 @@ n,p,n_test  = 10_000,10,100_000  # n=1000, p= 9 or 10 in paper. Since this is on
 stde        = 0.1                # 0.1 in paper
 ρ           = 0.5                # 0.5 in paper, cross-correlation of features 
 
-# Some options for SMARTboost
+# Some options for HTBoost
 priortype = :hybrid        # :hybrid (default) or :smooth or :sharp
 modality  = :compromise    # :accurate, :compromise, :fast, :fastest 
 
@@ -169,14 +169,14 @@ f_test,x_test  = f_pattern(x_test)
 y      = f + stde*randn(n)
 y_test = f_test + stde*randn(n_test)
 
-# set up SMARTparam and SMARTdata, then fit and predit
-param  = SMARTparam(priortype=priortype,randomizecv=true,nfold=nfold,modality=modality )
-data   = SMARTdata(y,x,param)
+# set up HTBparam and HTBdata, then fit and predit
+param  = HTBparam(priortype=priortype,randomizecv=true,nfold=nfold,modality=modality )
+data   = HTBdata(y,x,param)
 
-output = SMARTfit(data,param)
-yf     = SMARTpredict(x_test,output)  # predict
+output = HTBfit(data,param)
+yf     = HTBpredict(x_test,output)  # predict
 
-yf  = SMARTpredict(x_test,output)  # predict
+yf  = HTBpredict(x_test,output)  # predict
 
 # Evaluate predictions at a few points
 println("\n E(y|x) with x1 = 1 or missing, and x2 = 0 or 1") 
@@ -184,9 +184,9 @@ println("\n E(y|x) with x1 = 1 or missing, and x2 = 0 or 1")
 for ov in [0.0,1.0]
     x_t    = fill(ov,size(x,2),p)
     x_t[1,1] = 1.0
-    yf1     = SMARTpredict(x_t,output)  # predict
+    yf1     = HTBpredict(x_t,output)  # predict
     x_t[1,1] = NaN
-    yf2     = SMARTpredict(x_t,output)  # predict
+    yf2     = HTBpredict(x_t,output)  # predict
 
     println(" prediction at x1 = 1 and at x = miss, other variables at $ov ", [yf1[1],yf2[1]])
 end 
@@ -230,6 +230,6 @@ LightGBM.fit!(estimator,x_train,y_train,(x_val,y_val),verbosity=-1)
 yf_gbm = LightGBM.predict(estimator,x_test)   # (n_test,num_class) 
 
 println("\n Experiment = $Experiment, missing_pattern = $missing_pattern, n = $n")
-println("\n out-of-sample RMSE from truth, SMARTboost, modality=:modality  ", sqrt(sum((yf - f_test).^2)/n_test) )
+println("\n out-of-sample RMSE from truth, HTBoost, modality=:modality  ", sqrt(sum((yf - f_test).^2)/n_test) )
 println(" out-of-sample RMSE from truth, LigthGBM cv                     ", sqrt(sum((yf_gbm - f_test).^2)/n_test) )
 

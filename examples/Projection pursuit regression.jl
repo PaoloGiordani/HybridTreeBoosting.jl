@@ -15,14 +15,14 @@ number_workers  = 8  # desired number of workers
 
 using Distributed
 nprocs()<number_workers ? addprocs( number_workers - nprocs()  ) : addprocs(0)
-#@everywhere using SMARTboostPrivate
+#@everywhere using HTBoost
 
 using Random,Plots 
 using LightGBM
 
 # USER'S OPTIONS 
 
-# Some options for SMARTboost
+# Some options for HTBoost
 loss      = :L2            # :L2 or :sigmoid (or :Huber or :t). 
 modality  = :compromise     # :accurate, :compromise (default), :fast, :fastest 
 
@@ -59,18 +59,18 @@ end
 y,x,f             = simulatedata(n,b,stde,rndseed=rndseed)
 y_test,x_test,f_test = simulatedata(100_000,b,stde,rndseed=rndseed)
 
-# set up SMARTparam and SMARTdata, then fit and predit
-param  = SMARTparam(loss=loss,priortype=priortype,randomizecv=randomizecv,nfold=nfold,verbose=verbose,warnings=warnings,
+# set up HTBparam and HTBdata, then fit and predit
+param  = HTBparam(loss=loss,priortype=priortype,randomizecv=randomizecv,nfold=nfold,verbose=verbose,warnings=warnings,
            modality=modality,nofullsample=nofullsample,lambda=lambda)
 
-data   = SMARTdata(y,x,param)
+data   = HTBdata(y,x,param)
 
 for depthppr in [0,2]
 
     param.depthppr = depthppr
 
-    @time local output = SMARTfit(data,param)
-    local yf  = SMARTpredict(x_test,output) 
+    @time local output = HTBfit(data,param)
+    local yf  = HTBpredict(x_test,output) 
 
     println(" \n modality = $(param.modality), nfold = $nfold, depthppr=$(param.depthppr) ")
     println(" depth = $(output.bestvalue), number of trees = $(output.ntrees) ")

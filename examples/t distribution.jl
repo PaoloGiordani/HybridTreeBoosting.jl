@@ -16,7 +16,7 @@ number_workers  = 8  # desired number of workers
 
 using Distributed
 nprocs()<number_workers ? addprocs( number_workers - nprocs()  ) : addprocs(0)
-@everywhere using SMARTboostPrivate
+@everywhere using HTBoost
 
 using Random,Statistics,Plots,Distributions
 using LightGBM
@@ -31,7 +31,7 @@ p         = 5      # p>=5. Only the first 4 variables are used in the function f
 stde      = 1     # e.g. 1 for high SNR, 5 for lowish, 10 for low (R2 around 4%). Not really the stde unless dof is high. 
 dof       = 3     # degrees of freedom for the t distribution to generate data. e.g. 3 or 5 or 10.
 
-# Options for SMARTboost: modality is the key parameter guiding hyperparameter tuning and learning rate.
+# Options for HTBoost: modality is the key parameter guiding hyperparameter tuning and learning rate.
 # :fast and :fastest only fit one model at default parameters, while :compromise and :accurate perform
 # automatic hyperparameter tuning. 
 
@@ -56,9 +56,9 @@ y      = ftrue + u*stde
 
 histogram(u,title="errors",label="")
 
-# SMARTboost parameters
-param  = SMARTparam(loss=loss,nfold=1,nofullsample=true,modality=modality,verbose=:Off)
-data   = SMARTdata(y,x,param)
+# HTBoost parameters
+param  = HTBparam(loss=loss,nfold=1,nofullsample=true,modality=modality,verbose=:Off)
+data   = HTBdata(y,x,param)
 
 # ligthGBM parameters 
 estimator = LGBMRegression(
@@ -104,21 +104,21 @@ MSE3    = sum((yf_gbm - ftrue_test).^2)/n_test
 println("\n oos RMSE from true f(x), lightGBM, Huber loss                    ", sqrt(MSE3) )
 println(" oos RMSE from true f(x), lightGBM, L2 loss                       ", sqrt(MSE2) )
 
-# Fit SMARTboost, :t (or :Huber) 
-output = SMARTfit(data,param)
-yf     = SMARTpredict(x_test,output)  
+# Fit HTBoost, :t (or :Huber) 
+output = HTBfit(data,param)
+yf     = HTBpredict(x_test,output)  
 MSE1    = sum((yf - ftrue_test).^2)/n_test
 
-println(" oos RMSE from true f(x) parameter, SMARTboost, loss = $loss          ", sqrt(MSE1) )
+println(" oos RMSE from true f(x) parameter, HTBoost, loss = $loss          ", sqrt(MSE1) )
 
-# Fit SMARTboost, :L2 
+# Fit HTBoost, :L2 
 param.loss = :L2 
-output_L2 = SMARTfit(data,param)
-yf     = SMARTpredict(x_test,output_L2)  
+output_L2 = HTBfit(data,param)
+yf     = HTBpredict(x_test,output_L2)  
 MSE0    = sum((yf - ftrue_test).^2)/n_test
 
-println(" oos RMSE from true f(x) parameter, SMARTboost, loss = L2         ", sqrt(MSE0) )
+println(" oos RMSE from true f(x) parameter, HTBoost, loss = L2         ", sqrt(MSE0) )
 
 println("\n true dof = $dof and estimated dof = $(exp(output.bestparam.coeff_updated[1][2])) ")
-println("\n For more information about coefficients, use SMARTcoeff(output) ")
-SMARTcoeff(output)
+println("\n For more information about coefficients, use HTBcoeff(output) ")
+HTBcoeff(output)

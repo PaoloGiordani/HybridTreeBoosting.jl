@@ -28,7 +28,7 @@ Notice that the offset vector is in terms of E(y|x), not in terms of the natural
 
 offset for ytest 
 
-Set it in SMARTpredict()
+Set it in HTBpredict()
 
 PG: unless we are absolutely sure that an offset enteres exactly with coeff 1, couldn't we 
     simply add it to the list of coefficients? (in logs if log-link).... We could, but then it
@@ -42,7 +42,7 @@ number_workers  = 8  # desired number of workers
 
 using Distributed
 nprocs()<number_workers ? addprocs( number_workers - nprocs()  ) : addprocs(0)
-@everywhere using SMARTboostPrivate
+@everywhere using HTBoost
 
 using Random,Plots
 import Distributions 
@@ -51,7 +51,7 @@ import Distributions
 
 Random.seed!(12)
 
-# Some options for SMARTboost
+# Some options for HTBoost
 loss      = :gamma          
 modality  = :fast       # :accurate, :compromise (default), :fast, :fastest 
 
@@ -97,32 +97,32 @@ end
 histogram(y)
 @show [mean(y), std(y), std(μ), maximum(y)]
 
-# set up SMARTparam and SMARTdata, then fit and predit
+# set up HTBparam and HTBdata, then fit and predit
 
 # coefficient estimated internally. 
-param  = SMARTparam(loss=loss,priortype=priortype,randomizecv=randomizecv,nfold=nfold,
+param  = HTBparam(loss=loss,priortype=priortype,randomizecv=randomizecv,nfold=nfold,
                    verbose=verbose,warnings=warnings,modality=modality,nofullsample=nofullsample)
-data   = SMARTdata(y,x,param,offset=offset)
+data   = HTBdata(y,x,param,offset=offset)
 
-output = SMARTfit(data,param)
-yf     = SMARTpredict(x_test,output,predict=:Ey)
-#yhat  = SMARTpredict(x,output,predict=:Ey,offset=offset)
+output = HTBfit(data,param)
+yf     = HTBpredict(x_test,output,predict=:Ey)
+#yhat  = HTBpredict(x,output,predict=:Ey,offset=offset)
 
 println(" \n loss = $loss, modality = $(param.modality), nfold = $nfold ")
 println(" depth = $(output.bestvalue), number of trees = $(output.ntrees) ")
 println(" out-of-sample RMSE from truth, μ     ", sqrt(sum((yf - μ_test).^2)/n_test) )
 
 println("\n true shape = $k, estimated = $(exp(output.bestparam.coeff_updated[1][1])) ")
-println("\n For information about coefficients, use SMARTcoeff(output) ")
-SMARTcoeff(output)
+println("\n For information about coefficients, use HTBcoeff(output) ")
+HTBcoeff(output)
 
 
 # Repeat for L2 loss  
 #=
 param_L2 = deepcopy(param) 
 param_L2.loss = :L2
-output_L2 = SMARTfit(data,param_L2)
-yf    = SMARTpredict(x_test,output_L2,predict=:Ey)  
+output_L2 = HTBfit(data,param_L2)
+yf    = HTBpredict(x_test,output_L2,predict=:Ey)  
 
 println(" \n loss = $(param_L2.loss), modality = $(param.modality), nfold = $nfold, cv_link=true ")
 println(" depth = $(output_L2.bestvalue), number of trees = $(output_L2.ntrees) ")
@@ -132,7 +132,7 @@ println(" out-of-sample RMSE from truth, μ      ", sqrt(sum((yf - μ_test).^2)/
 
 # Plot 
 
-q,pdp  = SMARTpartialplot(data,output,[1,2,3,4],predict=:Egamma)
+q,pdp  = HTBpartialplot(data,output,[1,2,3,4],predict=:Egamma)
 
 # plot partial dependence in terms of the natural parameter 
 pl   = Vector(undef,4)
@@ -140,7 +140,7 @@ f,b  = [f_1,f_2,f_3,f_4],[b1,b2,b3,b4]
 
 for i in 1:length(pl)
         pl[i]   = plot( [q[:,i]],[pdp[:,i] f[i](q[:,i],b[i]) - f[i](q[:,i]*0,b[i])],
-           label = ["smart" "dgp"],
+           label = ["htb" "dgp"],
            legend = :bottomright,
            linecolor = [:blue :red],
            linestyle = [:solid :dot],

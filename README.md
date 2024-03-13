@@ -1,6 +1,6 @@
-# SMARTboostPrivate.jl
+# HTBoost.jl
 Private repo
 
 Installation:
 
-pkg> add "https://github.com/PaoloGiordani/SMARTboostPrivate.jl"
+pkg> add "https://github.com/PaoloGiordani/HTBoost.jl"

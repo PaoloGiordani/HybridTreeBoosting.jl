@@ -1,17 +1,17 @@
 #
 # Collects strucures (other than those in param.jl) 
 #
-# SMARTtree           struct
-# SMARTboostTrees     struct
-# SMARTboostTrees     function
+# HTBtree           struct
+# HTBoostTrees     struct
+# HTBoostTrees     function
 # Info_xi             struct
 #   
 # PG note: SVectors would make no difference speed-wise, since not building and storing this information barely changes timing (except possibly at VERY low n): not repeated enough times to make a difference
 
 
 """
-    struct SMARTtree{T<:AbstractFloat,I<:Int}
-Collects information about a single SMART tree of depth d
+    struct HTBtree{T<:AbstractFloat,I<:Int}
+Collects information about a single HTB tree of depth d
 
 # Fields
 - `i`:             vector, d indices of splitting features.
@@ -22,7 +22,7 @@ Collects information about a single SMART tree of depth d
 - `fi2`:           vector, d values of feature importance squared: increase in R2 at each split.
 - `σᵧ`:            std of gammafit for projection pursuit
 """
-struct SMARTtree{T<:AbstractFloat,I<:Int}
+struct HTBtree{T<:AbstractFloat,I<:Int}
     i::AbstractVector{I}                           # selected feature
     μ::AbstractVector{T}
     τ::AbstractVector{T}
@@ -77,13 +77,13 @@ end
 
 
 """
-    struct SMARTboostTrees{T<:AbstractFloat,I<:Int}
-Collects information about the ensemble of SMART trees.
+    struct HTBoostTrees{T<:AbstractFloat,I<:Int}
+Collects information about the ensemble of HTB trees.
 
 # Fields
-- `param::SMARTparam`:        values of param
+- `param::HTBparam`:        values of param
 - `gamma0`:                   initialization (prior to fitting any tree) of natural parameter, e.g. mean(data.y) for regression
-- `trees::Vector{SMARTtree}`: element i collects the info about the i-th tree
+- `trees::Vector{HTBtree}`: element i collects the info about the i-th tree
 - `infeatures::Vector{Bool}`: element i is true if feature i is included in at least one tree
 - `fi2::Vector`:              feature importance square
 - `f::Vector`:                feature frequency
@@ -93,15 +93,15 @@ Collects information about the ensemble of SMART trees.
 - `R2simul`
 - `Info_x`                     p vector with information about each feature 
 """
-mutable struct SMARTboostTrees{T<:AbstractFloat,I<:Int}
+mutable struct HTBoostTrees{T<:AbstractFloat,I<:Int}
 
-    param::SMARTparam
+    param::HTBparam
     gamma0::T
-    trees::Vector{SMARTtree{T,I}}
+    trees::Vector{HTBtree{T,I}}
     infeatures::Vector{Bool}
     fi2::Vector{T}          # feature importance squared: Breiman et al. 1984, equation 10.42 in Hastie et al, "The Elements of Statistical Learning", second edition
     fr::Vector{I}           # feature inclusion count  
-    fi::Vector{T}           # always in [0 1]    see updateSMARTtrees!
+    fi::Vector{T}           # always in [0 1]    see updateHTBtrees!
     meanx::Array{T}
     stdx::Array{T}
     gammafit::Vector{T}
@@ -112,12 +112,12 @@ end
 
 
 
-function SMARTboostTrees(param,gamma0,offset,n,p,meanx,stdx,Info_x)
+function HTBoostTrees(param,gamma0,offset,n,p,meanx,stdx,Info_x)
 
     T,I = param.T,param.I
-    trees, infeatures,R2simul,fi,fr = SMARTtree{typeof(gamma0),typeof(p)}[], fill(false,p), T[],zeros(T,p),zeros(I,p)
+    trees, infeatures,R2simul,fi,fr = HTBtree{typeof(gamma0),typeof(p)}[], fill(false,p), T[],zeros(T,p),zeros(I,p)
     gammafit   = offset + fill(gamma0,n)
-    SMARTtrees = SMARTboostTrees(param,gamma0,trees,infeatures,fi,fr,fi,meanx,stdx,gammafit,R2simul,Info_x)
+    HTBtrees = HTBoostTrees(param,gamma0,trees,infeatures,fi,fr,fi,meanx,stdx,gammafit,R2simul,Info_x)
 
-    return SMARTtrees
+    return HTBtrees
 end

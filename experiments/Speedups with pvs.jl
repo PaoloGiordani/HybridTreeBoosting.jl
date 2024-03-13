@@ -1,6 +1,4 @@
-
-#=
-
+#= 
 Short description:
 
 - Explore how preliminary variables (feature) selection affects speed and accuracy.
@@ -26,7 +24,7 @@ number_workers  = 16  # desired number of workers
 
 using Distributed
 nprocs()<number_workers ? addprocs( number_workers - nprocs()  ) : addprocs(0)
-@everywhere using SMARTboost
+@everywhere using HTBoost
 
 using Random,Statistics
 using LightGBM
@@ -40,7 +38,7 @@ p         = 2000        # number of features
 dummies   = false        # true if x, x_test are 0-1 (faster).
 stde      = 1            
 
-# Options for SMARTboost: modality is the key parameter guiding hyperparameter tuning and learning rate.
+# Options for HTBoost: modality is the key parameter guiding hyperparameter tuning and learning rate.
 # :fast and :fastest only fit one model at default parameters, while :compromise and :accurate perform
 # automatic hyperparameter tuning. 
 
@@ -126,25 +124,25 @@ LightGBM.fit!(estimator,x_train,y_train,(x_val,y_val),verbosity=-1)
 yf_gbm = LightGBM.predict(estimator,x_test)
 
 
-# SMARtboost
+# HTBoost
 
-param   = SMARTparam(modality=modality,ntrees=ntrees,sparsevs=sparsevs,pvs=pvs,p_pvs=p_pvs,min_d_pvs=min_d_pvs,depth=depth,
+param   = HTBparam(modality=modality,ntrees=ntrees,sparsevs=sparsevs,pvs=pvs,p_pvs=p_pvs,min_d_pvs=min_d_pvs,depth=depth,
                     nfold=nfold,verbose=:Off,warnings=:On,nofullsample=nofullsample)
 
-data  = SMARTdata(y,x,param)
+data  = HTBdata(y,x,param)
 
 println("\n n = $n, p = $p, dummies=$dummies, modality = $modality, depth=$depth, sparsevs = $sparsevs, pvs = $pvs")
 println(" time to fit ")
 
-@time output = SMARTfit(data,param);
+@time output = HTBfit(data,param);
 println(" ntrees $(output.ntrees)")
-yf = SMARTpredict(x_test,output,predict=:Ey)  # predict
+yf = HTBpredict(x_test,output,predict=:Ey)  # predict
 
-println("\n RMSE of SMARTboost from true E(y|x)                   ", sqrt(mean((yf-f_true).^2)) )
+println("\n RMSE of HTBoost from true E(y|x)                   ", sqrt(mean((yf-f_true).^2)) )
 println(" RMSE of LightGBM (default param) from true E(y|x)     ", sqrt(mean((yf_gbm-f_true).^2)) )
 
-fnames,fi,fnames_sorted,fi_sorted,sortedindx = SMARTrelevance(output,data,verbose=false);
-println(" SMARTboost number of included features in final model $(sum(fi.>0))")
+fnames,fi,fnames_sorted,fi_sorted,sortedindx = HTBrelevance(output,data,verbose=false);
+println(" HTBoost number of included features in final model $(sum(fi.>0))")
 
 if param.pvs == :On
     @info " pvs is :On. Repeat with pvs=:Off to track speed gains and any accuracy loss."

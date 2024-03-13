@@ -2,12 +2,12 @@
 
 #Strategies for zero-inflated data.
 
-## Discussion of options available in SMARTboost.
+## Discussion of options available in HTBoost.
 
-SMARTboost has three loss functions for zero inflated data:
+HTBoost has three loss functions for zero inflated data:
     ```:hurdleGamma, :hurdleL2, :hurdleL2loglink```
 The :hurdleGamma is closest to the Tweedie distribution in LightGBM, XGB, and CatBoost.
-Hurdle models in SMARTboost build to separate models, one with logistic loss to predict
+Hurdle models in HTBoost build to separate models, one with logistic loss to predict
 the occurence of a zero, and a second model with loss gamma or L2 or L2loglink to predict
 y|y≠0. Compared to a Tweedie regression, hurdle models have richer parametrization but
 far weaker constraints on the process, implying higher variance and smaller bias.
@@ -27,10 +27,10 @@ a Poisson or GammaPoisson.
 ## What this script does. 
 
 - Generates data from a gamma distribution, which is then transformed to produce excess zeros. 
-- Fit SMARTboost, with loss = :hurdleGamma or :hurdleL2loglink
+- Fit HTBoost, with loss = :hurdleGamma or :hurdleL2loglink
 - A comparison with LightGBM using the Tweedie loss is promising.
-- SMARTpredict takes the form:
-```    yf,prob0,yf_not0     = SMARTpredict(x_test,output) ``
+- HTBpredict takes the form:
+```    yf,prob0,yf_not0     = HTBpredict(x_test,output) ``
 where yf = E(y|x) = (1-prob0)*yf_not0
 
 """
@@ -38,7 +38,7 @@ number_workers  = 8  # desired number of workers
 
 using Distributed
 nprocs()<number_workers ? addprocs( number_workers - nprocs()  ) : addprocs(0)
-@everywhere using SMARTboostPrivate
+@everywhere using HTBoost
 
 using Random,Plots,Distributions 
 using LightGBM
@@ -47,7 +47,7 @@ using LightGBM
 
 Random.seed!(1)
 
-# Some options for SMARTboost
+# Some options for HTBoost
 loss      = :hurdleGamma    # options for y>=0 data are :L2loglink, :L2, :gamma, :hurdleGamma, :hurdleL2loglink, :hurdleL2     
 modality  = :compromise     # :accurate, :compromise (default), :fast, :fastest 
 
@@ -108,25 +108,25 @@ end
 println("\n share of y=0 is $(mean(y.==0)) \n")
 histogram(y,title="y, unconditional distribution") 
 
-# set up SMARTparam and SMARTdata, then fit and predit
+# set up HTBparam and HTBdata, then fit and predit
 
-param  = SMARTparam(loss=loss,priortype=priortype,randomizecv=randomizecv,nfold=nfold,
+param  = HTBparam(loss=loss,priortype=priortype,randomizecv=randomizecv,nfold=nfold,
                    verbose=verbose,warnings=warnings,modality=modality,nofullsample=nofullsample)
-data   = SMARTdata(y,x,param)
-output = SMARTfit(data,param)
+data   = HTBdata(y,x,param)
+output = HTBfit(data,param)
 
 println(" \n loss = $loss, modality = $(param.modality), nfold = $nfold ")
 
 if loss in [:hurdleL2,:hurdleL2loglink,:hurdleGamma]
-    yf,prob0,yf_not0     = SMARTpredict(x_test,output)
+    yf,prob0,yf_not0     = HTBpredict(x_test,output)
     println(" depth logistic = $(output[1].bestvalue), number of trees logistic = $(output[1].ntrees) ")
     println(" depth = $(output[2].bestvalue), number of trees = $(output[2].ntrees) ")
 else     
-    yf     = SMARTpredict(x_test,output,predict=:Ey)
+    yf     = HTBpredict(x_test,output,predict=:Ey)
     println(" depth = $(output.bestvalue), number of trees = $(output.ntrees) ")
 end 
 
-println(" out-of-sample RMSE (y-yf), SMARTboost       ", sqrt(sum((yf - y_test).^2)/n_test) )
+println(" out-of-sample RMSE (y-yf), HTBoost       ", sqrt(sum((yf - y_test).^2)/n_test) )
 
 # ligthGBM 
 estimator = LGBMRegression(

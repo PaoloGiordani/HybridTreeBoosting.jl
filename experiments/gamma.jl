@@ -1,21 +1,21 @@
-"""
+#=
 Generate data from gamma, compare L2 and L2logLink 
   
 paolo.giordani@bi.no
-"""
+=#
 
 number_workers  = 8  # desired number of workers
 
 using Distributed
 nprocs()<number_workers ? addprocs( number_workers - nprocs()  ) : addprocs(0)
-#@everywhere using SMARTboostPrivate
+#@everywhere using HTBoost
 
 using Random,Plots,Distributions 
 using LightGBM
 
 # USER'S OPTIONS 
 
-# Some options for SMARTboost
+# Some options for HTBoost
 modality  = :compromise    # :accurate, :compromise (default), :fast, :fastest 
 
 priortype = :hybrid       # :hybrid (default) or :smooth to force smoothness 
@@ -64,15 +64,15 @@ y       = zeros(n)
 for i in eachindex(y)
     y[i]  = rand(Gamma.(k,scale[i]))
 end 
-# set up SMARTparam and SMARTdata, then fit and predit
+# set up HTBparam and HTBdata, then fit and predit
 
 # coefficient estimated internally. 
-param  = SMARTparam(loss=:L2,priortype=priortype,randomizecv=randomizecv,nfold=nfold,
+param  = HTBparam(loss=:L2,priortype=priortype,randomizecv=randomizecv,nfold=nfold,
                    verbose=verbose,warnings=warnings,modality=modality,nofullsample=nofullsample)
-data   = SMARTdata(y,x,param)
+data   = HTBdata(y,x,param)
 
-output = SMARTfit(data,param,cv_link=false)
-yf     = SMARTpredict(x_test,output,predict=:Ey)
+output = HTBfit(data,param,cv_link=false)
+yf     = HTBpredict(x_test,output,predict=:Ey)
 
 RMSE[simul,1] = sqrt(sum((yf - μ_test).^2)/n_test) 
 ntrees[simul,1] = output.ntrees 
@@ -81,8 +81,8 @@ depth[simul,1] = output.bestvalue
 # Repeat for log link   
 param = deepcopy(param) 
 param.loss = :L2loglink 
-output = SMARTfit(data,param)
-yf    = SMARTpredict(x_test,output,predict=:Ey)  
+output = HTBfit(data,param)
+yf    = HTBpredict(x_test,output,predict=:Ey)  
 
 RMSE[simul,2] = sqrt(sum((yf - μ_test).^2)/n_test)
 ntrees[simul,2] = output.ntrees 
