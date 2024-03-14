@@ -163,6 +163,8 @@ end
     HTBparam(;)
 Parameters for HTBoost
 
+Note: all Julia symbols can be replaced by strings. e.g. :L2 can be replaced by "L2".
+
 # Parameters that are most likely to be modified by user (all inputs are keywords with default values)
 
 - `loss:Symbol`             [:L2] Supported distributions: :L2 (Gaussian),:logistic (binary classification),:multiclass
@@ -265,7 +267,7 @@ function HTBparam(;
     loss = :L2,               # loss function
     losscv = :default,        # loss used for early stopping and stacking. :default, or :mse, :mae, :Huber, :logistic, :sign
     modality = :compromise,     # :accurate, :fast, :compromise 
-    coeff = coeff_user(loss,T),      # coefficients (if any) used in loss
+    coeff = coeff_user(Symbol(loss),T),      # coefficients (if any) used in loss
     coeff_updated = Vector{Vector{T}}(undef,2), # first vector for coeff used in loglik, second for coeff in losscv (where coefficients should be constant)
     verbose = :Off,      # level of verbosity, :On, :Off
     warnings=:On,
