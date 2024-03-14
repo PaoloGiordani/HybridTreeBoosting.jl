@@ -166,8 +166,11 @@ Parameters for HTBoost
 # Parameters that are most likely to be modified by user (all inputs are keywords with default values)
 
 - `loss:Symbol`             [:L2] Supported distributions: :L2 (Gaussian),:logistic (binary classification),:multiclass
-                            (multiclass classification), :t,:Huber,:gamma, :Poisson, :gammaPoisson (same as negative binomial),
-                            :L2loglink, :lognormal,:hurdleGamma,:hurdleL2loglink,:hurdleL2 
+                            (multiclass classification), :t (student-t, robust alternative to :L2),:Huber, :gamma, :Poisson (count data), :gammaPoisson (count data, same as negative binomial),
+                            :L2loglink (alternative to :L2 if y≥0), :hurdleGamma, :hurdleL2loglink, :hurdleL2 (for zero-inflated models), :hurdlePoisson, :hurdleGammaPoisson (for zero-inflated data).
+                            See the examples for uses of each loss function.
+
+                            " can use " 
                             See ?? for explanation and ?? for examples.      
                             MOVE ELSEWHERE !!!!
                             ADD OFFSET IF RELEVANT .... NB ITS' IN HTBdata()     
@@ -407,7 +410,7 @@ function HTBparam(;
         end
     end 
      
-    param = HTBparam(T,I,loss,losscv,Symbol(modality),T.(coeff),coeff_updated,Symbol(verbose),Symbol(warnings),I(num_warnings),randomizecv,I(nfold),nofullsample,T(sharevalidation),indtrain_a,indtest_a,T(stderulestop),T(lambda),I(depth),I(depth1),I(depthppr),Symbol(sigmoid),
+    param = HTBparam(T,I,Symbol(loss),Symbol(losscv),Symbol(modality),T.(coeff),coeff_updated,Symbol(verbose),Symbol(warnings),I(num_warnings),randomizecv,I(nfold),nofullsample,T(sharevalidation),indtrain_a,indtest_a,T(stderulestop),T(lambda),I(depth),I(depth1),I(depthppr),Symbol(sigmoid),
         T(meanlntau),T(varlntau),T(doflntau),T(multiplier_stdtau),T(varmu),T(dofmu),
         T(meanlntau_ppr),T(varlntau_ppr),T(doflntau_ppr),Symbol(priortype),T(max_tau_smooth),I(min_unique),mixed_dc_sharp,force_sharp_splits,force_smooth_splits,exclude_features,augment_mugrid,cat_features,cat_features_extended,cat_dictionary,cat_values,cat_globalstats,I(cat_representation_dimension),T(n0_cat),T(mean_encoding_penalization),
         class_values,Bool(delete_missing),mask_missing,missing_features,info_date,T(sparsity_penalization),p0,sharevs,refine_obs_from_vs,finalβ_obs_from_vs,
