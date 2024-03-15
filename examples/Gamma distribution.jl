@@ -6,6 +6,7 @@
 - The shape parameter k is estimated internally.
 - loss=:gamma clearly outperforms loss=:L2 in terms of out-of-sample RMSE, 
   but :L2loglink approaches the performance of :gamma and is more robust if the density is not gamma.
+  (See examples/L2loglink.jl for more on :L2loglink.)
 
 Note: The comparison with LightGBM is biased toward HTBoost if the function generating the data is 
 smooth in some features (this is easily changed by the user). lightGBM is cross-validated over max_depth and num_leaves,

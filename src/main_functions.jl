@@ -38,20 +38,20 @@ Basic information about the main functions in HTBoost (see help on each function
 
 
 # Setting up the model 
-- `HTBindexes_from_dates` builds train and test sets indexes for expanding window cross-validation
+- `HTBindexes_from_dates` builds train and test sets indexes for expanding window cross-validation (if the user wants to over-ride the default block-cv)
 - `HTBparam`           parameters, defaults or user-provided.
 - `HTBdata`            y,x and, optionally, dates, weights, and names of features
 
 # Fitting and forecasting 
 - `HTBfit`             fits HTBoost with cv (or validation/early stopping) of number of trees and, optionally, depth or other parameter
-- `HTBbst`             (rerely needed by user) fits HTBoost when nothing needs to be cross-validated (not even number of trees)                         
 - `HTBpredict`         predictions for y or natural parameter
+- `HTBbst`             (rerely needed by user) fits HTBoost when nothing needs to be cross-validated (not even number of trees)                         
 
 #  POST-ESTIMATION ANALYSIS
 - `HTBcoeff`           provides information on constant coefficients, e.g. dispersion and dof for loss=:t
 - `HTBrelevance`       computes feature importance (Breiman et al 1984 relevance)
 - `HTBpartialplot`     partial dependence plots (keeping all other features fixed, not integrating out)
-- `HTBmarginaleffect`  provisional! Numerical computation of marginal effects.
+- `HTBmarginaleffect`  Numerical computation of marginal effects.
 - `HTBoutput`          collects fitted parameters in matrices
 - `HTBweightedtau`     computes weighted smoothing parameter to help assess function smoothness
 
@@ -67,17 +67,17 @@ To find more information about a specific function, e.g. HTBfit
 
 Example of basic use of HTBoost functions with iid data and default settings
 
-    param  = HTBparam()     # or param = HTBparam(loss=:logistic)                            
+    param  = HTBparam()                                 
     data   = HTBdata(y,x,param)
     output = HTBfit(data,param)
     yf     = HTBpredict(x_test,output)  
 
-See the files in the folder examples for more examples of use. 
+See the example files for illustrations of use. 
 "
 function HTBinfo()
 
     println("Documentation: $(Base.doc(HTBinfo))")
-
+  
 end
 
 
@@ -745,9 +745,12 @@ function HTBfit_single(data::HTBdata, param::HTBparam; cv_grid=[],cv_different_l
     # if isempty(cv_grid), fits depth=2,3,4. If 2 is best, fits 1. If 3 is best, stops. If 4 is best, fits 5 and (if :accurate) 6.
     if isempty(cv_grid)
         user_provided_grid = false
-        cv_grid=[1,2,3,4,5,6]     # NB: later code assumes this grid
+        cv_grid=[1,2,3,4,5,6,7]     # NB: later code assumes this grid when cv depth
     else     
         user_provided_grid = true
+        if maximum(cv_grid)>6 && param.depth1>maximum(cv_grid) && warnings==:On
+            @warn "setting param.depth higher than 6, perhaps 7, typically results in very high computing costs."
+        end
     end     
 
     if modality in [:fast,:fastest] 
@@ -811,9 +814,9 @@ function HTBfit_single(data::HTBdata, param::HTBparam; cv_grid=[],cv_different_l
             end    
     end 
 
-    # Cross-validate depths with no user-defined grid. NB: assumes cv_grid = [1,2,3,4,5,6]
-    # option 1: if isempty(cv_grid), fits depth=3,4,5. If 3 is best, fits 2. If 4 is best, stops. If 5 is best, fits 6.
-    # option 2 (faster): if isempty(cv_grid), fits depth=3,5. If 3 is best, fits 2. If 5 is best, fits 6.
+    # Cross-validate depths with no user-defined grid. NB: assumes cv_grid = [1,2,3,4,5,6,7]
+    # option 1: if isempty(cv_grid), fits depth=3,4,5. If 3 is best, fits 2. If 4 is best, stops. If 5 is best, fits 6 for :compromise, and 6 and 7 for :accurate.
+    # option 2 (bit faster): if isempty(cv_grid), fits depth=3,5. If 3 is best, fits 2. If 5 is best, fits 6 for :compromise, and 6 and 7 for :accurate.
 
     if user_provided_grid==false
  
@@ -840,7 +843,8 @@ function HTBfit_single(data::HTBdata, param::HTBparam; cv_grid=[],cv_different_l
             elseif argmin(lossgrid)==4
                 break
             else
-                i_a = [6]        
+               i_a = [6]
+               # modality==:accurate ? i_a = [6,7] : i_a = [6]  # 7 can be very slow              
             end     
  
         end 

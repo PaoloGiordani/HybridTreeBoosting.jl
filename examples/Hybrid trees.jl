@@ -6,15 +6,17 @@
 When the smoothness parameter τ is estimated for each split and allowed to take high values,
 including τ=Inf (which corresponds to a sharp split), it's perhaps intuitive to think that a
 smooth tree can capture both smooth and sharp functions. However, this is not necessarily true
-in a boosting context, as illustrated in this script. 
+in a boosting context, as illustrated in this script.
 
 Consider the following example:
 If we are trying to approximate a step function with a single step (second column in the plot),
 a smooth tree which can take high values of τ performs asymptotically as well as a sharp split.
 However, if the step functions has multiple steps (third column in the plot), the fitting function
 is initially smooth, and it is then impossible for the subsequent trees to fully recover a sharp function.
+In this example, the greedy nature of boosting gets the algorithm stuck in a local minimu. 
 A hybrid tree attempts to recognize such cases from a preliminary run, and, if necessary, imposes
-sharp splits on some features.
+sharp splits on some features to avoid the local minima. The cross-validated loss is then 
+used to decide in which combination to use the hybrid and the smooth tree.
 
 """
 number_workers  = 8  # desired number of workers
