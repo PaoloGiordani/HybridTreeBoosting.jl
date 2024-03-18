@@ -260,7 +260,7 @@ end
 
 
 # Computes log t-density of the prior on log(τ). The mean of this density is a function of the Kantorovic distance of feature i.
-# τ is trucated at τmax=100 to allow for Inf (sharp threshold) to have finite density. d is tree dimension as in size(G,2)= 2^d (e.g. 1 for d=depth1+1)
+# τ is trucated at τmax=100 to allow for Inf (sharp threshold) to have finite density. d is tree dimension as in size(G,2)= 2^d 
 # function lnpτ(τ0::Union{T,Vector{T}},param::HTBparam,info_i,d;τmax=T(100) )::T where T<:AbstractFloat     # NOTE: modifications required for τ0 a vector.
 function lnpτ(τ0::T,param::HTBparam,info_i,d;τmax=T(100) )::T where T<:AbstractFloat
 
@@ -276,7 +276,6 @@ function lnpτ(τ0::T,param::HTBparam,info_i,d;τmax=T(100) )::T where T<:Abstra
     end      
 
     stdlntau   = sqrt(param.varlntau)                 # to intrepret varlntau as dispersion
-    #depth = T( param.depth1+maximum([0.0, 0.5*(param.depth-param.depth1) ]) )  # matters only if prior is modified for d
     #stdlntau  = sqrt( (param.varlntau)*(param.doflntau-T(2))/param.doflntau )  # to intrepret varlntau as an actual variance.
     if param.loss in [:L2,:gamma,:Huber,:quantile,:t,:lognormal,:L2loglink,:Poisson,:gammaPoisson]    
         α=1
@@ -324,7 +323,7 @@ function fitβ(y,w,gammafit_ensemble,r0::AbstractVector{T},h0::AbstractVector{T}
     r,h = copy(r0),copy(h0)
     n,p = size(G)
     nh  = length(h)
-    d   = Int(round(log(p)/log(2)))  # NB: not the actual depth if depth>depth1, but what is relevant for priors
+    d   = Int(round(log(p)/log(2)))  
     GGh  = Matrix{T}(undef,p,p)
 
     if finalβ=="true"
@@ -1111,7 +1110,7 @@ function fit_one_tree_inner(y::AbstractVector{T},w,HTBtrees::HTBoostTrees,r::Abs
         ssi         = randperm(Random.MersenneTwister(param.seed_subsampling+ntree),n)[1:n_vs]  # subs-sample, no reimmission
     end
 
-    depth2==0 ? maxdepth=minimum([param.depth1,param.depth]) : maxdepth=depth2
+    maxdepth=param.depth
 
     if length(ssi)<n
         xs = SharedMatrixErrorRobust(x[ssi,:],param)    # randomize once for the entire tree (SharedMatrix has a one-time cost)
@@ -1255,23 +1254,15 @@ end
 
 
 
-# if depth>depth1, cycles of depth1, at the end of each cycle re-start the tree with fitted values. (only for smooth trees)
 function fit_one_tree(y::AbstractVector{T},w,HTBtrees::HTBoostTrees,r::AbstractVector{T},
     h::AbstractVector{T},x::AbstractArray{T},μgrid,Info_x,τgrid,param::HTBparam) where T<:AbstractFloat
 
     I = param.I
-    nrounds = I(ceil( 1+(param.depth-param.depth1)/param.depth1 ))
 
-    βfit = Vector{AbstractVector{T}}(undef,nrounds)
+    βfit = Vector{AbstractVector{T}}(undef,1)
 
     gammafit0,ifit,μfit,τfit,mfit,β1,fi2=fit_one_tree_inner(y,w,HTBtrees,r,h,x,μgrid,Info_x,τgrid,param;depth2=0)   # standard
     βfit[1]=β1
-
-    for round in 2:nrounds
-        d2 = minimum([param.depth1,param.depth-(round-1)*param.depth1 ])
-        gammafit0,ifit_2,μfit_2,τfit_2,mfit_2,β2,fi2_2=fit_one_tree_inner(y,w,HTBtrees,r,h,x,μgrid,Info_x,τgrid,param;depth2=d2,G0=gammafit0[:,:])
-        βfit[round]=β2;ifit=vcat(ifit,ifit_2); μfit=vcat(μfit,μfit_2); τfit=vcat(τfit,τfit_2); mfit=vcat(mfit,mfit_2); fi2=vcat(fi2,fi2_2)
-    end
 
     if param.depthppr>0
         σᵧ = std(gammafit0)
@@ -1317,39 +1308,35 @@ function HTBtreebuild(x::AbstractMatrix{T},ij,μj::AbstractVector{T},τj::Abstra
     sigmoid = param.sigmoid
     missing_features = param.missing_features
     depth = param.depth
-    depth1   = param.depth1
     depthppr = param.depthppr
 
     n   = size(x,1)
     gammafit = ones(T,n)
 
-    nrounds = typeof(depth)(ceil( 1+(depth-depth1)/depth1 ))
     G   = Matrix{T}(undef,n,2^depth)
+    G0  = ones(T,n,1)
 
-    for round in 1:nrounds
-        G0 = copy(gammafit)
-        d1 = depth1*(round-1)+1
-        d2 = minimum([depth1*round,depth])
+    for d in 1:depth
 
-        for d in d1:d2
+        i,μ,τ,m = ij[d], μj[d], τj[d], mj[d]
 
-            i,μ,τ,m = ij[d], μj[d], τj[d], mj[d]
-
-            if i in missing_features
-                xi = copy(x[:,i])                 #  Redundant? Julia would make a copy with xi = x[:,i] anyway
-                xi[isnan.(xi)] .= m
-            else
-                xi = @view(x[:,i])
-            end
-
-            G   = Matrix{T}(undef,n,2*size(G0,2))
-            gL  = sigmoidf(xi,μ,τ,sigmoid)
-            updateG!(G,G0,gL)                
-            if d<d2; G0 = copy(G); end;               
+        if i in missing_features
+            xi = copy(x[:,i])                 #  Redundant? Julia would make a copy with xi = x[:,i] anyway
+            xi[isnan.(xi)] .= m
+        else
+            xi = @view(x[:,i])
         end
 
-        gammafit = G*βj[round]
+        G   = Matrix{T}(undef,n,2*size(G0,2))
+        gL  = sigmoidf(xi,μ,τ,sigmoid)
+        updateG!(G,G0,gL)                
+    
+        if d<depth
+            G0 = copy(G)
+        end               
     end
+
+    gammafit = G*βj[1]
 
     if depthppr > 0
         xi = gammafit/σᵧ
