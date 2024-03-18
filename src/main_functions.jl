@@ -748,7 +748,7 @@ function HTBfit_single(data::HTBdata, param::HTBparam; cv_grid=[],cv_different_l
         cv_grid=[1,2,3,4,5,6,7]     # NB: later code assumes this grid when cv depth
     else     
         user_provided_grid = true
-        if maximum(cv_grid)>6 && param.warnings==:On
+        if maximum(cv_grid)>7 && param.warnings==:On
             @warn "setting param.depth higher than 6, perhaps 7, typically results in very high computing costs."
         end
     end     
@@ -927,8 +927,8 @@ function HTBfit_single(data::HTBdata, param::HTBparam; cv_grid=[],cv_different_l
     end 
 
     # Additional model: Fit hybrid model, with sharp splits forced on features with high τ. Threshold set at tau=10.
-    # Only if the high τ are for features with non-trivial importance (fi).
-    if param.priortype==:hybrid && cv_hybrid
+    # Only if the high τ are for features with non-trivial importance (fi), and only if user did not specify sharp_splits
+    if param.priortype==:hybrid && cv_hybrid && isempty(param.force_sharp_splits)
   
         best_i      = argmin(lossgrid)
         bestvalue   = cvgrid[best_i]
