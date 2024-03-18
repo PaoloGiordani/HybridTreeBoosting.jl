@@ -12,4 +12,9 @@ In situations where computing time is not an issue and even the smallest increme
 
 - Consider alternative loss functions, such as :L2loglink or :t.    
 
+- If the signal-to-noise ratio is very low, set cv_sparsity = true. (The default sets it to true only if
+  if n/p is not large, but very noisy data may benefit from it.)
+
+  output = HTBfit(data,param,cv_sparsity=true)
+
 """ 
