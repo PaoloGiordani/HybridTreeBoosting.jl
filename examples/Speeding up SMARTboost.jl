@@ -43,7 +43,8 @@ When n is very large, and it takes too long to fit HTBoost in modality = :compro
 one way to proceed is to cv on a subsample of the data (say 20%) and then fit only one model on the full sample, using the 
 best parameters found in the subsample, except for the number of trees.
 If the subsample is large enough, the best parameters found in the subsample will be close to the best parameters in the full sample.
-(Of course the subset is more noisy and )
+(Of course the subset is more noisy and will prefer simpler models, but the difference should be modest if n is large. The number of trees
+should not be taken from the subset of course.)
 This can be accomplished as follows:
 
 - Set modality=:compromise or :accurate, take a subsample of the data (20%), and run output=HTBfit() on that.
