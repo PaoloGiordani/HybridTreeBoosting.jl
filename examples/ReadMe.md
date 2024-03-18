@@ -29,6 +29,7 @@ Other distributions (loss functions)
 Miscellanea
 
   * `Offset or exposure` (how to add an offset, common in e.g. insurance, biology ...)
+  * `Beyond accurate` (some suggestions when chasing maximum accuracy)
   * `Sparsity penalization` (how HTBoost improves forecasting by feature selection when p is large)
   * `Speedups with sparsevs` (how HTBoost speeds up feature selection when p is large)
 
