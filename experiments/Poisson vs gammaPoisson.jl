@@ -1,4 +1,4 @@
-""" 
+#= 
 
 Question: What gains from :gammaPoisson rather than :Poisson if the data do show over-dispersion but the
 interest is in E(y|x) only? 
@@ -10,7 +10,7 @@ Results:
 - The gains in going from L2 to Poisson are very small for lightgbm as well. 
 
 paolo.giordani@bi.no
-""" 
+=# 
 
 number_workers  = 8  # desired number of workers
 

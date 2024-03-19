@@ -58,7 +58,7 @@ b2v = [0.0,0.3,0.3,1.0,1.0]   # coefficients second class
 
 # END USER'S OPTIONS  
 
-# generates data from 3 classes:  Ugly function. 
+# generates data from 3 classes 
 function rnd_3classes(x,b1v,b2v)
 
   class_values = [0.0,1.0,2.0]
@@ -75,7 +75,7 @@ function rnd_3classes(x,b1v,b2v)
   prob1 = @. exp(d1)/sumexpd 
   prob2 = @. exp(d2)/sumexpd 
   
-  n   = size(x,1)
+  n  = size(x,1)
   y  = Vector{eltype(class_values)}(undef,n)
   u  = rand(n)
 

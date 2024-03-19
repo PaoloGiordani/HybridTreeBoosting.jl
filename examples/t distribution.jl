@@ -107,7 +107,8 @@ println(" oos RMSE from true f(x), lightGBM, L2 loss                       ", sq
 # Fit HTBoost, :t (or :Huber) 
 output = HTBfit(data,param)
 yf     = HTBpredict(x_test,output)  
-MSE1    = sum((yf - ftrue_test).^2)/n_test
+MSE1   = sum((yf - ftrue_test).^2)/n_test
+θ      = HTBcoeff(output,verbose=false)         # info on estimated coeff
 
 println(" oos RMSE from true f(x) parameter, HTBoost, loss = $loss          ", sqrt(MSE1) )
 
@@ -119,6 +120,6 @@ MSE0    = sum((yf - ftrue_test).^2)/n_test
 
 println(" oos RMSE from true f(x) parameter, HTBoost, loss = L2         ", sqrt(MSE0) )
 
-println("\n true dof = $dof and estimated dof = $(exp(output.bestparam.coeff_updated[1][2])) ")
+println("\n true dof = $dof and estimated dof = $(θ.dof) ")
 println("\n For more information about coefficients, use HTBcoeff(output) ")
 HTBcoeff(output)
