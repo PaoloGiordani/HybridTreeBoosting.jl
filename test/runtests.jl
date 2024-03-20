@@ -6,6 +6,7 @@ using Random
 using DataFrames
 using CategoricalArrays
 using Distributions: Gamma, NegativeBinomial, Poisson, TDist
+using Distributed 
 
 @testset "HTBoost.jl" begin
  

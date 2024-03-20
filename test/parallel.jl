@@ -18,7 +18,7 @@ y   = f + randn(n)
         rmse1  =  sqrt(sum((yf - f).^2)/n) < 0.10
 
         using Distributed
-        number_workers  = 4  # desired number of workers
+        number_workers  = 2  # desired number of workers
         nprocs()<number_workers ? addprocs( number_workers - nprocs()  ) : addprocs(0)
         @everywhere using HTBoost
         output = HTBfit(data,param)
