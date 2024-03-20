@@ -257,7 +257,7 @@ function map_cat_convert_to_float!(x::AbstractDataFrame,param::HTBparam;create_d
         if create_dictionary
             z = CategoricalArray(z)
             L = levels(z)         #                   # retrieve all the possible values
-            D = Dict(L[i] => T(i-1) for i in 1:length(L))  # create a dictionary mapping each value to a number
+            D = Dict(L[i] => T(i-1) for i in eachindex(L))  # create a dictionary mapping each value to a number
             push!(param.cat_dictionary,D)
         else
             D = param.cat_dictionary[i]
