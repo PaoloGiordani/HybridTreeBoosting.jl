@@ -3,7 +3,9 @@ using HTBoost
 using Test 
 
 using Random 
-using DataFrames 
+using DataFrames
+using CategoricalArrays
+using Distributions: Gamma, NegativeBinomial, Poisson, TDist
 
 @testset "HTBoost.jl" begin
  

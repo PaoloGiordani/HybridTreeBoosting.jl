@@ -1,4 +1,3 @@
-using Distributions
 
 # generate data from a gammaPoisson 
 α    = 0.5   # overdispersion parameter. Poisson for α -> 0 

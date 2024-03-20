@@ -1,4 +1,3 @@
-using Distributions 
 
 # create data from a gamma distribution 
 
