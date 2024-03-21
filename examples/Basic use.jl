@@ -113,12 +113,12 @@ f,b  = [f_1,f_2,f_3,f_4,f_5,f_6],[b1,b2,b3,b4,b5,b6]
 
 for i in 1:length(pl)
     pl[i]   = plot( [q[:,i]],[pdp[:,i] f[i](q[:,i],b[i]) - f[i](q[:,i]*0,b[i])],
-           label = ["HTB" "dgp"],
+           label = ["HTB" "true"],
            legend = :bottomright,
            linecolor = [:blue :red],
            linestyle = [:solid :dot],
 
-           linewidth = [5 5],
+           linewidth = [6 3],
            titlefont = font(15),
            legendfont = font(12),
            xlabel = "x",

@@ -23,7 +23,6 @@
 #
 #  POST-ESTIMATION ANALYSIS
 #  HTBcoeff              provides information on constant coefficients
-#    try_loglink
 #  HTBrelevance          computes feature importance (Breiman et al 1984 relevance)
 #  HTBpartialplot        partial dependence plots (keeping all other features fixed, not integrating out)
 #  HTBmarginaleffect     provisional! Numerical computation of marginal effects.
@@ -31,6 +30,12 @@
 #  tight_sparsevs          warns if sparsevs seems to compromise fit 
 #  HTBweightedtau        computes weighted smoothing parameter
 #  HTBplotppr            plots projection pursuit regression 
+#
+# AUXILIARY FUNCTIONS (not for export)
+# from_gamma_to_Ey
+# displayinfo
+# impose_sharp_splits  
+
 
 "
     HTBinfo()
@@ -296,7 +301,6 @@ function displayinfo(verbose::Symbol,iter::Int)
         println("Tree number ", iter )
     end
 end
-
 
 
 #Forecasts from HTBoost. Expects x to be standardized, with categorical already transformed
@@ -932,7 +936,7 @@ function HTBfit_single(data::HTBdata, param::HTBparam; cv_grid=[],cv_different_l
   
         best_i      = argmin(lossgrid)
         bestvalue   = cvgrid[best_i]
-        force_sharp_splits = 10 .< mean_weighted_tau(HTBtrees_a[best_i]) .<100 # 100 indicates that the split is always sharp anyway
+        force_sharp_splits = impose_sharp_splits(HTBtrees_a[best_i],param)
         fnames,fi,fnames_sorted,fi_sorted,sortedindx = HTBrelevance(HTBtrees_a[best_i],data)
         fi_sharp = sort(fi[force_sharp_splits.==true],rev=true)
         p_sharp = length(fi_sharp)
@@ -1729,3 +1733,54 @@ function HTBplot_ppr(output;which_tree=1)
 
     return G*β,xi
 end 
+
+
+#=
+
+After preliminary run, decide on which features, if any, to impose sharp splits.
+
+The goal is to capture situations in which boosting smooth trees gets stuck in a local minimum
+when fitting a sharp function. This can happen when the function has sharp splits, but the
+algorithm initially fits a low value of τ (smooth function), and then struggles to recover 
+sharp splits in the subsequent trees.
+
+To impose sharp splits, we therefore require two conditions:
+1) avg tau > avg_tau_threshold, e.g. 10
+2) first tau < 0.5*avg_tau
+
+The second condition can be disactivated by setting param.only_avg_tau=true
+
+We also want to impose sharp splits if avg_tau is very high (>2*tau_threshold), as the the trees 
+may then fit low tau simply because the prior dominates the little info left
+in the pseudo-residuals.
+
+=#
+
+# Use: force_sharp_splits = impose_sharp_splits(HTBtrees_a[best_i],param)
+function impose_sharp_splits(HTBtrees::HTBoostTrees,param) 
+
+    tau_threshold = param.tau_threshold
+    only_avg_tau  = param.only_avg_tau
+
+    i,μ,τ,fi2 = HTBoutput(HTBtrees,exclude_pp=true)
+
+    avg_tau = mean_weighted_tau(HTBtrees)
+    force_sharp_splits = avg_tau .> tau_threshold
+    
+    if only_avg_tau
+        return force_sharp_splits
+    end
+
+    for j in eachindex(force_sharp_splits)
+        if avg_tau[j] < 2*tau_threshold  # with very high avg tau, we want to impose sharp splits
+            #first_tau = τ[i.==j][1]  # ? why is this not giving the output I expected ? Next 3 lines instead             
+            vt = vec(τ')
+            vc = vec((i.==j)')
+            first_tau = vt[vc][1]
+
+            force_sharp_splits[j] = first_tau .< 0.5*avg_tau[j]
+        end     
+    end
+
+    return force_sharp_splits 
+end

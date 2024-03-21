@@ -3,6 +3,13 @@
 
 **Hybrid trees: why smooth trees are not always good enough.**
 
+There are two characteristics of HTB trees that make them hybrid:
+1. Splits are smooth by default, but can be forced to be sharp for some features.
+2. The fitted value from each tree is the input for a univariate nonlinear transformation.
+
+Here we explore the first characteristic, while examples/Projection Pursuit Regreession.jl 
+explores the second.
+
 When the smoothness parameter τ is estimated for each split and allowed to take high values,
 including τ=Inf (which corresponds to a sharp split), it's perhaps intuitive to think that a
 smooth tree can capture both smooth and sharp functions. However, this is not necessarily true
@@ -39,7 +46,7 @@ ntrees    = 1000          # maximum number of trees
 nfold     = 1             # number of cv folds. 1 faster (single validation sets), default 4 is slower, but more accurate.
 
 verbose     = :Off
-warnings    = :On
+warnings    = :Off
  
 # options to generate data. y = sum of two additive nonlinear functions + Gaussian noise.
 n,p,n_test  = 10_000,6,100_000

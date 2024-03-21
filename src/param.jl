@@ -61,6 +61,8 @@ mutable struct HTBparam{T<:AbstractFloat, I<:Int,R<:Real}
     max_tau_smooth::T         # maximum value of tau allowed when :smooth. 10 can still capture very steep functions in boosting
     min_unique::I         # sharp thresholds are imposed on features with less than min_unique unique values
     mixed_dc_sharp::Bool   # true to force sharp splits on discrete and mixed discrete-continuous features (defined as having over 20% obs on a single value)
+    tau_threshold::T       # threshold for imposing sharp splits
+    only_avg_tau ::Bool         # if true in impose_sharp_splits, only the average tau is used to impose sharp splits, if false, also requires the initial tau to be smaller than the average 
     force_sharp_splits::Vector{Bool}
     force_smooth_splits::Vector{Bool}
     exclude_features::Vector{Bool}
@@ -261,9 +263,10 @@ Note: all Julia symbols can be replaced by strings. e.g. :L2 can be replaced by 
 - `n_refineOptim`      [10^6] MAXIMUM number of observations to use fit μ and τ (split point and smoothness).
                             Lower numbers can provide speed-ups with very large n at some cost in terms of fit.
 
-- `loglikdivide`     [1.0] Higher numbers increase the strength or all priors. The defaults sets it internally using HTBloglikdivide(),
+- `loglikdivide`         [1.0] Higher numbers increase the strength or all priors. The defaults sets it internally using HTBloglikdivide(),
                             when it detects a dates series in HTBdata().
 
+- `tau_threshold`         [10.0] lowest threshold for imposing sharp splits. Lower numbers give more sharp splits.
 
 # Additional parameters to control the cross-validation process can be set in HTBfit(), but keeping the defaults is generally encouraged.
 
@@ -310,6 +313,8 @@ function HTBparam(;
     max_tau_smooth = 20,         # maximum value of tau allowed when :smooth. 10 can still capture very steep functions in boosting
     min_unique  = :Auto,         # Note: over-writes force_sharp_splits unless set to a large number. minimum number of unique values to consider a feature as continuous
     mixed_dc_sharp = false,
+    tau_threshold = 10,         # threshold for imposing sharp splits
+    only_avg_tau  = false,      # if true in impose_sharp_splits, only the average tau is used to impose sharp splits, if false, also requires the initial tau to be smaller than the average 
     force_sharp_splits = Vector{Bool}(undef,0),  # typically hidden to user: optionally, a p vector of Bool, with j-th value set to true if the j-th feature is forced to enter with a sharp split.
     force_smooth_splits = Vector{Bool}(undef,0),  # typically hidden to user: optionally, a p vector of Bool, with j-th value set to true if the j-th feature is forced to enter with a smooth split (high values of λ not allowed)
     exclude_features = Vector{Bool}(undef,0),    # typically hidden to user optionally, a p vector of Bool, with j-th value set to true if the j-th feature should not be considered as a candidate for a split
@@ -426,7 +431,7 @@ function HTBparam(;
      
     param = HTBparam(T,I,Symbol(loss),Symbol(losscv),Symbol(modality),T.(coeff),coeff_updated,Symbol(verbose),Symbol(warnings),I(num_warnings),randomizecv,I(nfold),nofullsample,T(sharevalidation),indtrain_a,indtest_a,T(stderulestop),T(lambda),I(depth),I(depth1),I(depthppr),Symbol(sigmoid),
         T(meanlntau),T(varlntau),T(doflntau),T(multiplier_stdtau),T(varmu),T(dofmu),
-        T(meanlntau_ppr),T(varlntau_ppr),T(doflntau_ppr),Symbol(priortype),T(max_tau_smooth),I(min_unique),mixed_dc_sharp,force_sharp_splits,force_smooth_splits,exclude_features,augment_mugrid,cat_features,cat_features_extended,cat_dictionary,cat_values,cat_globalstats,I(cat_representation_dimension),T(n0_cat),T(mean_encoding_penalization),
+        T(meanlntau_ppr),T(varlntau_ppr),T(doflntau_ppr),Symbol(priortype),T(max_tau_smooth),I(min_unique),mixed_dc_sharp,T(tau_threshold),only_avg_tau,force_sharp_splits,force_smooth_splits,exclude_features,augment_mugrid,cat_features,cat_features_extended,cat_dictionary,cat_values,cat_globalstats,I(cat_representation_dimension),T(n0_cat),T(mean_encoding_penalization),
         class_values,Bool(delete_missing),mask_missing,missing_features,info_date,T(sparsity_penalization),p0,sharevs,refine_obs_from_vs,finalβ_obs_from_vs,
         I(n_refineOptim),T(subsampleshare_columns),Symbol(sparsevs),T(frequency_update),
         I(number_best_features),best_features,Symbol(pvs),I(p_pvs),I(min_d_pvs),I(mugridpoints),I(taugridpoints),
