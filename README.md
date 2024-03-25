@@ -1,6 +1,118 @@
-# HTBoost.jl
-Private repo
+# HTBoost
 
-Installation:
+## Logo here 
 
-pkg> add "https://github.com/PaoloGiordani/HTBoost.jl"
+[![Build Status](https://github.com/PaoloGiordani/HTBoost.jl/workflows/CI/badge.svg)](https://github.com/PaoloGiordani/HTBoost.jl/actions)
+
+## Data efficient boosting with hybrid trees 
+
+A Julia implementation of Hybrid Trees Boosting as described in [HTBoost paper](provide link!!) 
+
+Solutions for R and Python users are in progress.
+
+HTBoost is slower than other boosting packages, but the use of hybrid trees (an evolution of the smooth trees in [SMARTboost](https://github.com/PaoloGiordani/SMARTboost.jl)) should deliver superior accuracy in most situations, making them a promising tool when data is limited or very noisy. The paper (see [References](#References)), examples and tutorials document instances in which HTBoost matches the performance of other GBMs with less than 20% of the data.  
+
+## Installation
+Latest:
+
+```julia-repl
+#pkg> add "https://github.com/PaoloGiordani/HTBoost.jl"    
+```
+
+## Documentation 
+
+- [See CatBoost for good examples!!!](https://github.com/catboost/tutorials/#readme)
+- [Tutorials and examples](docs/src/Tutorials%20%and%20%examples) 
+
+## Minimal example 
+
+```julia
+
+number_workers  = 4     # set desired number of workers for parallelization 
+using Distributed
+nprocs()<number_workers ? addprocs( number_workers - nprocs()  ) : addprocs(0)
+@everywhere using HTBoost
+
+using Random 
+
+# define data-generating-process for simulated data 
+n,p    = 1_000,6
+stde   = 1.0
+
+f_1(x,b)    = @. b*x + 1 
+f_2(x,b)    = @. 2*sin(2.5*b*x)  
+f_3(x,b)    = @. b*x^3
+f_4(x,b)    = @. b*(x < 0.5) 
+f_5(x,b)    = @. b/(1.0 + (exp(4.0*x )))
+f_6(x,b)    = @. b*(-0.25 < x < 0.25) 
+
+b1,b2,b3,b4,b5,b6 = 1.5,2.0,0.5,4.0,5.0,5.0
+
+# generate data
+x = randn(n,p)
+f = f_1(x[:,1],b1)+f_2(x[:,2],b2)+f_3(x[:,3],b3)+f_4(x[:,4],b4)+f_5(x[:,5],b5)+f_6(x[:,6],b6)
+y = f + stde*randn(n)
+
+# set up HTBparam and HTBdata, then fit and predit
+param  = HTBparam(loss=:L2)       
+data   = HTBdata(y,x,param)
+
+output = HTBfit(data,param)
+yf     = HTBpredict(x_test,output)  
+
+```
+
+### Minimal example with n = 1_000
+<img src="examples/figures/Minimal1k.png" width="600" height="400">
+
+### Minimal example with n = 10_000
+<img src="examples/figures/Minimal10k.png" width="600" height="400">
+
+### Minimal example with n = 100_000
+<img src="examples/figures/Minimal100k.png" width="600" height="400">
+
+## Main features and advantages of HTBoost 
+
+- Hybrid trees build on smooth trees, which are more accurate than standard trees if f(x) is smooth wrt at least some of the features, but can escape local minima that occasionally trap boosted smooth trees. See [Hybrid Trees](examples/Hybrid%20%trees.jl).
+- Hybrid trees also refine each tree with a modified single-index model, which allows them to more efficiently capture some types of data on which standard trees struggle. See [PPR](examples/Projection%20pursuit%20regression.jl). For more on when HTBoost can be expected to outperform other GMBs, see [Outperforming other GMB]((docs/src/Outperforming%20other%20GBM.md)).
+- Ease of use: a parsimonious cross-validation of the most important parameters is performed automatically if modality = :compromise or :accurate, while modality = :fast and :fastest fit just one model.
+- Adapts to both dense and sparse settings. Unless n/p is large, one of the parameters being cross-validated is a sparsity-inducing penalization, which can result in more aggressive variable selection compared to standard boosting.
+- Additional coefficients (e.g. overdispersion for gammaPoisson, shape for Gamma, dof for t) are estimated internally by maximum likelihood; no user's input or cv required.
+- The exact loss function is typically evaluated, instead of a quadratic approximation as in other GBMs. This contributes to improved accuracy with small n or low SNR.
+- Best-in-class inference with missing values.
+- Ideal for time series and longitudinal data (aka panel data).
+- Available loss functions cover most cases for regression, classification, count data, zero-inflated data.
+ 
+## Main disadvantages of HTBoost 
+
+- Slower training than other packages for GBMs.
+- Deep trees are particularly slow.
+- Memory intensive in the current implementation. 
+
+## Recommended workflow 
+
+Start exploratory analysis with modality = :fast (or even :fastest unless the sample is very small),
+then switch to modality = :compromise (default) or :accurate for best accuracy. 
+
+```
+param  = HTBparam(modality=:fastest)       
+data   = HTBdata(y,x,param)
+output = HTBfit(data,param)
+```
+
+See [speeding up HTBoost](examples/Speeding%20%up%20%with%20%large%20%n.jl) for suggestions on how to handle large n if computing time becomes a constraint.
+
+## Help to improve HTBoost 
+
+- If you have a dataset in which HTBoost does not outperform other GMBs (particularly if *HTBweightedtau()* suggests it should, see [Basic use](examples/Basic%20use.jl)), and you have read [Outperforming other GBM](docs/src/Outperforming%20other%20GBM.md), please get in touch with me at paolo.giordani@bi.no
+- Suggestions are welcome.
+
+## 
+
+## References
+
+
+## Licence ??
+
+© Paolo Giordani, 2024. Licensed under the Apache License, Version 2.0. See LICENSE file for more details.
+
