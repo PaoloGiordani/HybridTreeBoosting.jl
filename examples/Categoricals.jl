@@ -95,7 +95,7 @@ end
 
 # HTBoost parameters 
 loss         = :L2
-modality     = :compromise  
+modality     = :compromise # :accurate, :compromise, :fast, :fastest
 depth        = 3           # fix depth to speed up estimation  
 nfold        = 1           # number of folds in cross-validation. 1 for fair comparison with LightGBM 
 nofullsample = true        # true to speed up execution when nfold=1. true for fair comparison with LightGBM 

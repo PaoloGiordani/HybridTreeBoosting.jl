@@ -38,7 +38,7 @@ overlap        = 0        # 0 for non-overlapping (default), h-1 for overlapping
 # HTBoost
 
 loss       = :L2loglink  # if log_ret=false, consider :L2loglink instead of :L2 
-modality   = :fast       # :fast, :compromis (default), :accurate
+modality   = :fastest     # # :accurate, :compromise, :fast, :fastest
 priortype  = :hybrid     #:hybrid (accurate), :smooth (forces smooth split)
 
 cv_type     = "block"  # "block" or "expanding" or "randomized" (not recommended for time series and panels)

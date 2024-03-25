@@ -40,7 +40,7 @@ Random.seed!(1)
 
 # Some options for HTBoost
 loss      = :L2            # :L2 or :logistic (or :Huber or :t). 
-modality  = :fast          # :accurate, :compromise (default), :fast, :fastest 
+modality  = :fastest       # :accurate, :compromise (default), :fast, :fastest 
 
 ntrees    = 1000          # maximum number of trees  
 nfold     = 1             # number of cv folds. 1 faster (single validation sets), default 4 is slower, but more accurate.

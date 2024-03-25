@@ -49,7 +49,7 @@ Random.seed!(1)
 
 # Some options for HTBoost
 loss      = :L2            # :L2 is default. Other options for regression are :L2loglink (if y≥0), :t, :Huber
-modality  = :fast          # :accurate, :compromise (default), :fast, :fastest 
+modality  = :fastest        # :accurate, :compromise (default), :fast, :fastest 
 
 priortype = :hybrid       # :hybrid (default) or :smooth to force smoothness 
 nfold     = 1             # number of cv folds. 1 faster (single validation sets), default 4 is slower, but more accurate.
@@ -63,12 +63,12 @@ warnings    = :Off
 n,p,n_test  = 10_000,6,100_000
 stde        = 1.0
 
-f_1(x,b)    = b*x .+ 1 
-f_2(x,b)    = 2*sin.(2.5*b*x)  # for higher nonlinearities, try #f_2(x,b) = 2*sin.(2.5*b*x)
-f_3(x,b)    = b*x.^3
-f_4(x,b)    = b./(1.0 .+ (exp.(40.0*(x .- 0.5) ))) .- 0.1*b
-f_5(x,b)    = b./(1.0 .+ (exp.(4.0*(x .- 0.5) ))) .- 0.1*b
-f_6(x,b)    = b*(-0.25 .< x .< 0.25) 
+f_1(x,b)    = @. b*x + 1 
+f_2(x,b)    = @. 2*sin(2.5*b*x)  
+f_3(x,b)    = @. b*x^3
+f_4(x,b)    = @. b*(x < 0.5) 
+f_5(x,b)    = @. b/(1.0 + (exp(4.0*x )))
+f_6(x,b)    = @. b*(-0.25 < x < 0.25) 
 
 b1,b2,b3,b4,b5,b6 = 1.5,2.0,0.5,4.0,5.0,5.0
 

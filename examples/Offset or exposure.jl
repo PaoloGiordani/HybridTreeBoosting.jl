@@ -1,10 +1,4 @@
 """
-***********************************************************************************************************
-PG: incomplete !!!!!! 
-
-! CATEGORICALS WITH MORE THAN 2 CATEGORIES WILL NOT WORK PROPERLY WITH OFFSET.
-! Fix it ! 
-************************************************************************************************************
 
 Short description:
 
@@ -29,7 +23,7 @@ Instructions
 2) data   = HTBdata(y,x,param,offset=γ)
 3) yhat  = HTBpredict(x_test,output,predict=:Ey,offset=γ_test)
 
-Warning: 
+Warning!: 
 
 Categorical features with more than two categories are not currently handled correctly (by the mean targeting transformation)
 with offsets. The program will run but categorical information will be used sub-optimally, particularly if the

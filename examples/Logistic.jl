@@ -46,7 +46,7 @@ nsimul    = 1       # number of simulated datasets.
 # :fast and :fastest only fit one model at default parameters, while :compromise and :accurate perform
 # automatic hyperparameter tuning. 
 
-modality  = :fast   # :accurate, :compromise (default), :fast, :fastest
+modality  = :compromise   # :accurate, :compromise (default), :fast, :fastest
 
 # define the function f(x), where x are indendent N~(0,1), and f(x) is for the natural parameter,
 # so f(x) = log(prob/(1-prob))

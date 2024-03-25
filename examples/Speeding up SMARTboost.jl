@@ -5,10 +5,13 @@
 
 ## 1) modality = :fast, nfold = 1, nofullsample = true, disengage variable selection. 
 
-The safest way to speed up training is by setting nfold = 1 (a single validation set) and modality=:fast.
+The safest way to speed up training is by setting nfold = 1 (a single validation set), and modality=:fast or :fastest.
+These modalities do not perform cv. 
+:fast will typically still produces a competitive model in terms of accuracy, particularly if n/p is large.
 If nfold=1, setting nofullsample=true further reduces computing time by 60% at the cost of fitting the model
-on a smaller sample. The default for modality=:fast is lambda = 0.2 Setting lambda = 0.1 will typically improve accuracy 
-slightly at the cost of roughly doubling computing time.
+on a smaller sample.
+modality = :fastest automatically sets nfold=1, nofullsample=true, and also lambda = 0.2 instead of 0.1.
+lambda = 0.2 can perform almost as well if the function is smooth and n/p is large.
 
 ## 2) Use a coarser grid for feature selection at deeper levels of the tree. (Can be combined with any value of modality) 
 

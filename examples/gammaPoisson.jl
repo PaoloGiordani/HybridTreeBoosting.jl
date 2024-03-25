@@ -24,7 +24,7 @@ Random.seed!(1)
 
 # Some options for HTBoost
 loss      = :gammaPoisson      # :gammaPoisson or Poisson              
-modality  = :fast         # :accurate, :compromise (default), :fast, :fastest 
+modality  = :fastest         # :accurate, :compromise (default), :fast, :fastest 
 
 priortype = :hybrid       # :hybrid (default) or :smooth to force smoothness 
 nfold     = 1             # number of cv folds. 1 faster (single validation sets), default 5 is slower, but more accurate.

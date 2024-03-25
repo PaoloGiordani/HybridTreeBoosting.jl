@@ -36,7 +36,7 @@ dof       = 3     # degrees of freedom for the t distribution to generate data. 
 # automatic hyperparameter tuning. 
 
 loss      = :t      # :t  
-modality  = :fast   # :accurate, :compromise (default), :fast, :fastest
+modality  = :fastest   # :accurate, :compromise (default), :fast, :fastest
 
 # define the function dgp(x), here the Friedman's function for x~U  
 dgp(x) = 10.0*sin.(π*x[:,1].*x[:,2]) + 20.0*(x[:,3].-0.5).^2 + 10.0*x[:,4] + 5.0*x[:,5]

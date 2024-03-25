@@ -46,7 +46,7 @@ m2        = 3*stde  # mean of second component of mixture of normal. 0 for symme
 # automatic hyperparameter tuning. 
 
 loss      = :t      # :t (recommended) or :Huber for HTBoost. :t automatically estimates degrees of freedom and can recover a Gaussian 
-modality  = :fast   # :accurate, :compromise (default), :fast, :fastest
+modality  = :fastest   # :accurate, :compromise (default), :fast, :fastest
 ntrees    = 200     # maximum number of trees for HTBoost. 
 
 # define the function dgp(x), here the Friedman's function for x~U  

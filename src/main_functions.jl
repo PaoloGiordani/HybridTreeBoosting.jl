@@ -654,19 +654,22 @@ may then cross-validate the following hyperparamters:
 
 1) Parameters for categorical features, if any.
 2) depth in the range 1-6.
-3) A penalization to encourage sparsity (fewer relevant features), unless user sets cv_sparsity=false.
+3) A penalization to encourage sparsity (fewer relevant features), unless n/p is large.
+4) A model without projection pursuit regression (only if modality=:accurate)
 
-These cv of these hyperparameters is de-activated by:
+The default range can be replaced by providing a vector cv_grid, e.g. 
+  
+    HTBfit(data,param,cv_grid = [2,4,6])
 
-1) Setting modality = :fast or :fastest.
-2) Setting modality = :fast or :fastest, or providing a grid cv_grid, e.g. cv_grid = [6] or cv_grid = [3,5], as in HTBfit(data,param,cv_grid=[3,5])
-3) Setting modality = :fast or :fastest, or HTBfit(data,param,cv_sparsity=false)
-
-If param.modality=:accurate, lambda for all models is set set min(lambda,0.1). If modality=:compromise, the default learning rate
-lambda=0.2 is used, and the best model is then refitted with lambda = 0.1. 
+The sparsity penalization can be de-activated by setting cv_sparsity=false, e.g. 
+    
+        HTBfit(data,param,cv_sparsity=false)
+        
+If param.modality=:accurate, the learning rate lambda for all models is left at param.lambda (0.1 in default).
+If modality=:compromise, lambda=0.2 is used in cv, and the best model is then refitted with lambda = param.lambda. 
 
 Finally, all the estimated models considered are stacked, with weights chosen to minimize the cross-validated (original) loss.   
-
+Unless modality=:accurate, this stacking will typically be equivalent to the best model.
 
 
 # Inputs
@@ -757,6 +760,12 @@ function HTBfit_single(data::HTBdata, param::HTBparam; cv_grid=[],cv_different_l
         end
     end     
 
+    lambda0 = param.lambda
+
+    if modality == :compromise
+        param0.lambda = maximum(param.lambda,param.T(0.2))
+    end 
+
     if modality in [:fast,:fastest] 
 
         if user_provided_grid==false
@@ -767,22 +776,19 @@ function HTBfit_single(data::HTBdata, param::HTBparam; cv_grid=[],cv_different_l
     end  
 
     if modality==:fastest
+        param0.lambda = maximum(param.lambda,param.T(0.2))
         param0.nofullsample = true
         isempty(param0.indtrain_a) ? param0.nfold = 1 : nothing 
 
         if param.warnings==:On
             if isempty(param0.indtrain_a)
-                @info "modality=:fastest is typically for preliminary explorations only. Setting param.nfold=1 and param.nofullsample=true.
+                @info "modality=:fastest is typically for preliminary explorations only. Setting param.nfold=1, param.nofullsample=true, lambda=$(param0.lambda).
                        Switch off this warning with param.warnings=:Off"
             else
-                @info "modality=:fastest is typically for preliminary explorations only. Setting param.nofullsample=true.
+                @info "modality=:fastest is typically for preliminary explorations only. Setting lambda = 0.2.
                 Switch off this warning with param.warnings=:Off"
             end          
         end  
-    end
-
-    if modality==:accurate
-        param0.lambda=min(T(0.1),param0.lambda)
     end
 
     preliminary_cv!(param0,data)       # preliminary cv of categorical parameters, if modality is not :fast.
@@ -820,7 +826,7 @@ function HTBfit_single(data::HTBdata, param::HTBparam; cv_grid=[],cv_different_l
 
     # Cross-validate depths with no user-defined grid. NB: assumes cv_grid = [1,2,3,4,5,6,7]
     # option 1: if isempty(cv_grid), fits depth=3,4,5. If 3 is best, fits 2. If 4 is best, stops. If 5 is best, fits 6 for :compromise, and 6 and 7 for :accurate.
-    # option 2 (bit faster): if isempty(cv_grid), fits depth=3,5. If 3 is best, fits 2. If 5 is best, fits 6 for :compromise, and 6 and 7 for :accurate.
+    # option 2 (bit faster): if isempty(cv_grid), fits depth=3,5. If 3 is best, fits 2. If 5 is best, fits 6. 
 
     if user_provided_grid==false
  
@@ -1063,7 +1069,7 @@ function HTBfit_single(data::HTBdata, param::HTBparam; cv_grid=[],cv_different_l
     
     end    
 
-    # if modality==:compromise and lambda>0.1, fits the best model with param0.lambda = 0.1, and replaces it.
+    # if modality==:compromise, fits the best model with param0.lambda = 0.1, and replaces it.
     # If model with lowest loss does not have the user-specified distribution, takes the model with the highest stacking weight 
     best_i = argmin(lossgrid)
 
@@ -1074,9 +1080,9 @@ function HTBfit_single(data::HTBdata, param::HTBparam; cv_grid=[],cv_different_l
     
     param       = deepcopy(HTBtrees_a[best_i].param)
                
-    if modality==:compromise && param.lambda>0.1
+    if modality==:compromise
         
-        param.lambda = T(0.1)
+        param.lambda = lambda0
 
         param_given_data!(param,data)
         param_constraints!(param)
@@ -1642,18 +1648,20 @@ best_model=true for single model with lowest CV loss, best_model= false for weig
 - `g_plot`         y-axis to plot sigmoid for avgtau 
 
 # Example of use
+
 output = HTBfit(data,param)
 avgtau,avg_explogtau,avgtau_a,dftau,x_plot,g_plot = HTBweightedtau(output,data)
 avgtau,avg_explogtau,avgtau_a,dftau,x_plot,g_plot = HTBweightedtau(output,data,verbose=false,plot_tau=false,best_model=true)
 
-
 using Plots
 plot(x_plot,g_plot,title="avg smoothness of splits",xlabel="standardized x",label=:none,legend=:bottomright)
 """
-function HTBweightedtau(output,data;verbose::Bool=true,plot_tau::Bool=true,best_model::Bool=false)
+function HTBweightedtau(output,data;verbose::Bool=true,best_model::Bool=false)
 
     T = Float64
+
     HTBtrees = output.HTBtrees
+
     p = max(length(HTBtrees.infeatures),length(HTBtrees.meanx))  # they should be the same ...
     
     if best_model==true
@@ -1738,7 +1746,8 @@ end
 # Use: force_sharp_splits = impose_sharp_splits(HTBtrees_a[best_i],param)
 function impose_sharp_splits(HTBtrees::HTBoostTrees,param) 
 
-    force_sharp_splits = avg_tau .> param.tau_threshold
+    avgtau = mean_weighted_tau(HTBtrees)
+    force_sharp_splits = avgtau .> param.tau_threshold
     
     return force_sharp_splits 
 end

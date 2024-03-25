@@ -178,13 +178,14 @@ Note: all Julia symbols can be replaced by strings. e.g. :L2 can be replaced by 
                             In HTBpredict(), predictions are for E(y) if predict=:Ey, while predict=:Egamma forecasts the relevant parameter otherwise
                             ( E(logit(prob)) for :logistic, for :gamma 
 
-- `modality`         [:compromise] Options are: :accurate, :compromise, :fast, :fastest.
-                            :fast runs only one model (only cv number of trees) at values defined in param = HTBparam(). 
-                            :fastest runs only one model, setting nfold=1 and nofullsample=true (does not re-estimate on the full sample after cv).
-                            Recommended for faster preliminary analysis only.
-                            In most cases, :fast and :fastest also use the quadratic approximation to the loss for large samples.
-                            :accurate cross-validates several models and sets learning rate λ=0.1 (see HTBfit() for more info)
-                            :compromise cross-validates fewer models than :accurate and sets λ=0.2 except for the best model, where λ=0.1. 
+- `modality`         [:compromise] Options are: :accurate, :compromise (default), :fast, :fastest.
+                     :fast and :fastest run only one model, while :compromise and :accurate cross-validate the most important parameters.
+                     :fast runs only one model (only cv number of trees) at values defined in param = HTBparam(). 
+                     :fastest runs only one model, setting lambda=0.2, nfold=1 and nofullsample=true (does not re-estimate on the full sample after cv).
+                      Recommended for faster preliminary analysis only.
+                      In most cases, :fast and :fastest also use the quadratic approximation to the loss for large samples.
+                      :accurate cross-validates several models at the most important parameters (see HTBfit() for details),
+                      then stacks all the cv models. :compromise also cross-validates, but sets λ=0.2 except for the best model, where λ=0.1.
                                         
 - `priortype`               [:hybrid] :hybrid encourages smoothness, but allows both smooth and sharp splits, :smooth forces smooth splits,
                             :disperse is :hybrid but with no penalization encouraging smooth functions (not recommended).
@@ -220,8 +221,9 @@ Note: all Julia symbols can be replaced by strings. e.g. :L2 can be replaced by 
 
 # Parameters that may sometimes be be modified by user
 
-- `lambda`           [0.1 or 0.2] Learning rate. 0.1 for (nearly) best performance. 0.2 is a good compromise.
-                            Default is 0.1 of modality=:accurate, and 0.2 otherwise. Consider 0.05 if tiny improvements in accuracy are important.
+- `lambda`           [0.1 or 0.2] Learning rate. 0.1 for (nearly) best performance. 0.2 can be almost as accurate, particularly if the function is smooth and p is small.
+                     The default is 0.1, except in modality = :fastest, where it's 0.2. Modality = :compromise carries out the cv at lambda=0.2 and then fits the best model at 0.1.
+                     Consider 0.05 if tiny improvements in accuracy are important and computing time is not a concern.
 
 - `depth`              [5] tree depth. Unless modality = :fast or :fastest, this is over-written as depth is cross-validated. See HTBfit() for more options.
 
@@ -294,7 +296,7 @@ function HTBparam(;
     indtrain_a = Vector{Vector{I}}(undef,0), # for user's provided Vector{Vector} of indices of train data ..
     indtest_a = Vector{Vector{I}}(undef,0),  # .. and test data. This over-writes nfold. 
     stderulestop = 0.01,         # e.g. 0.01. Applies to stopping while adding trees to the ensemble. larger numbers give smaller ensembles.
-    lambda = 0.20,
+    lambda = 0.10,
     # Tree structure and priors
     depth  = 5,        # 3 allows 2nd degree interaction and is fast. 4 takes almost twice as much per tree on average. 5 can be 8-10 times slower per tree. However, fewer deeper trees are required, so the actual increase in computing costs is smaller.
     depth1 = 10,
