@@ -392,7 +392,7 @@ function logpdfpriors(β,μ,τ,m,d,p,pb,param,info_i,infeatures,fi,T)
     elseif param.priortype==:sharp
         logpdfτ = 0
         logpdfμ = lnpμ(μ,param.varmu,param.dofmu,info_i,d)
-        logpdfm = lnpμ(m,param.varmu,param.dofmu)     # prior for missing value same as for μ
+        logpdfm = lnpμ(m,param.varmu,param.dofmu,info_i,d)     # prior for missing value same as for μ
     else
         logpdfμ = lnpμ(μ,param.varmu,param.dofmu,info_i,d)
         logpdfτ = lnpτ(τ,param,info_i,d)
