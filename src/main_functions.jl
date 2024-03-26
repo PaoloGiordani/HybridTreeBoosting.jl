@@ -1169,7 +1169,7 @@ function HTBfit_single(data::HTBdata, param::HTBparam; cv_grid=[],cv_different_l
 
     additional_info = [[T(NaN)]]
 
-    return ( indtest=indtest_a,bestvalue=bestvalue,bestparam=HTBtrees.param,ntrees=ntrees,loss=loss,meanloss=meanloss,stdeloss=stdeloss,lossgrid=lossgrid,loglikdivide=loglikdivide,HTBtrees=HTBtrees,
+    return ( indtest=indtest_a,bestvalue=bestvalue,bestparam=HTBtrees.param,ntrees=ntrees,loss=loss,meanloss=meanloss,stdeloss=stdeloss,lossgrid=lossgrid,loglikdivide=HTBtrees.param.loglikdivide,HTBtrees=HTBtrees,
     i=i,mu=μ,tau=τ,fi2=fi2,avglntau=avglntau,HTBtrees_a=HTBtrees_a,w=w,lossw=lossw,problems=(problems_somewhere>0),ratio_actual_max=ratio_actual_max,additional_info=additional_info)
 
 end
