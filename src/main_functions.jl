@@ -90,12 +90,9 @@ end
 #=
     HTBloglikdivide(df,y_symbol,date_symbol;overlap=0)
 
-loglikdivide is now computed internally, so the user does not need to call this function for lld,
-only if interested in effective_sample_size.
+loglikdivide is computed internally, so the user does not need to call this function for HTBoost.
+Only if interested in effective_sample_size.
 
-Old documentation:
-Suggests a value for param.loglikdivide., where nominal sample size/loglikedivide = effective sample size.
-Relevant panel data (longitudinal data) and some time series. 
 The only effect of loglikdivide in HTBoost is to calibrate the strength of the prior in relation to the likelihood evidence.
 Accounts (roughly) for cross-sectional correlation using a clustered standard errors approach, and for serial correlation induced
 by overlapping observation when y(t) = Y(t+horizon) - Y(t).
@@ -763,7 +760,7 @@ function HTBfit_single(data::HTBdata, param::HTBparam; cv_grid=[],cv_different_l
     lambda0 = param.lambda
 
     if modality == :compromise
-        param0.lambda = maximum(param.lambda,param.T(0.2))
+        param0.lambda = max(param.lambda,param.T(0.2))
     end 
 
     if modality in [:fast,:fastest] 
@@ -776,7 +773,7 @@ function HTBfit_single(data::HTBdata, param::HTBparam; cv_grid=[],cv_different_l
     end  
 
     if modality==:fastest
-        param0.lambda = maximum(param.lambda,param.T(0.2))
+        param0.lambda = max(param.lambda,param.T(0.2))
         param0.nofullsample = true
         isempty(param0.indtrain_a) ? param0.nfold = 1 : nothing 
 
