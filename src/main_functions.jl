@@ -50,7 +50,6 @@ Basic information about the main functions in HTBoost (see help on each function
 # Fitting and forecasting 
 - `HTBfit`             fits HTBoost with cv (or validation/early stopping) of number of trees and, optionally, depth or other parameter
 - `HTBpredict`         predictions for y or natural parameter
-- `HTBbst`             (rerely needed by user) fits HTBoost when nothing needs to be cross-validated (not even number of trees)                         
 
 #  POST-ESTIMATION ANALYSIS
 - `HTBcoeff`           provides information on constant coefficients, e.g. dispersion and dof for loss=:t
@@ -77,7 +76,7 @@ Example of basic use of HTBoost functions with iid data and default settings
     output = HTBfit(data,param)
     yf     = HTBpredict(x_test,output)  
 
-See the example files for illustrations of use. 
+See the examples and tutorials for illustrations of use. 
 "
 function HTBinfo()
 
@@ -87,11 +86,11 @@ end
 
 
 
-#=
+"""
     HTBloglikdivide(df,y_symbol,date_symbol;overlap=0)
 
 loglikdivide is computed internally, so the user does not need to call this function for HTBoost.
-Only if interested in effective_sample_size.
+loglikdivide can be found in output = SMARTfit()
 
 The only effect of loglikdivide in HTBoost is to calibrate the strength of the prior in relation to the likelihood evidence.
 Accounts (roughly) for cross-sectional correlation using a clustered standard errors approach, and for serial correlation induced
@@ -110,7 +109,7 @@ by overlapping observation when y(t) = Y(t+horizon) - Y(t).
 # Example of use
     lld,ess =  HTBloglikdivide(df,:excessret,:date,overlap=h-1)
 
-=#
+""" 
 function HTBloglikdivide(df::DataFrame,y_symbol,date_symbol;overlap = 0)
 
     overlap = Int(overlap); y_symbol = Symbol(y_symbol); date_symbol = Symbol(date_symbol)  # required by R wrapper
@@ -693,8 +692,9 @@ Unless modality=:accurate, this stacking will typically be equivalent to the bes
 - `meanloss:Vector{Float}`        mean cv loss at bestvalue of param for param.ntrees = 1,2,....
 - `stdeloss:Vector{Float}`        standard errror of cv loss at bestvalue of param for param.ntrees = 1,2,....
 - `lossgrid::Vector{Float}`       cv loss for best tree size for each grid value 
-- `HTBtrees::HTBoostTrees`   for the best cv value of param and ntrees
-- `HTBtrees_a`                  length(cv_grid) vector of HTBtrees
+- `loglikdivide:Float`            loglikdivide. effective sample size = n/loglikvide. Roughly accounts for cross-correlation and serial correlation 
+- `HTBtrees::HTBoostTrees`        for the best cv value of param and ntrees
+- `HTBtrees_a`                    length(cv_grid) vector of HTBtrees
 - `i`                             (ntrees,depth) matrix of threshold features for best model
 - `mu`                            (ntrees,depth) matrix of threshold points  for best model
 - `tau`                           (ntrees,depth) matrix of sigmoid parameters for best model
@@ -1169,7 +1169,7 @@ function HTBfit_single(data::HTBdata, param::HTBparam; cv_grid=[],cv_different_l
 
     additional_info = [[T(NaN)]]
 
-    return ( indtest=indtest_a,bestvalue=bestvalue,bestparam=HTBtrees.param,ntrees=ntrees,loss=loss,meanloss=meanloss,stdeloss=stdeloss,lossgrid=lossgrid,HTBtrees=HTBtrees,
+    return ( indtest=indtest_a,bestvalue=bestvalue,bestparam=HTBtrees.param,ntrees=ntrees,loss=loss,meanloss=meanloss,stdeloss=stdeloss,lossgrid=lossgrid,loglikdivide=loglikdivide,HTBtrees=HTBtrees,
     i=i,mu=μ,tau=τ,fi2=fi2,avglntau=avglntau,HTBtrees_a=HTBtrees_a,w=w,lossw=lossw,problems=(problems_somewhere>0),ratio_actual_max=ratio_actual_max,additional_info=additional_info)
 
 end
