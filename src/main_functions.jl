@@ -12,6 +12,7 @@
 #  FITTING and FORECASTING
 #  HTBfit                fits HTBoost with cv (or validation/early stopping) of number of trees and, optionally, depth or other parameter
 #    HTBfit_single       main function, building block for composite and multi-parameter models 
+#       find_force_sharp_splits 
 #    HTBfit_hurdle       hurdle models: y continuous, split into y=0 and y /=0   
 #    HTBfit_multiclass   multiclass classicaition 
 #  HTBbst                fits HTB when nothing needs to be cross-validated (not even number of trees)
@@ -735,6 +736,36 @@ function HTBfit(data::HTBdata, param::HTBparam; cv_grid=[],cv_different_loss::Bo
     return output 
 end 
 
+# Conditions to hybrid model, with sharp splits forced on features with high τ.
+# Only if the high τ are for features with non-trivial importance (fi), and only if user did not specify sharp_splits
+# Use: condition_sharp,force_sharp_splits = find_force_sharp_splits(HTBtrees,param,cv_hybrid)
+# HTBtrees can be HTBtrees_a[i] or HTBtrees_a[argmin(lossgrid)]        
+function find_force_sharp_splits(HTBtrees,param,cv_hybrid)
+
+    if param.priortype==:smooth || cv_hybrid==false || !isempty(param.force_sharp_splits)
+        return false,fill(false,1)
+    end 
+
+    force_sharp_splits = impose_sharp_splits(HTBtrees,param)
+    fnames,fi,fnames_sorted,fi_sorted,sortedindx = HTBrelevance(HTBtrees,data)
+    fi_sharp = sort(fi[force_sharp_splits.==true],rev=true)
+    p_sharp = length(fi_sharp)
+
+    if p_sharp>0    
+        condition1 = fi_sharp[1]>10
+        condition2 = sum(fi_sharp[1:minimum([3,p_sharp])])>15
+        condition3 = sum(fi_sharp[1:minimum([10,p_sharp])])>20
+        condition4 = sum(fi_sharp)>25
+        condition_sharp = condition1 || condition2 || condition3 || condition4
+    else 
+        condition_sharp = false
+        force_sharp_splits = fill(false,1)     
+    end
+
+    return condition_sharp,force_sharp_splits
+end 
+
+
 
 # HTBfit for a single model.  
 function HTBfit_single(data::HTBdata, param::HTBparam; cv_grid=[],cv_different_loss::Bool=false,cv_sharp::Bool=false,
@@ -742,14 +773,14 @@ function HTBfit_single(data::HTBdata, param::HTBparam; cv_grid=[],cv_different_l
     
     T,I = param.T,param.I
 
-    additional_models     = 7    # After going through cv_grid, selects best value and fits: hybrid, depthppr=0, sparse (up to 3), sharp, different distribution
+    n_additional_models  = 6   # Excluding hybrid with force_sharp_splits. After going through cv_grid, possibly twice(cv_hybrid), selects best value and potentially fits: depthppr=0, sparse (up to 3), sharp, different distribution
+
     modality              = param.modality
     param0                = deepcopy(param)
 
-    # if isempty(cv_grid), fits depth=2,3,4. If 2 is best, fits 1. If 3 is best, stops. If 4 is best, fits 5 and (if :accurate) 6.
     if isempty(cv_grid)
         user_provided_grid = false
-        cv_grid=[1,2,3,4,5,6,7]     # NB: later code assumes this grid when cv depth
+        cv_grid = [1,2,3,4,5,6,7]     # NB: later code assumes this grid when cv depth
     else     
         user_provided_grid = true
         if maximum(cv_grid)>7 && param.warnings==:On
@@ -790,12 +821,12 @@ function HTBfit_single(data::HTBdata, param::HTBparam; cv_grid=[],cv_different_l
 
     preliminary_cv!(param0,data)       # preliminary cv of categorical parameters, if modality is not :fast.
 
-    cvgrid0 = deepcopy(cv_grid)                                        # best depth is quite sensitive to link, so depth is cv separately for identity and log link
-    cvgrid  = vcat(cvgrid0,fill(cvgrid0[1],additional_models)) 
+    cvgrid0 = deepcopy(cv_grid)            
+    cvgrid  = vcat(cvgrid0,cvgrid0,fill(cvgrid0[1],n_additional_models)) # default,force_sharp_splits,n_additional_models
 
     treesize, lossgrid    = Array{I}(undef,length(cvgrid)), fill(T(Inf),length(cvgrid))  
     meanloss_a,stdeloss_a = Array{Array{T}}(undef,length(cvgrid)), Array{Array{T}}(undef,length(cvgrid))
-    HTBtrees_a          = Array{HTBoostTrees}(undef,length(cvgrid))
+    HTBtrees_a            = Array{HTBoostTrees}(undef,length(cvgrid))
     gammafit_test_a       = Vector{Vector{T}}(undef,length(cvgrid))
     y_test_a              = T[]
     indtest_a             = I[]
@@ -803,7 +834,7 @@ function HTBfit_single(data::HTBdata, param::HTBparam; cv_grid=[],cv_different_l
 
     param.randomizecv==true ? indices = shuffle(Random.MersenneTwister(param.seed_datacv),Vector(1:length(data.y))) : indices = Vector(1:length(data.y)) # done here to guarantee same allocation if randomizecv=true
 
-    # Cross-validate depths, on user-defined grid.  
+    # Cross-validate depths, on user-defined grid.
     if user_provided_grid==true
         for (d,depth) in enumerate(cvgrid0)
 
@@ -818,16 +849,37 @@ function HTBfit_single(data::HTBdata, param::HTBparam; cv_grid=[],cv_different_l
             i = d
             treesize[i],lossgrid[i],meanloss_a[i],stdeloss_a[i],HTBtrees_a[i],gammafit_test_a[i],indtest_a,y_test_a = ntrees,loss,meanloss,stdeloss,HTBtrees1st,gammafit_test,indtest,y_test 
             problems_somewhere = problems_somewhere + problems
-            end    
+
+            # If needed, fit again with force_sharp_splits. Store in 2*i
+            condition_sharp,force_sharp_splits = find_force_sharp_splits(HTBtrees_a[i],param,cv_hybrid)
+
+            if condition_sharp                 
+
+                i = length(cvgrid0) + d
+                param = deepcopy(param0)
+                param.depth = depth 
+                param.force_sharp_splits = force_sharp_splits
+        
+                param_given_data!(param,data)
+                param_constraints!(param)
+        
+                ntrees,loss,meanloss,stdeloss,HTBtrees1st,indtest,gammafit_test,y_test,problems = HTBsequentialcv(data,param,indices=indices)
+                treesize[i],lossgrid[i],meanloss_a[i],stdeloss_a[i]   = ntrees,loss,meanloss,stdeloss
+                HTBtrees_a[i],gammafit_test_a[i]                    = HTBtrees1st,gammafit_test
+                problems_somewhere = problems_somewhere + problems
+                 
+            end     
+
+        end    
     end 
 
     # Cross-validate depths with no user-defined grid. NB: assumes cv_grid = [1,2,3,4,5,6,7]
-    # option 1: if isempty(cv_grid), fits depth=3,4,5. If 3 is best, fits 2. If 4 is best, stops. If 5 is best, fits 6 for :compromise, and 6 and 7 for :accurate.
-    # option 2 (bit faster): if isempty(cv_grid), fits depth=3,5. If 3 is best, fits 2. If 5 is best, fits 6. 
+    # If isempty(cv_grid), fits depth=3,4,5. If 3 is best, fits 1,2. If 4 is best, stops. If 5 is best, fits 6.
+    # For each depth, also fit hybrid version with force_sharp_splits if needed
 
     if user_provided_grid==false
  
-        i_a = [3,5]   # option 2. option 1: i_a = [3,4,5]
+        i_a = [3,4,5]   
 
         for _ in 1:2
             for d in i_a 
@@ -843,11 +895,31 @@ function HTBfit_single(data::HTBdata, param::HTBparam; cv_grid=[],cv_different_l
                 treesize[i],lossgrid[i],meanloss_a[i],stdeloss_a[i],HTBtrees_a[i],gammafit_test_a[i],indtest_a,y_test_a = ntrees,loss,meanloss,stdeloss,HTBtrees1st,gammafit_test,indtest,y_test 
                 problems_somewhere = problems_somewhere + problems
 
+                # If needed, fit again with force_sharp_splits. Store in 2*i
+                condition_sharp,force_sharp_splits = find_force_sharp_splits(HTBtrees_a[i],param,cv_hybrid)
+
+                if condition_sharp                  # fit hybrid model 
+
+                    i = length(cvgrid0) + d
+                    param = deepcopy(param0)
+                    param.depth = cvgrid0[d] 
+                    param.force_sharp_splits = force_sharp_splits
+        
+                    param_given_data!(param,data)
+                    param_constraints!(param)
+        
+                    ntrees,loss,meanloss,stdeloss,HTBtrees1st,indtest,gammafit_test,y_test,problems = HTBsequentialcv(data,param,indices=indices)
+                    treesize[i],lossgrid[i],meanloss_a[i],stdeloss_a[i]   = ntrees,loss,meanloss,stdeloss
+                    HTBtrees_a[i],gammafit_test_a[i]                    = HTBtrees1st,gammafit_test
+                    problems_somewhere = problems_somewhere + problems
+                 
+                end     
+
             end     
 
-            if argmin(lossgrid)==3
+            if argmin(lossgrid) in [3,length(cvgrid0)+3]   #  depth = 3, either original tree or force_sharp_splits
                 i_a = [1,2]                         
-            elseif argmin(lossgrid)==4
+            elseif argmin(lossgrid) in [4,length(cvgrid0)+4]
                 break
             else
                i_a = [6]
@@ -887,7 +959,7 @@ function HTBfit_single(data::HTBdata, param::HTBparam; cv_grid=[],cv_different_l
         fnames,fi,fnames_sorted,fi_sorted,sortedindx = HTBrelevance(HTBtrees_a[best_i],data)
         #s2 = sqrt(sum(fi.^2)/p)   # L2 measure of std
         #s1 = 1.25*mean(fi)        # L1 measure of std, here just 125/p
-        # s2/s1= 1 for Gaussian, <1 is playtokurtic, and >1 if leptokurtic, suggesting sparsity
+        # s2/s1= 1 for Gaussian, <1 is playtokurtic, and >1 if leptokurtic, suggesting sparsity. 
         
         for (j,sparsity_penalization) in enumerate(sparsity_grid)
 
@@ -903,13 +975,13 @@ function HTBfit_single(data::HTBdata, param::HTBparam; cv_grid=[],cv_different_l
                 fnames,fi,fnames_sorted,fi_sorted,sortedindx = HTBrelevance(HTBtrees1st,data)
             end     
 
-            i = length(cvgrid0)+j                                  
+            i = 2*length(cvgrid0)+j                                  
             cvgrid[i]   = cvgrid[best_i]
             treesize[i],lossgrid[i],meanloss_a[i],stdeloss_a[i]     = ntrees, loss, meanloss,stdeloss
             HTBtrees_a[i],gammafit_test_a[i]                      = HTBtrees1st, gammafit_test
             problems_somewhere = problems_somewhere + problems
 
-            #If either 0.7 or 1.1 is better than 0.3, try 1.5. If neither is better, try 0.0.  
+            #If either 0.7 or 1.1 is better than 0.3, continue to 1.5. If neither is better, try 0.0.  
             if j>1 && min(lossgrid[i],lossgrid[i-1])>lossgrid[best_i]   # break (no need for more sparsity)
 
                 param.sparsity_penalization = T(0)
@@ -920,7 +992,7 @@ function HTBfit_single(data::HTBdata, param::HTBparam; cv_grid=[],cv_different_l
 
                 ntrees,loss,meanloss,stdeloss,HTBtrees1st,indtest,gammafit_test,y_test,problems = HTBsequentialcv(data,param,indices=indices)
 
-                i = length(cvgrid0)+2 
+                i = 2*length(cvgrid0)+length(sparsity_grid) 
                 cvgrid[i]   = cvgrid[best_i]
                 treesize[i],lossgrid[i],meanloss_a[i],stdeloss_a[i]     = ntrees, loss, meanloss,stdeloss
                 HTBtrees_a[i],gammafit_test_a[i]                      = HTBtrees1st, gammafit_test
@@ -933,60 +1005,6 @@ function HTBfit_single(data::HTBdata, param::HTBparam; cv_grid=[],cv_different_l
 
     end 
 
-    # Additional model: Fit hybrid model, with sharp splits forced on features with high τ. Threshold set at tau=10.
-    # Only if the high τ are for features with non-trivial importance (fi), and only if user did not specify sharp_splits
-    if param.priortype !== :smooth && cv_hybrid && isempty(param.force_sharp_splits)
-  
-        best_i      = argmin(lossgrid)
-        bestvalue   = cvgrid[best_i]
-        force_sharp_splits = impose_sharp_splits(HTBtrees_a[best_i],param)
-        fnames,fi,fnames_sorted,fi_sorted,sortedindx = HTBrelevance(HTBtrees_a[best_i],data)
-        fi_sharp = sort(fi[force_sharp_splits.==true],rev=true)
-        p_sharp = length(fi_sharp)
-
-        force_smooth_splits = mean_weighted_tau(HTBtrees_a[best_i]).<3       
-        fi_smooth = sort(fi[force_smooth_splits.==true],rev=true)
-        p_smooth  = length(fi_smooth )
-
-        if p_sharp>0    
-            condition1 = fi_sharp[1]>10
-            condition2 = sum(fi_sharp[1:minimum([3,p_sharp])])>15
-            condition3 = sum(fi_sharp[1:minimum([10,p_sharp])])>20
-            condition4 = sum(fi_sharp)>25
-            condition_sharp = condition1 || condition2 || condition3 || condition4
-        else 
-            condition_sharp = false     
-        end
-
-        if p_smooth>0    
-            condition5 = fi_smooth[1]>10
-            condition6 = sum(fi_smooth[1:minimum([2,p_smooth])])>15
-            condition7 = sum(fi_smooth[1:minimum([3,p_smooth])])>20
-            condition8 = sum(fi_smooth[1:minimum([10,p_smooth])])>33
-            condition9 = sum(fi_sharp)>40
-            condition_smooth = condition5 || condition6 || condition7 || condition8 || condition9
-        else
-            condition_smooth = false
-        end
-
-#        if (p_sharp+p_smooth)>0 && (condition_sharp || condition_smooth)      # fit hybrid model.  
-         if (p_sharp)>0 && condition_sharp                  # fit hybrid model 
-            i = length(cvgrid0)+3+1                         # 3 is length(sparsity_grid)
-            cvgrid[i]  = bestvalue        
-            param      = deepcopy(HTBtrees_a[best_i].param)
-            param.force_sharp_splits = force_sharp_splits
-            #param.force_smooth_splits = force_smooth_splits
-
-            param_given_data!(param,data)
-            param_constraints!(param)
-
-            ntrees,loss,meanloss,stdeloss,HTBtrees1st,indtest,gammafit_test,y_test,problems = HTBsequentialcv(data,param,indices=indices)
-            treesize[i],lossgrid[i],meanloss_a[i],stdeloss_a[i]   = ntrees,loss,meanloss,stdeloss
-            HTBtrees_a[i],gammafit_test_a[i]                    = HTBtrees1st,gammafit_test
-            problems_somewhere = problems_somewhere + problems
-        end 
-
-    end        
 
     # Additional model: no projection pursuit regression
     if cv_depthppr==:Auto
@@ -994,7 +1012,7 @@ function HTBfit_single(data::HTBdata, param::HTBparam; cv_grid=[],cv_different_l
     end     
  
     if cv_depthppr 
-        i = length(cvgrid0)+3+2                         # 3 is length(sparsity_grid)
+        i = 2*length(cvgrid0)+length(sparsity_grid) + 1
         cvgrid[i]  = bestvalue        
         param      = deepcopy(HTBtrees_a[best_i].param)
         param.depthppr = param.I(0)
@@ -1017,7 +1035,7 @@ function HTBfit_single(data::HTBdata, param::HTBparam; cv_grid=[],cv_different_l
         best_i      = argmin(lossgrid)
         param = deepcopy(HTBtrees_a[best_i].param)
         param.priortype = :sharp
-        i = length(cvgrid0)+3+3             # 3 is length(sparsity_grid)
+        i = 2*length(cvgrid0)+length(sparsity_grid) + 2
         cvgrid[i]  = cvgrid[best_i]        
 
         ntrees,loss,meanloss,stdeloss,HTBtrees1st,indtest,gammafit_test,y_test,problems = HTBsequentialcv(data,param,indices=indices)
@@ -1057,7 +1075,7 @@ function HTBfit_single(data::HTBdata, param::HTBparam; cv_grid=[],cv_different_l
 
         ntrees,loss,meanloss,stdeloss,HTBtrees1st,indtest,gammafit_test,y_test,problems = HTBsequentialcv(data,param,indices=indices)
 
-        i = length(cvgrid0)+3+4        # 3 is length(sparsity_grid)
+        i = 2*length(cvgrid0)+length(sparsity_grid) + 3
         cvgrid[i]   = cvgrid[best_i]
         lossgrid[i],meanloss_a[i], stdeloss_a[i] = loss,meanloss,stdeloss  # The loss is NOT comparable. 
         treesize[i]     = ntrees
@@ -1066,7 +1084,7 @@ function HTBfit_single(data::HTBdata, param::HTBparam; cv_grid=[],cv_different_l
     
     end    
 
-    # if modality==:compromise, fits the best model with param0.lambda = 0.1, and replaces it.
+    # if modality==:compromise, fits the best model with param0.lambda at original value and replaces it.
     # If model with lowest loss does not have the user-specified distribution, takes the model with the highest stacking weight 
     best_i = argmin(lossgrid)
 
