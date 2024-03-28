@@ -1,4 +1,4 @@
-"""
+#=
 
 **Short description:**
 
@@ -12,7 +12,7 @@ Note: The comparison with LightGBM is biased toward HTBoost if the function gene
 smooth in some features (this is easily changed by the user). lightGBM is cross-validated over max_depth and num_leaves,
 with the number of trees set to 1000 and found by early stopping.
   
-"""
+=#
 
 number_workers  = 8  # desired number of workers
 

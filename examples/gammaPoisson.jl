@@ -1,4 +1,4 @@
-"""
+#=
 
 **GammaPoisson for (possibly) overdisperesed count data.**
 
@@ -7,7 +7,7 @@
 - loss=:Poisson is also available (α=0)
 
 Note: LightGMB does not have a gammaPoisson option. loss = poisson is used. 
-"""
+=#
 
 number_workers  = 8  # desired number of workers
 

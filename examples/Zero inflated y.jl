@@ -1,4 +1,4 @@
-"""
+#=
 
 #Strategies for zero-inflated data.
 
@@ -33,7 +33,7 @@ a Poisson or GammaPoisson.
 ```    yf,prob0,yf_not0     = HTBpredict(x_test,output) ``
 where yf = E(y|x) = (1-prob0)*yf_not0
 
-"""
+=#
 number_workers  = 8  # desired number of workers
 
 using Distributed
@@ -50,7 +50,6 @@ Random.seed!(1)
 # Some options for HTBoost
 loss      = :hurdleGamma    # options for y>=0 data are :L2loglink, :L2, :gamma, :hurdleGamma, :hurdleL2loglink, :hurdleL2     
 modality  = :compromise     # :accurate, :compromise (default), :fast, :fastest 
-
 priortype = :hybrid       # :hybrid (default) or :smooth to force smoothness 
 nfold     = 1             # number of cv folds. 1 faster (single validation sets), default 5 is slower, but more accurate.
 nofullsample = true       # if nfold=1 and nofullsample=true, the model is not re-fitted on the full sample after validation of the number of trees

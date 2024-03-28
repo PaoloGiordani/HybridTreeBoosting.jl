@@ -1,11 +1,15 @@
 
-"""
+#=
 
 # Some options to speed up training for HTBoost, particularly with large n and large p.
 
+HTBoost runs much faster (particularly with large n) with multiple cores than with one, after the initial one-off cost.
+The improvements in speed are roughly linear in the number of cores, up to 8 cores, and still good up to 16 cores,
+particularly when p/#cores is large. Gains from 16 to 32 cores are modest. 
+
 ## 1) modality = :fast, nfold = 1, nofullsample = true, disengage variable selection. 
 
-The safest way to speed up training is by setting nfold = 1 (a single validation set), and modality=:fast or :fastest.
+The easiest way to speed up training is by setting nfold = 1 (a single validation set), and modality=:fast or :fastest.
 These modalities do not perform cv. 
 :fast will typically still produces a competitive model in terms of accuracy, particularly if n/p is large.
 If nfold=1, setting nofullsample=true further reduces computing time by 60% at the cost of fitting the model
@@ -23,12 +27,15 @@ Examples of use:
 Replacing the defaults (5,7) with (4,5) may speed up computations by 25-33%, with no or little loss of
 fit in most cases. 
 
-## 3) Force smooth splits (in combination with modality=:fast). Warning: decreased performance! 
+## 3) Don't allow forcing sharp splits (in combination with modality=:fast). Warning: potential for decreased performance! 
 
-In situations where some features require sharp splits, the model is estimated twice. Setting priortype=:smooth
+In situations where some features may require imposing sharp splits, the model is estimated twice.
+To avoid this, the recommended option is to run 
+
+output = SMARTfit(data,param,cv_hybrid=false)
+
 (in combination with modality=:fast or :fastest) then cuts computing times in half. The loss of fit
-can be substantial, so this is only recommended for preliminary investigation. The resulting model may still
-perform well when stacked with a standard GBM light LightGBM.  
+is typically modest, but can be substantial in some cases.
 
 ## 4) Be aware of how time increases with depth in HTBoost.
 
@@ -54,7 +61,7 @@ This can be accomplished as follows:
 - Set param=output.bestparam, and then param.modality=:fast, and run HTBfit() on the full data.
  
 An example is given below: 
-"""
+=#
 number_workers  = 8  # desired number of workers
 
 using Distributed

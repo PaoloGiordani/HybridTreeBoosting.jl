@@ -1,5 +1,5 @@
 
-"""
+#=
 
 **Short description:**
 
@@ -26,7 +26,7 @@ sparsity penalization (especially in modality=:compromise or :accurate).
 Sparsity penalization is most useful with small n, very large p, or low SNR, as
 GBM are already quite good at selecting away redundant features. 
 
-"""
+=#
 number_workers  = 8  # desired number of workers
 
 using Distributed

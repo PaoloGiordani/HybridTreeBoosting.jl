@@ -1,5 +1,5 @@
 
-"""
+#=
 
 **Multiclass classification in HTBoost. Key points:**
 
@@ -14,7 +14,7 @@
 - The training time is proportional to num_classes, and it can therefore be high. There is room for future improvements though,
   since the one-vs-rest approach is embarassingly parallel.  
   
-"""
+=#
 number_workers  = 8  # desired number of workers
 
 using Distributed

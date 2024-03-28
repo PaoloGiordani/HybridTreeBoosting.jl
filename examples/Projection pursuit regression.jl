@@ -1,5 +1,4 @@
-
-"""
+#=
 
 **A simulated example in which adding a single index model to each tree improves accuracy**
 
@@ -9,7 +8,7 @@
   artificial example.
 - LightGBM and XGB struggle with this type of data, typically requiring many trees and delivering poor accuracy.
 
-"""
+=#
 
 number_workers  = 8  # desired number of workers
 

@@ -1,5 +1,5 @@
 
-"""
+#=
 
 **Short description:**
 
@@ -28,7 +28,7 @@ becomes more efficient for larger p*/number_workers (where p* is the number of c
 a given split, and p*<p if sparsevs = :On ), and ii) there is a fixed cost for refineOptim 
 (refine otimization of μ,τ,m given i). Speed-ups are larger for very large p (e.g. p=2000)
 
-"""
+=#
 number_workers  = 8  # desired number of workers
 
 using Distributed

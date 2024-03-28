@@ -1,5 +1,5 @@
 
-"""
+#=
 
 **Short description:**
 
@@ -23,7 +23,7 @@ hyperparameter tuning by cross-validation, because this process is done automati
 for exploratory analysis and to gauge computing time, and then switch to :compromise (default)
 or :accurate.
 
-"""
+=#
 number_workers  = 8  # desired number of workers
 
 using Distributed
@@ -46,15 +46,15 @@ nsimul    = 1       # number of simulated datasets.
 # :fast and :fastest only fit one model at default parameters, while :compromise and :accurate perform
 # automatic hyperparameter tuning. 
 
-modality  = :compromise   # :accurate, :compromise (default), :fast, :fastest
+modality  = :fast   # :accurate, :compromise (default), :fast, :fastest
 
 # define the function f(x), where x are indendent N~(0,1), and f(x) is for the natural parameter,
 # so f(x) = log(prob/(1-prob))
 
 f_1(x,b)    = b*x .+ 1 
 f_2(x,b)    = sin.(b*x)  
-f_3(x,b)    = b*x.^3
-f_4(x,b)    = b./(1.0 .+ (exp.(10*(x .- 0.5) ))) .- 0.1*b   
+f_3(x,b)    = b*x.^2
+f_4(x,b)    = b./(1.0 .+ (exp.(5*(x .- 0.5) )))   
 
 b1,b2,b3,b4 = 1.5,2.0,0.5,2.0
 dgp(x)        = f_1(x[:,1],b1) + f_2(x[:,2],b2) + f_3(x[:,3],b3) + f_4(x[:,4],b4)
@@ -70,7 +70,7 @@ function simul_logistic(n,p,nsimul,modality,dgp)
  MSE1 = zeros(nsimul)
  MSE2 = zeros(nsimul)
 
- param  = HTBparam(loss=loss,nfold=1,nofullsample=true,modality=modality,warnings=:Off,newton_gaussian_approx =true)
+ param  = HTBparam(loss=loss,nfold=1,nofullsample=true,modality=modality,warnings=:Off,newton_gauss_approx =true)
 
  # Create an estimator with the desired parameters—leave other parameters at the default values.
  estimator = LGBMClassification(   # LGBMRegression(...)

@@ -1,4 +1,4 @@
-""" 
+#=
 
 **HTBoost handles missing values automatically. Imputation is optional.** 
 
@@ -22,8 +22,7 @@ Data can be missing at random, or missing not at random as a function of x only,
 The comparison with LightGBM is biased toward HTBoost if the function generating the data is smooth in some features.
 LightGBM is cross-validated over max_depth and num_leaves, with the number of trees set to 1000 and found by early stopping.
     
-
-""" 
+=# 
 number_workers  = 8  # desired number of workers
 
 using Distributed

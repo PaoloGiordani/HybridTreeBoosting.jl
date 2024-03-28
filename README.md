@@ -1,6 +1,6 @@
 # HTBoost
 
-## Logo here 
+**Logo here !!!!**
 
 [![Build Status](https://github.com/PaoloGiordani/HTBoost.jl/workflows/CI/badge.svg)](https://github.com/PaoloGiordani/HTBoost.jl/actions)
 
@@ -8,21 +8,24 @@
 
 A Julia implementation of Hybrid Trees Boosting as described in [HTBoost paper](provide link!!) 
 
-Solutions for R and Python users are in progress.
-
-HTBoost is slower than other boosting packages, but the use of hybrid trees (an evolution of the smooth trees in [SMARTboost](https://github.com/PaoloGiordani/SMARTboost.jl)) should deliver superior accuracy in most situations, making them a promising tool when data is limited or very noisy. The paper (see [References](#References)), examples and tutorials document instances in which HTBoost matches the performance of other GBMs with less than 20% of the data.  
+HTBoost is slower than other boosting packages, but the use of hybrid trees (an evolution of the smooth trees in [SMARTboost](https://github.com/PaoloGiordani/SMARTboost.jl)) delivers superior accuracy in most situations, making them a promising tool when data is limited or very noisy. The paper (see [References](##References)), examples, and tutorials document instances in which HTBoost matches the performance of other GBMs with less than 20% of the data.  
 
 ## Installation
 Latest:
 
-```julia-repl
-#pkg> add "https://github.com/PaoloGiordani/HTBoost.jl"    
+```markdown
+pkg> add "https://github.com/PaoloGiordani/HTBoost.jl"    
 ```
+
+## For R and Python 
+
+Solutions for R and Python users are in progress.
 
 ## Documentation 
 
 - [See CatBoost for good examples!!!](https://github.com/catboost/tutorials/#readme)
-- [Tutorials and examples](docs/src/Tutorials%20%and%20%examples) 
+- [Tutorials (with comparison with LightGBM)](docs/src/Tutorials.md) 
+- [Examples (with comparison with LightGBM)](examples/examples.md) 
 
 ## Minimal example 
 
@@ -73,17 +76,18 @@ yf     = HTBpredict(x_test,output)
 
 ## Main features and advantages of HTBoost 
 
-- Hybrid trees build on smooth trees, which are more accurate than standard trees if f(x) is smooth wrt at least some of the features, but can escape local minima that occasionally trap boosted smooth trees. See [Hybrid Trees](examples/Hybrid%20%trees.jl).
-- Hybrid trees also refine each tree with a modified single-index model, which allows them to more efficiently capture some types of data on which standard trees struggle. See [PPR](examples/Projection%20pursuit%20regression.jl). For more on when HTBoost can be expected to outperform other GMBs, see [Outperforming other GMB]((docs/src/Outperforming%20other%20GBM.md)).
+- Hybrid trees build on smooth trees, which are more accurate than standard trees if f(x) is smooth wrt at least some of the features, but can escape local minima that occasionally trap boosted smooth trees. See [Hybrid Trees](examples/Hybrid%20trees.jl).
+- Hybrid trees also refine each tree with a modified single-index model, which allows them to more efficiently capture some types of data on which standard trees struggle. See [PPR](examples/Projection%20pursuit%20regression.jl). For more on when HTBoost can be expected to outperform other GBMs, see [Outperforming other GBM](docs/src/Outperforming%20other%20GBM.md).
 - Ease of use: a parsimonious cross-validation of the most important parameters is performed automatically if modality = :compromise or :accurate, while modality = :fast and :fastest fit just one model.
 - Adapts to both dense and sparse settings. Unless n/p is large, one of the parameters being cross-validated is a sparsity-inducing penalization, which can result in more aggressive variable selection compared to standard boosting.
 - Additional coefficients (e.g. overdispersion for gammaPoisson, shape for Gamma, dof for t) are estimated internally by maximum likelihood; no user's input or cv required.
 - The exact loss function is typically evaluated, instead of a quadratic approximation as in other GBMs. This contributes to improved accuracy with small n or low SNR.
 - Best-in-class inference with missing values.
 - Ideal for time series and longitudinal data (aka panel data).
-- Available loss functions cover most cases for regression, classification, count data, zero-inflated data.
+- Improved inference for Huber and t loss. 
+- Available loss functions cover most cases for regression, classification (binary and multi), count data, zero-inflated data.
  
-## Main disadvantages of HTBoost 
+## Main limitations of HTBoost 
 
 - Slower training than other packages for GBMs.
 - Deep trees are particularly slow.
@@ -100,11 +104,11 @@ data   = HTBdata(y,x,param)
 output = HTBfit(data,param)
 ```
 
-See [speeding up HTBoost](examples/Speeding%20%up%20%with%20%large%20%n.jl) for suggestions on how to handle large n if computing time becomes a constraint.
+See [speeding up HTBoost](examples/Speeding%20up%20with%20large%20n.jl) for suggestions on how to handle large n if computing time becomes a constraint.
 
 ## Help to improve HTBoost 
 
-- If you have a dataset in which HTBoost does not outperform other GMBs (particularly if *HTBweightedtau()* suggests it should, see [Basic use](examples/Basic%20use.jl)), and you have read [Outperforming other GBM](docs/src/Outperforming%20other%20GBM.md), please get in touch with me at paolo.giordani@bi.no
+- If you have a dataset in which HTBoost does not outperform other GBMs (particularly if *HTBweightedtau()* suggests it should, see [Basic use](examples/Basic%20use.jl)), and you have read [Outperforming other GBM](docs/src/Outperforming%20other%20GBM.md), please get in touch with me at paolo.giordani@bi.no
 - Suggestions are welcome.
 
 ## 
@@ -112,7 +116,9 @@ See [speeding up HTBoost](examples/Speeding%20%up%20%with%20%large%20%n.jl) for 
 ## References
 
 
-## Licence ??
+## Licence ?????? Apache 2 for CatBoost, EvoTrees and H2O, MIT for LightGBM
+
+... Apache something about patent rights ...
 
 © Paolo Giordani, 2024. Licensed under the Apache License, Version 2.0. See LICENSE file for more details.
 

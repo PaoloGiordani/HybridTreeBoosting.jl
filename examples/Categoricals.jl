@@ -1,4 +1,4 @@
-"""
+#=
 
 **How to inform HTBoost about categorical features:** 
 
@@ -29,6 +29,7 @@
 
 - Missing values are assigned to a new category.
 - If there are only 2 categories, a 0-1 dummy is created. For anything more than two categories, it uses a variation of target encoding.
+- The categories are encoded by their mean, frequency and variance. (For financial variables, the variance may be more informative than the mean.)
 - Smooth splits are particularly promising with target encoding, particularly in high dimensions (lots of categories). 
 - One-hot-encoding with more than 2 categories is not supported, but is easily implemented as data preprocessing.
 - If modality is :accurate or :compromise, a quick and rough cross-validation is performed over two parameters:
@@ -45,7 +46,7 @@ Each category of x2 is assigned its own coefficient drawn from a distribution ("
 The user can specify the form of f(x1,x2).
 
 LightGBM does not use target encoding, and can completely break down (very poor in-sample and oos fit) when the number of categories
-is high in relation to n (e.g. n=10k,n=1k). (The LightGBM manual https://lightgbm.readthedocs.io/en/latest/Advanced-Topics.html suggests
+is high in relation to n (e.g. n=10k,n_cat=1k). (The LightGBM manual https://lightgbm.readthedocs.io/en/latest/Advanced-Topics.html suggests
 treating high dimensional categorical features as numerical or embedding them in a lower-dimensional space.)
 
 CatBoost (note: code in separate Python file), in contrast, adopts target encoding as default, can handle very high dimensionality and
@@ -57,7 +58,7 @@ It seems reasonable to assume that target encoding, by its very nature, will gen
 HTBoost a promising tool for high dimensional categorical features. The current treatment of categorical features is however quite
 crude compared to CatBoost, so some of these gains are not yet realized. 
 
-"""
+=#
 number_workers  = 8  # desired number of workers
 using Distributed
 nprocs()<number_workers ? addprocs( number_workers - nprocs()  ) : addprocs(0)
@@ -81,14 +82,20 @@ b1         =     1.0      # coeff of continuous feature
 stde       =     1.0      # error std
 
 cat_distrib =   "chi"  # distribution for categorical effects: "uniform", "normal", "chi", "lognormal" for U(0,1), N(0,1), chi-square(1), lognormal(0,1)
+interaction_type = "step" # "none", "multiplicative", "step", "linear"
 
 # specify the function f(x1,x2), with the type of interaction (if any) between x1 (continuous) and x2 (categorical)
-function yhat_x1xcat(b1,b2,x1)
+function yhat_x1xcat(b1,b2,x1,interaction_type)
 
-    #yhat[r] = b2 + b1*x[r,1]    # no interaction 
-    #yhat = b2 + b1*b2*x1        # multiplicative interaction
-    yhat = b2 + b1*b2*(x1>0)    # step interaction 
-    #yhat = b2 + (b1-b2)*x1
+    if interaction_type=="none"
+        yhat = b2 + b1*x1
+    elseif interaction_type=="multiplicative"     
+        yhat = b2 + b1*b2*x1
+    elseif interaction_type=="step"     
+        yhat = b2 + b1*x1*(x1>0)    
+    elseif interaction_type=="linear"  
+        yhat = b2 + (b1-b2)*x1
+    end 
 
     return yhat
 end 
@@ -133,12 +140,12 @@ end
 
 for r in 1:n
     b2 = b[findfirst(cate .== xcat[r])]
-    yhat[r] = yhat_x1xcat(b1,b2,x[r,1]) 
+    yhat[r] = yhat_x1xcat(b1,b2,x[r,1],interaction_type) 
 end
 
 for r in 1:n_test
     b2 = b[findfirst(cate .== xcat_test[r])] 
-    yhat_test[r] = yhat_x1xcat(b1,b2,x_test[r,1]) 
+    yhat_test[r] = yhat_x1xcat(b1,b2,x_test[r,1],interaction_type) 
 end
 
 y = yhat + stde*randn(n)

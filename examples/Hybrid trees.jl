@@ -1,5 +1,5 @@
 
-"""
+#=
 
 **Hybrid trees: why smooth trees are not always good enough.**
 
@@ -25,7 +25,7 @@ A hybrid tree attempts to recognize such cases from a preliminary run, and, if n
 sharp splits on some features to avoid the local minima. The cross-validated loss is then 
 used to decide in which combination to use the hybrid and the smooth tree.
 
-"""
+=#
 number_workers  = 8  # desired number of workers
 
 using Distributed
@@ -36,13 +36,13 @@ using Random,Plots
 
 # USER'S OPTIONS 
 
-Random.seed!(1)
+Random.seed!(123)
 
 # Some options for HTBoost
 loss      = :L2            # :L2 or :logistic (or :Huber or :t). 
 modality  = :fastest       # :accurate, :compromise (default), :fast, :fastest 
 
-ntrees    = 1000          # maximum number of trees  
+ntrees    = 2000          # maximum number of trees  
 nfold     = 1             # number of cv folds. 1 faster (single validation sets), default 4 is slower, but more accurate.
 
 verbose     = :Off
@@ -73,7 +73,7 @@ f_test   = f_interact(x_test[:,5],x_test[:,6],b_interact) + f_1(x_test[:,1],b1) 
 y = f + stde*randn(n)
 
 # set up HTBparam and HTBdata, then fit and predit
-ntrees == 1 ? lambda = 1 : lambda = 0.2
+ntrees == 1 ? lambda = 1 : (modality == :fastest ? lambda = 0.2 : lambda = 0.1)
 
 param  = HTBparam(loss=loss,nfold=nfold,verbose=verbose,warnings=warnings,
            modality=modality,nofullsample=true,lambda=lambda,ntrees=ntrees)

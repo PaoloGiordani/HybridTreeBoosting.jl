@@ -1,4 +1,4 @@
-"""
+#=
 
 Short description:
 
@@ -36,7 +36,7 @@ Unless you are absolutely sure that an offset enters exactly with coeff 1, I rec
 as a feature. HTBoost will then be able to capture possibly subtle nonlinearities and interaction effects
 in E(y|offset).  
 
-"""
+=#
 
 number_workers  = 8  # desired number of workers
 

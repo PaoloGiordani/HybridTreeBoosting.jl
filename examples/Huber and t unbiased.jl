@@ -1,5 +1,4 @@
-
-"""
+#=
 
 **Purpose and main results:**
 
@@ -20,7 +19,7 @@ Note:
 LightGBM is only fitted at default parameters, since the main interest here is not the comparison with HTBoost but 
 the performance of Huber loss and of bias correction. 
 
-"""
+=#
 number_workers  = 8  # desired number of workers
 
 using Distributed

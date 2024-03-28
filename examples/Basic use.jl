@@ -1,5 +1,5 @@
 
-"""
+#=
 
 **Short description:**
 
@@ -34,7 +34,7 @@ the default in HTBoost is block cv, which is suitable for time series and panels
 Set randomizecv=true to bypass this default. 
 See examples/Global equity Panel.jl for further options on cross-validation (e.g. sequential cv).
 
-"""
+=#
 number_workers  = 8  # desired number of workers
 
 using Distributed
@@ -49,12 +49,11 @@ Random.seed!(1)
 
 # Some options for HTBoost
 loss      = :L2            # :L2 is default. Other options for regression are :L2loglink (if y≥0), :t, :Huber
-modality  = :fastest        # :accurate, :compromise (default), :fast, :fastest 
+modality  = :fastest       # :accurate, :compromise (default), :fast, :fastest 
 
 priortype = :hybrid       # :hybrid (default) or :smooth to force smoothness 
 nfold     = 1             # number of cv folds. 1 faster (single validation sets), default 4 is slower, but more accurate.
 nofullsample = true       # if nfold=1 and nofullsample=true, the model is not re-fitted on the full sample after validation of the number of trees
-
 randomizecv = false       # false (default) to use block-cv. 
 verbose     = :Off
 warnings    = :Off
@@ -88,11 +87,12 @@ param  = HTBparam(loss=loss,priortype=priortype,randomizecv=randomizecv,nfold=nf
 
 data   = HTBdata(y,x,param)
 
-@time output = HTBfit(data,param)
-yf     = HTBpredict(x_test,output,predict=:Egamma)  # predict the natural parameter
+output = HTBfit(data,param)
+yf     = HTBpredict(x_test,output)  
 
+# feature importance and average smoothing parameter for each feature
 avgtau,avg_explogtau,avgtau_a,dftau,x_plot,g_plot = HTBweightedtau(output,data,verbose=true,best_model=false);
-plot(x_plot,g_plot,title="smoothness of splits",xlabel="standardized x",label=:none)
+plot(x_plot,g_plot,title="avg smoothness of splits",xlabel="standardized x",label=:none)
 
 println(" \n modality = $(param.modality), nfold = $nfold ")
 println(" depth = $(output.bestvalue), number of trees = $(output.ntrees), avgtau $avgtau ")
@@ -107,7 +107,7 @@ println(" out-of-sample RMSE from truth ", sqrt(sum((yf - f_test).^2)/n_test) )
 fnames,fi,fnames_sorted,fi_sorted,sortedindx = HTBrelevance(output,data,verbose=false);
 q,pdp  = HTBpartialplot(data,output,[1,2,3,4,5,6],predict=:Egamma)
 
-# plot partial dependence in terms of the natural parameter 
+# plot partial dependence
 pl   = Vector(undef,6)
 f,b  = [f_1,f_2,f_3,f_4,f_5,f_6],[b1,b2,b3,b4,b5,b6]
 
@@ -122,9 +122,9 @@ for i in 1:length(pl)
            titlefont = font(15),
            legendfont = font(12),
            xlabel = "x",
-           ylabel = "f(x)",
+           ylabel = "f(x)"
            )
+           
 end
 
 display(plot(pl[1],pl[2],pl[3],pl[4],pl[5],pl[6],layout=(3,2), size=(1300,800)))  
-

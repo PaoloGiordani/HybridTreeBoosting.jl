@@ -1,5 +1,5 @@
 
-"""
+#=
 
 **Purpose and main results:**
 
@@ -11,7 +11,7 @@
   are often not IID, and then the :L2 loss can outperform the :t or :Huber loss even with
   leptokurtic errors. 
 
-"""
+=#
 number_workers  = 8  # desired number of workers
 
 using Distributed

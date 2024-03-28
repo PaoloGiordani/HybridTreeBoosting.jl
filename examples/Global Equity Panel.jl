@@ -1,4 +1,4 @@
-"""
+#=
 
 **Working with time series and longitudinal data (panels).**
 
@@ -18,7 +18,7 @@
 
 See HTBindexes_from_dates() for more details.   
 
-"""
+=#
 # On multiple cores
 number_workers  = 8  # desired number of workers
 using Distributed
@@ -38,7 +38,7 @@ overlap        = 0        # 0 for non-overlapping (default), h-1 for overlapping
 # HTBoost
 
 loss       = :L2loglink  # if log_ret=false, consider :L2loglink instead of :L2 
-modality   = :fastest     # # :accurate, :compromise, :fast, :fastest
+modality   = :accurate    # :accurate, :compromise, :fast, :fastest
 priortype  = :hybrid     #:hybrid (accurate), :smooth (forces smooth split)
 
 cv_type     = "block"  # "block" or "expanding" or "randomized" (not recommended for time series and panels)
@@ -95,3 +95,4 @@ for i in 1:4
 end 
 
 display(plot(pl[1],pl[2],pl[3],pl[4], layout=(2,2), size=(1200,600)))  # display() will show it in Plots window.
+#savefig("examples/GlobalEquityPanel.png")  # save it as png file
