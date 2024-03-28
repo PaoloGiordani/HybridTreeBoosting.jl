@@ -115,7 +115,7 @@ mutable struct HTBparam{T<:AbstractFloat, I<:Int,R<:Real}
     seed_datacv::I     # sets random seed if randomizecv=true
     seed_subsampling::I   # sets random seed used on subsampling iterations (will be seed=seed_subsampling + iter)
     # Newton optimization
-    newton_gaussian_approx::Union{Symbol,Bool}
+    newton_gauss_approx::Union{Symbol,Bool}
     newton_max_steps::I
     newton_max_steps_final::I
     newton_tol::T
@@ -169,14 +169,22 @@ Note: all Julia symbols can be replaced by strings. e.g. :L2 can be replaced by 
 
 # Parameters that are most likely to be modified by user (all inputs are keywords with default values)
 
-- `loss`             [:L2] Supported distributions: :L2 (Gaussian),:logistic (binary classification),:multiclass
-                            (multiclass classification), :t (student-t, robust alternative to :L2),:Huber, :gamma, :Poisson (count data), :gammaPoisson (count data, same as negative binomial),
-                            :L2loglink (alternative to :L2 if y≥0), :hurdleGamma, :hurdleL2loglink, :hurdleL2 (for zero-inflated models), :hurdlePoisson, :hurdleGammaPoisson (for zero-inflated data).
-                            See the examples for uses of each loss function.
-                            Fixed coefficients (such as shape for :gamma, dispersion and dof for :t, and overdispersion for :gammaPoisson)
-                            are computed internally by maximum likelihood. Inspect them using HTBcoeff()
-                            In HTBpredict(), predictions are for E(y) if predict=:Ey, while predict=:Egamma forecasts the relevant parameter otherwise
-                            ( E(logit(prob)) for :logistic, for :gamma 
+- `loss`             [:L2] Supported distributions:
+    - :L2 (Gaussian)
+    - logistic (binary classification)
+    - :multiclass (multiclass classification)
+    - :t (student-t, robust alternative to :L2)
+    - :Huber 
+    - :gamma
+    - :lognormal 
+    - :Poisson (count data)
+    - :gammaPoisson (aka negative binomial, count data)
+    - :L2loglink (alternative to :L2 if y≥0)
+    - :hurdleGamma (zero-inflated y)
+    - :hurdleL2loglink (zero-inflated y)
+    - :hurdleL2 (zero-inflated y)
+
+- See the examples for uses of each loss function. Fixed coefficients (such as shape for :gamma, dispersion and dof for :t, and overdispersion for :gammaPoisson) are computed internally by maximum likelihood. Inspect them using *HTBcoeff()*. In *HTBpredict()*, predictions are for E(y) if predict=:Ey (default), while predict=:Egamma forecasts the fitted parameter ( E(logit(prob) for :logistic, log(E(y)) for :gamma etc ... )
 
 - `modality`         [:compromise] Options are: :accurate, :compromise (default), :fast, :fastest.
                      :fast and :fastest run only one model, while :compromise and :accurate cross-validate the most important parameters.
@@ -269,6 +277,8 @@ Note: all Julia symbols can be replaced by strings. e.g. :L2 can be replaced by 
                             when it detects a dates series in HTBdata().
 
 - `tau_threshold`         [10.0] lowest threshold for imposing sharp splits. Lower numbers give more sharp splits.
+
+- `multiplier_stdtau`    [5.0] The default priors suggest smoother splits on features whose unconditional distribution (appropriately transformed according to the link function) is closer to the unconditional distribution of *y* or, when not applicable, to a Gaussian. To disengage this feature, set *multiplier_stdtau* = 0
 
 # Additional parameters to control the cross-validation process can be set in HTBfit(), but keeping the defaults is generally encouraged.
 
@@ -367,7 +377,7 @@ function HTBparam(;
     seed_datacv = 1,       # sets random seed if randomizecv=true
     seed_subsampling = 2,  # sets random seed used on subsampling iterations (will be seed=seed_subsampling + iter)
     # Newton optimization: good default is one step in preliminary phase, and evaluate actual log-lik, and iterate to convergence for final β
-    newton_gaussian_approx = :Auto, # true has large speed gains for logistic for large n (loss=...exp.()). If true, and if newton_max_steps=1 (hence not in final) evaluates the Gaussian approximation to the log-likelihood rather than the likelihood itself except in final phase (given i,mu,tau)
+    newton_gauss_approx = :Auto, # true has large speed gains for logistic for large n (loss=...exp.()). If true, and if newton_max_steps=1 (hence not in final) evaluates the Gaussian approximation to the log-likelihood rather than the likelihood itself except in final phase (given i,mu,tau)
     newton_max_steps = 1,         # vs phase. 1 seems sufficient, in combination with gaussian_approx=false, to get most of the gains  
     newton_max_steps_final = 20,  # small impact on cost and large gains.
     newton_tol = 1,        # Keep large (e.g. 1.0) to avoid unnecessay iterations in preliminary phase
@@ -379,7 +389,7 @@ function HTBparam(;
     if typeof(T)!==DataType; if T=="Float32"; T=Float32; else; T = Float64; end; end;  # for R users
            
     if loss==:L2    
-        newton_max_steps,newton_max_steps_final,newton_gaussian_approx = 1,1,false 
+        newton_max_steps,newton_max_steps_final,newton_gauss_approx = 1,1,false 
     end          
 
     if loss==:Huber && warnings==:On 
@@ -438,7 +448,7 @@ function HTBparam(;
         I(n_refineOptim),T(subsampleshare_columns),Symbol(sparsevs),T(frequency_update),
         I(number_best_features),best_features,Symbol(pvs),I(p_pvs),I(min_d_pvs),I(mugridpoints),I(taugridpoints),
         I(depth_coarse_grid),I(depth_coarse_grid2),T(xtolOptim),Symbol(method_refineOptim),
-        I(points_refineOptim),I(ntrees),T(theta),loglikdivide,I(overlap),T(multiply_pb),T(varGb),I(ncores),I(seed_datacv),I(seed_subsampling),newton_gaussian_approx,
+        I(points_refineOptim),I(ntrees),T(theta),loglikdivide,I(overlap),T(multiply_pb),T(varGb),I(ncores),I(seed_datacv),I(seed_subsampling),newton_gauss_approx,
         I(newton_max_steps),I(newton_max_steps_final),T(newton_tol),T(newton_tol_final),I(newton_max_steps_refineOptim),linesearch)
 
     param_constraints!(param) # enforces constraints across options. Must be repeated in HTBfit.
@@ -480,16 +490,17 @@ function param_given_data!(param::HTBparam,data::HTBdata)
         p>10*param.p_pvs && param.depth>5 ? param.pvs=:On : param.pvs=:Off
     end 
     
-    if param.newton_gaussian_approx == :Auto
-        newton_gaussian_approx = false
+    if param.newton_gauss_approx == :Auto
+        
+        param.newton_gauss_approx = false
         loss = param.loss
 
         if loss in [:gamma,:gammaPoisson,:Poisson,:L2loglink]    # large speed gains  
-            param.newton_gaussian_approx = true
+            param.newton_gauss_approx = true
         end 
 
         if loss == :logistic && size(data.x,2)>20_000 && param.modality in [:fast,:fastest]
-            param.newton_gaussian_approx = true
+            param.newton_gauss_approx = true
         end     
 
     end  
@@ -532,7 +543,7 @@ end
 
 
 """
-        HTBdata(y,x,param,[dates];T=Float32,fnames=[],enforce_dates=true)
+        HTBdata(y,x,param,[dates];weights=[],fnames=[],offset=[])
 Collects and pre-processes data in preparation for fitting HTBoost
 
 # Inputs

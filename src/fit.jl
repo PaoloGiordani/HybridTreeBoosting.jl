@@ -351,7 +351,7 @@ function fitβ(y,w,gammafit_ensemble,r0::AbstractVector{T},h0::AbstractVector{T}
         β   = β0 + α*Δβ(GGh,Gr,d,pb*I(p),param,n,p,T)
         Gβ  = computeGβ(G,β)
 
-        if param.loss==:L2 || maxsteps>1 || param.newton_gaussian_approx==false
+        if param.loss==:L2 || maxsteps>1 || param.newton_gauss_approx==false
             llik  = loglik(param.loss,param,y,gammafit_ensemble+Gβ,w)
         else    # Gaussian approximation  to the log-likelihood, often much faster to evaluate, e.g. for :logistic
             ll  = w.*( - T(0.5)*(((r .- Gβ.*h).^2)./h)/(param.multiply_pb))
