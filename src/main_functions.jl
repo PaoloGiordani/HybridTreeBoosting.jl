@@ -738,9 +738,9 @@ end
 
 # Conditions to hybrid model, with sharp splits forced on features with high τ.
 # Only if the high τ are for features with non-trivial importance (fi), and only if user did not specify sharp_splits
-# Use: condition_sharp,force_sharp_splits = find_force_sharp_splits(HTBtrees,param,cv_hybrid)
+# Use: condition_sharp,force_sharp_splits = find_force_sharp_splits(HTBtrees,data,param,cv_hybrid)
 # HTBtrees can be HTBtrees_a[i] or HTBtrees_a[argmin(lossgrid)]        
-function find_force_sharp_splits(HTBtrees,param,cv_hybrid)
+function find_force_sharp_splits(HTBtrees,data,param,cv_hybrid)
 
     if param.priortype==:smooth || cv_hybrid==false || !isempty(param.force_sharp_splits)
         return false,fill(false,1)
@@ -851,7 +851,7 @@ function HTBfit_single(data::HTBdata, param::HTBparam; cv_grid=[],cv_different_l
             problems_somewhere = problems_somewhere + problems
 
             # If needed, fit again with force_sharp_splits. Store in 2*i
-            condition_sharp,force_sharp_splits = find_force_sharp_splits(HTBtrees_a[i],param,cv_hybrid)
+            condition_sharp,force_sharp_splits = find_force_sharp_splits(HTBtrees_a[i],data,param,cv_hybrid)
 
             if condition_sharp                 
 
@@ -879,7 +879,7 @@ function HTBfit_single(data::HTBdata, param::HTBparam; cv_grid=[],cv_different_l
 
     if user_provided_grid==false
  
-        i_a = [3,4,5]   
+        modality==:compromise ? i_a = [3,5] : i_a = [3,4,5]   
 
         for _ in 1:2
             for d in i_a 
