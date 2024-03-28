@@ -896,7 +896,7 @@ function HTBfit_single(data::HTBdata, param::HTBparam; cv_grid=[],cv_different_l
                 problems_somewhere = problems_somewhere + problems
 
                 # If needed, fit again with force_sharp_splits. Store in 2*i
-                condition_sharp,force_sharp_splits = find_force_sharp_splits(HTBtrees_a[i],param,cv_hybrid)
+                condition_sharp,force_sharp_splits = find_force_sharp_splits(HTBtrees_a[i],data,param,cv_hybrid)
 
                 if condition_sharp                  # fit hybrid model 
 
