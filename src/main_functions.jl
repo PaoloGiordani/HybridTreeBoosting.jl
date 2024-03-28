@@ -982,8 +982,8 @@ function HTBfit_single(data::HTBdata, param::HTBparam; cv_grid=[],cv_different_l
             problems_somewhere = problems_somewhere + problems
 
             #If either 0.7 or 1.1 is better than 0.3, continue to 1.5. If neither is better, try 0.0.  
-            if j>1 && min(lossgrid[i],lossgrid[i-1])>lossgrid[best_i]   # break (no need for more sparsity)
-
+            if j>1 && min(lossgrid[i],lossgrid[i-1]) > lossgrid[best_i] # break (no need for more sparsity)
+ 
                 param.sparsity_penalization = T(0)
                 param.exclude_features = Vector{Bool}(undef,0)
 
@@ -1013,7 +1013,7 @@ function HTBfit_single(data::HTBdata, param::HTBparam; cv_grid=[],cv_different_l
  
     if cv_depthppr 
         i = 2*length(cvgrid0)+length(sparsity_grid) + 1
-        cvgrid[i]  = bestvalue        
+        cvgrid[i]  = HTBtrees_a[best_i].param.depth        
         param      = deepcopy(HTBtrees_a[best_i].param)
         param.depthppr = param.I(0)
 
