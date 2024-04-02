@@ -85,7 +85,7 @@ param  = HTBparam(loss=loss,priortype=priortype,randomizecv=randomizecv,nfold=nf
                    verbose=verbose,warnings=warnings,modality=modality,nofullsample=nofullsample)
 data   = HTBdata(y,x,param)
 
-@time output = HTBfit(data,param)
+output = HTBfit(data,param)
 yf     = HTBpredict(x_test,output,predict=:Ey)
 
 println(" \n loss = $(param.loss), modality = $(param.modality), nfold = $nfold ")

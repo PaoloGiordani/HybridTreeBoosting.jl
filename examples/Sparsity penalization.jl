@@ -10,11 +10,11 @@ from none (standard boosting) to quite strong (to capture very sparse representa
 Note: this cv is not performed if the effective sample size (which depends on n, loglikvide, and var(yhat)/var(y))
 is large compared to the number of features p.
 
-Our approach to sparsity is builds on Xu et al. 2019, "Gradient Boosted Feature Selection", designed for the n>>p case, 
+HTB's approach to sparsity builds on Xu et al. 2019, "Gradient Boosted Feature Selection", designed for the n>>p case, 
 implemented by penalizing the introduction of any feature not previously selected, with some important innovations. 
 Since HTBoost is much slower than other GBMs, it is essential for cross-validation to require only a handful
 of evaluations. This is not possible in the representation of Xu et al., where the penalization has no obvious
-range, and a grid from 0.125 to 500 is used for cv. HTBoost normalizes the the penalization by taking into
+range, and a grid from 0.125 to 500 is used. HTBoost normalizes the penalization by taking into
 account the number of features as well as their nature (continuous or binary), which allows for a more focused search
 of a few values in a narrow range. 
 

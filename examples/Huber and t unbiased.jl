@@ -46,7 +46,7 @@ m2        = 3*stde  # mean of second component of mixture of normal. 0 for symme
 
 loss      = :t      # :t (recommended) or :Huber for HTBoost. :t automatically estimates degrees of freedom and can recover a Gaussian 
 modality  = :fastest   # :accurate, :compromise (default), :fast, :fastest
-ntrees    = 200     # maximum number of trees for HTBoost. 
+ntrees    = 2000     # maximum number of trees for HTBoost. 
 
 # define the function dgp(x), here the Friedman's function for x~U  
 dgp(x) = 10.0*sin.(π*x[:,1].*x[:,2]) + 20.0*(x[:,3].-0.5).^2 + 10.0*x[:,4] + 5.0*x[:,5]

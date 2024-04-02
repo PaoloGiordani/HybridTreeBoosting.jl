@@ -7,7 +7,7 @@
 HTBoost has three loss functions for zero inflated data:
     ```:hurdleGamma, :hurdleL2, :hurdleL2loglink```
 The :hurdleGamma is closest to the Tweedie distribution in LightGBM, XGB, and CatBoost.
-Hurdle models in HTBoost build to separate models, one with logistic loss to predict
+Hurdle models in HTBoost build two separate models, one with logistic loss to predict
 the occurence of a zero, and a second model with loss gamma or L2 or L2loglink to predict
 y|y≠0. Compared to a Tweedie regression, hurdle models have richer parametrization but
 far weaker constraints on the process, implying higher variance and smaller bias.
@@ -30,7 +30,7 @@ a Poisson or GammaPoisson.
 - Fit HTBoost, with loss = :hurdleGamma or :hurdleL2loglink
 - A comparison with LightGBM using the Tweedie loss is promising.
 - HTBpredict takes the form:
-```    yf,prob0,yf_not0     = HTBpredict(x_test,output) ``
+    yf,prob0,yf_not0     = HTBpredict(x_test,output) 
 where yf = E(y|x) = (1-prob0)*yf_not0
 
 =#
@@ -60,7 +60,7 @@ warnings    = :On
 
 # options to generate data. 
 true_k      = 10     # dispersion parameter of gamma distribution
-α           = 0.5    # Generates y=0 data. Set to 0 for all y strictly positive, 0.2 (0.3,0.6) has around 40% (60%,80%) y=0 
+α           = 0.5    # Generates y=0 data. Set to 0 for all y strictly positive, larger numbers for more mass at 0 
 
 n,p,n_test  = 10_000,4,100_000
 
@@ -171,9 +171,4 @@ println("\n out-of-sample RMSE (y-yf), LightGBM cv      ", sqrt(sum((yf_gbm - y_
 
 
 
-    
-
-
-
-
-
+   

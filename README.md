@@ -23,9 +23,8 @@ Solutions for R and Python users are in progress.
 
 ## Documentation 
 
-- [See CatBoost for good examples!!!](https://github.com/catboost/tutorials/#readme)
-- [Tutorials (with comparison with LightGBM)](docs/src/Tutorials.md) 
-- [Examples (with comparison with LightGBM)](examples/examples.md) 
+- [Tutorials (including comparison with LightGBM)](docs/src/Tutorials.md) 
+- [Examples (including comparison with LightGBM)](examples/examples.md) 
 
 ## Minimal example 
 
@@ -108,7 +107,7 @@ See [speeding up HTBoost](examples/Speeding%20up%20with%20large%20n.jl) for sugg
 
 ## Help to improve HTBoost 
 
-- If you have a dataset in which HTBoost does not outperform other GBMs (particularly if *HTBweightedtau()* suggests it should, see [Basic use](examples/Basic%20use.jl)), and you have read [Outperforming other GBM](docs/src/Outperforming%20other%20GBM.md), please get in touch with me at paolo.giordani@bi.no
+- If you have a dataset in which HTBoost does not outperform other GBMs (particularly if *HTBweightedtau( )* suggests it should, see [Basic use](examples/Basic%20use.jl)), and you have read [Outperforming other GBM](docs/src/Outperforming%20other%20GBM.md), please get in touch with me at paolo.giordani@bi.no
 - Suggestions are welcome.
 
 ## 

@@ -1,20 +1,26 @@
 
-#=
+## Multiclass classification in HTBoost 
 
-**Multiclass classification in HTBoost. Key points:**
+**Key points:**
 
-- y is a vector: only one outcome possible. (For multilabel classification, fit a sequence of :logistic models.)
+- y is a vector: only one outcome is possible. (For multilabel classification, fit a sequence of :logistic models.)
 - Elements of y can be numerical or string. Numericals do not need to be in the format (0,1,2,...). e.g. (1,2,3,...), (22,7,48,...)
     ("a","b","c",...), ("Milan","Rome","Naples",...) are all allowed.
 - num_class is detected automatically, not a user input.  
-- The output from HTBpredict() is: 
-  yf,class_values,ymax = HTBpredict(x_test,output). yf is a (n_test,num_class) matrix of probabilities, with yf[i,j] the probability
+- The output from *HTBpredict( )* is: 
+  yf,class_values,ymax = *HTBpredict*(x_test,output). yf is a (n_test,num_class) matrix of probabilities, with yf[i,j] the probability
   that observation i takes value class_value[j]. class_values is a (num_class) vector of the unique values of y, sorted from smallest to largest.
   ymax is a (n_test) vector the most likely outcome.
+- HTBoost employs a one-vs-rest approach (not a multinomial logistic).   
 - The training time is proportional to num_classes, and it can therefore be high. There is room for future improvements though,
-  since the one-vs-rest approach is embarassingly parallel.  
-  
-=#
+  since the one-vs-rest approach can be made embarassingly parallel.  
+
+**Comparison with LightGBM**
+
+In this example we draw simulated data from a multinomial with 3 classes, and compare HTBoost and LightGBM. The smoother the function, the more HTBoost will outperform. 
+
+
+```julia 
 number_workers  = 8  # desired number of workers
 
 using Distributed
@@ -24,29 +30,20 @@ nprocs()<number_workers ? addprocs( number_workers - nprocs()  ) : addprocs(0)
 using Random,Statistics
 using LightGBM
 
-# USER'S OPTIONS 
+```
+
+Options to generate data 
+
+```julia 
 
 Random.seed!(12)
 
 # Options for data generation 
 n         = 10_000
-p         = 5      # p>=4. Only the first 4 variables are used in the function f(x) below 
+p         = 5      # p>=4. Only the first 4 variables are relevant
 
-# Options for HTBoost: modality is the key parameter guiding hyperparameter tuning and learning rate.
-# :fast and :fastest only fit one model at default parameters, while :compromise and :accurate perform
-# automatic hyperparameter tuning. 
-
-loss      = :multiclass 
-modality  = :compromise   # :accurate, :compromise (default), :fast, :fastest
-priortype = :hybrid
-
-nfold     = 1             # nfold=1 and nofullsample=true for fair comparison to LightGBM
-nofullsample = true 
-
-verbose    = :Off 
-warnings   = :On
-
-# Multinomial logistic to draw data.
+# Multinomial logistic to draw data. Functions vary from very smooth (exp(1*...))
+# to only moderately smooth (exp(8*...)). 
 
 f_1(x,b)    = b./(1.0 .+ (exp.(1.0*(x .- 1.0) ))) .- 0.1*b 
 f_2(x,b)    = b./(1.0 .+ (exp.(2.0*(x .- 0.5) ))) .- 0.1*b 
@@ -56,9 +53,28 @@ f_4(x,b)    = b./(1.0 .+ (exp.(8.0*(x .+ 0.5) ))) .- 0.1*b
 b1v = [0.0,1.0,1.0,0.3,0.3]   # coefficients first class
 b2v = [0.0,0.3,0.3,1.0,1.0]   # coefficients second class 
 
-# END USER'S OPTIONS  
+``` 
+Options for HTBoost.
+loss = :multiclass.
+The number of classes is not a user's input. 
+We set nfold=1 and nofullsample=true for fair comparison to LightGBM. 
 
-# generates data from 3 classes 
+```julia
+
+loss      = :multiclass 
+modality  = :compromise   # :accurate, :compromise (default), :fast, :fastest
+
+nfold     = 1             
+nofullsample = true 
+verbose     = :Off 
+
+```
+
+Simulate data.
+
+```julia 
+
+# generates data from a multinomials with 3 classes 
 function rnd_3classes(x,b1v,b2v)
 
   class_values = [0.0,1.0,2.0]
@@ -86,25 +102,36 @@ function rnd_3classes(x,b1v,b2v)
   return y 
 end 
 
-# generate data
+
 n_test = 100_000
 x,x_test = randn(n,p), randn(n_test,p)
 y        = rnd_3classes(x,b1v,b2v)
 y_test   = rnd_3classes(x_test,b1v,b2v)
 
-# fit HTBoost
-param  = HTBparam(loss=loss,priortype=priortype,nfold=nfold,
-                   verbose=verbose,warnings=warnings,modality=modality,nofullsample=nofullsample)
-    
-data   = HTBdata(y,x,param)
+```
+Fit HTBoost.
+Notice the additional output of *HTBpredict( )*
+Compare predictions using the (minus) multinomial log-likelihood and the hit rate.
 
+```julia
+
+# fit HTBoost
+param  = HTBparam(loss=loss,nfold=nfold,nofullsample=nofullsampleverbose=verbose,modality=modality)
+data   = HTBdata(y,x,param)
 output = HTBfit(data,param)
-yf,class_values,ymax = HTBpredict(x_test,output)
+
+yf,class_values,ymax = HTBpredict(x_test,output) 
 hit_rate = mean(ymax .== y_test)
 
 loss     = HTBmulticlass_loss(y_test,yf,param.class_values)
 
 println("\n HTBoost hit rate $hit_rate and loss $loss ")
+
+```
+Fit LightGBM.
+Notice the additional output of *HTBpredict( )*
+
+```julia
 
 # lightGBM 
 estimator = LGBMClassification(   # LGBMRegression(...)
@@ -126,7 +153,7 @@ x_train = x[1:n_train,:]; y_train = Float64.(y[1:n_train])
 x_val   = x[n_train+1:end,:]; y_val = Float64.(y[n_train+1:end])
 
 # parameter search over num_leaves and max_depth
-splits = (collect(1:n_train),collect(1:min(n_train,100)))  # goes around the problem that at least two training sets are required by search_cv (we want the first)
+splits = (collect(1:n_train),collect(1:min(n_train,100)))  
 
 params = [Dict(:num_leaves => num_leaves,
            :max_depth => max_depth) for
@@ -145,6 +172,7 @@ estimator.max_depth  = lightcv[minind][1][:max_depth]
 LightGBM.fit!(estimator,x_train,y_train,(x_val,y_val),verbosity=-1)
 yf_gbm = LightGBM.predict(estimator,x_test)   # (n_test,num_class) 
 
+# from probabilities, compute the most likely outcome. 
 ymax_gbm = zeros(eltype(class_values),n_test)
 
 for i in eachindex(ymax)
@@ -156,4 +184,9 @@ loss     = HTBmulticlass_loss(y_test,yf_gbm,param.class_values)
 
 println("\n LightGBM hit rate $hit_rate and loss $loss ")
 
-
+```
+HTBoost in this case has a substantially lower loss, which is not surprising given that the simulated data has substantial smoothness. 
+```markdown 
+HTBoost hit rate 0.5255 and loss 96171.01
+LightGBM hit rate 0.52407 and loss 96276.94
+```

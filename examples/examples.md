@@ -22,13 +22,10 @@ Other distributions (loss functions)
   * [Huber and t unbiased](../examples/Huber%20and%20t%20unbiased.jl) (outlier robust losses in HTBoost and lightGBM)
   * [t distribution](../examples/t.jl) (the recommended robust loss in HTBoost)
   * [Gamma distribution](../examples/Gamma.jl) (discusses options if min(y)>0)
-  * [L2loglink](../examples/L2loglink.jl) (discusses more options if min(y)≥0, whether continuous, count, or rank)
-  * [Ranking](../examples/Ranking.jl) (discussion of options for ranking tasks)
 
 Others
 
   * [Offset (exposure)](../examples/Offset.jl) (how to add an offset, common in e.g. insurance, biology ...)
-  * [Beyond accurate](../examples/Beyond%20accurate.jl) (some suggestions when chasing maximum accuracy)
   * [Sparsity penalization](../examples/Sparsity%20penalization.jl) (how HTBoost improves forecasting by feature selection when p is large)
   * [Speedups with sparsevs](../examples/Speedups%20with%20sparsevs.jl) (how HTBoost speeds up feature selection when p is large)
 
