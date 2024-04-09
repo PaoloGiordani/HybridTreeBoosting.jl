@@ -1,6 +1,8 @@
 ## Learning HTBoost via examples
 
-A good way to familiarize yourself with HTBoost and compare (its performance to LigthGBM) is to study the following examples:
+The examples are Julia scripts that you can run. Some as similar to the tutorials, others explore additional aspects of HTBoost.
+
+A good way to familiarize yourself with HTBoost and compare (its performance to LigthGBM) is to study and run the following examples:
   
   * [Basic use](examples/Basic%20use.jl) (main options, cv, savings and loading results, variable importance and more post-estimation analysis)
   * [Logistic](examples/Logistic.jl) (binary classification)
