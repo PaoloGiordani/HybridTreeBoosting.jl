@@ -3,16 +3,17 @@
 # You can do this by navigating to the docs directory in your terminal and running julia make.jl.
 # you can optionally host your documentation on a website like GitHub Pages or Read the Docs.
 
-push!(LOAD_PATH, "../src/")
+
+push!(LOAD_PATH, "../src/")   # for API
 
 using Documenter, HTBoost
 
 # in this case examples.md must be in the docs/src directory, or otherwise specify the path. 
 pages=[
-    "Introduction" => "../README.md",           
+    "Home" => "../README.md",           
     "Parameters" => "parameters.md",                          
     "API" => "JuliaAPI.md",
-    "Tutorials" => "src/Tutorials.md",
+    "Tutorials" => "Tutorials.md",
     "Examples (julia scripts)" => "../examples/examples.md",
     #"Table of Contents" => "toc.md",
 ]
@@ -29,16 +30,38 @@ makedocs(
     repo = "https://github.com/PaoloGiordani/HTBoost.jl", # link for edit_link
     assets = ["assets"],     # directories for images, css, etc. that are copied to the generated documentation site
 )  
+# assets = ["assets/styles.css"]  # if you have a css file in the assets directory (style)
+# logo = "assets/logo.png"       # if you have a logo in the assets directory
 
-    
+# Uncomment the following lines to deploy the documentation on GitHub Page.
+# NB: the documentation will be public !!!
 #=
-# Is this related to the page for the documentation I need to set up with GitHub Pages?
-# ????? 
-deploydocs(repo="github.com/HTBoost/HTBoost.jl.git",
+deploydocs(repo="github.com/PaoloGiordani/HTBoost.jl.git",
     target="build",
-    devbranch="main")
+    branch = "gh-pages",
+    devbranch="main",
+    push_preview = false,
+    )
 =#
 
+# Pages: NB they are public !!! 
+#  https://paologiordani.github.io/HTBoost.jl/
+#  Generate and deploy your documentation: Run the make.jl script to generate and 
+#  deploy your documentation. You can do this by running the following command in the docs/ directory:
+#  julia make.jl
+
+#=
+To run the make.jl gile 
+- Open the terminar (Command prompt)
+- cd C:\\Users\\A1810185\\OneDrive - BI Norwegian Business School (BIEDU)\\Documents\\A_Julia-scripts\\HTBoost.jl\docs
+- julia make.jl
+
+=#
+
+# If I need help, use Copilot with question: "I want the documentation for my package HTBoost in GitHub pages. What do I need to do?"
+# NB: after I run the make.jl above,  
+# your documentation should be available at https://paologiordani.github.io/HTBoost.jl/
+# This will be public, so I should do it only when ready ... 
 
 #=
 

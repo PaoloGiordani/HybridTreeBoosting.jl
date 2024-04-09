@@ -1,11 +1,11 @@
 
 Note: all Julia symbols can be replaced by strings. e.g. loss=:L2 can be replaced by loss="L2".
 
-## Parameters in HTBoost that are more likely to be modified by the user
+## Parameters more likely to be modified by user
 
 - `loss`             [:L2] Supported distributions:
     - :L2 (Gaussian)
-    - logistic (binary classification)
+    - :logistic (binary classification)
     - :multiclass (multiclass classification)
     - :t (student-t, robust alternative to :L2)
     - :Huber 
@@ -18,10 +18,10 @@ Note: all Julia symbols can be replaced by strings. e.g. loss=:L2 can be replace
     - :hurdleL2loglink (zero-inflated *y*)
     - :hurdleL2 (zero-inflated *y*)
 
-- See the examples for uses of each loss function. Fixed coefficients (such as shape for :gamma, dispersion and dof for :t, and overdispersion for :gammaPoisson) are computed internally by maximum likelihood. Inspect them using *HTBcoeff()*.
+- See the [examples](../examples/examples.md) and [tutorials](src/tutorials.md) for uses of each loss function. Fixed coefficients (such as shape for :gamma, dispersion and dof for :t, and overdispersion for :gammaPoisson) are computed internally by maximum likelihood. Inspect them using *HTBcoeff()*.
 In *HTBpredict()*, predictions are for E(*y*) if predict=:Ey (default), while predict=:Egamma forecasts the fitted parameter ( *E(logit(prob)* for :logistic, *log(E(y))* for :gamma etc ... )
 
-- `modality`         [:compromise] Options are: :accurate, :compromise (default), :fast, :fastest.
+- `modality`         [:compromise]  Options are: :accurate, :compromise (default), :fast, :fastest.  
                      :fast and :fastest run only one model, while :compromise and :accurate cross-validate the most important parameters.
                      :fast runs only one model (only cv number of trees) at values defined in param = *HTBparam()*. 
                      :fastest runs only one model, setting lambda=0.2, nfold=1 and nofullsample=true (does not re-estimate on the full sample after cv).
@@ -58,9 +58,10 @@ In *HTBpredict()*, predictions are for E(*y*) if predict=:Ey (default), while pr
 - `warnings`        [:On] or :Off
 
 
-## Parameters that may sometimes be be modified by user
+## Parameters less frequently modified by user
 
-- `priortype`               [:hybrid] :hybrid encourages smoothness, but allows both smooth and sharp splits, :smooth forces smooth splits,
+- `priortype`               [:hybrid] Options are: :hybrid, :smooth, :disperse.  
+:hybrid encourages smoothness, but allows both smooth and sharp splits, :smooth forces smooth splits,
                             :disperse is :hybrid but with no penalization encouraging smooth functions (not recommended in most cases).
                             Set to :smooth if you want to force derivatives to be defined everywhere, but note that this disengages hybrid trees and can lead to substantial loss of accuracy if the function is not smooth everywhere. 
 
