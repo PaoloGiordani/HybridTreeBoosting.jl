@@ -31,7 +31,7 @@ data = HTBdata(y,x) #  where x is DataFrame
 param = HTBparam(cat_features=[:country,:industry])         
 ```
 
-See [examples/Categoricals.jl](../../../examples/Categoricals.jl) for a discussion of how HTBoost treats categoricals under the hood. Key points:
+See [Categoricals.jl](../examples/Categoricals.jl) for a discussion of how HTBoost treats categoricals under the hood. Key points:
 - Missing values are assigned to a new category.
 - If there are only 2 categories, a 0-1 dummy is created. For anything more than two categories, it uses a variation of target encoding.
 - The categories are encoded by their mean, frequency and variance. (For financial variables, the variance may be more informative than the mean.)

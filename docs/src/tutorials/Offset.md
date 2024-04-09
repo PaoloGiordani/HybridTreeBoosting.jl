@@ -40,4 +40,4 @@ with offsets. The program will run but categorical information will be used sub-
 average offset differs across categories. If categorical features are important, it may be better
 to omit the offset from *HTBdata( )*, and instead model *y/offset* with a :L2loglink loss instead of a :gamma, :Poisson or :gammaPoisson. 
 
-See [examples/Offset.jl](../../../examples/Offset.jl) for a worked-out example.
+See [Offset.jl](../examples/Offset.jl) for a worked-out example.

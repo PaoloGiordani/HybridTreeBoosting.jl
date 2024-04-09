@@ -31,7 +31,7 @@ first_date = Date("2017-12-31", Dates.DateFormat("y-m-d"))
 indtrain_a,indtest_a = HTBindexes_from_dates(df,:date,first_date,12)  # 12 periods in each block, starting from first_date
 
 ```
-See [API](../../Julia%20API.md) for more details.   
+See [API](../JuliaAPI.md) for more details.   
 The code below provides an application to forecasting international stock market indexes. 
 
 ```julia

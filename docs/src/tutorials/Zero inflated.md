@@ -34,7 +34,7 @@ y has positive mass at some value v other than zero, by setting *y* <- *y-v* and
 
 ### Example 
 
-See [examples/Zero inflated y.jl](../../../examples/Zero%20inflated%20y.jl) for a fully worked-out example, including a comparison with LightGBM. 
+See [Zero inflated y.jl](../examples/Zero%20inflated%20y.jl) for a fully worked-out example, including a comparison with LightGBM. 
 
 From a tutorial's perspective, the only points of note are the loss ....
 

@@ -10,11 +10,11 @@ using Documenter, HTBoost
 
 # in this case examples.md must be in the docs/src directory, or otherwise specify the path. 
 pages=[
-    "Home" => "../README.md",           
-    "Parameters" => "parameters.md",                          
+    "Introduction" => "Introduction.md",           
+    "Parameters" => "Parameters.md",                          
     "API" => "JuliaAPI.md",
     "Tutorials" => "Tutorials.md",
-    "Examples (julia scripts)" => "../examples/examples.md",
+    "Examples (julia scripts)" => "Examples.md",
     #"Table of Contents" => "toc.md",
 ]
 
@@ -23,14 +23,13 @@ makedocs(
     authors = "Paolo Giordani",
     modules=[HTBoost],
     format=Documenter.HTML(
-        sidebar_sitename="false", # able or disable the site name on the site bar
+        sidebar_sitename=false, # able or disable the site name on the site bar
         edit_link = "main"        # adds an "Edit on GitHub" button on documentation  
       ),
     pages=pages,
     repo = "https://github.com/PaoloGiordani/HTBoost.jl", # link for edit_link
-    assets = ["assets"],     # directories for images, css, etc. that are copied to the generated documentation site
 )  
-# assets = ["assets/styles.css"]  # if you have a css file in the assets directory (style)
+# format = ... (,assets = ["assets/styles.css"]  # if you have a css file in the assets directory (style)
 # logo = "assets/logo.png"       # if you have a logo in the assets directory
 
 # Uncomment the following lines to deploy the documentation on GitHub Page.
@@ -45,18 +44,21 @@ deploydocs(repo="github.com/PaoloGiordani/HTBoost.jl.git",
 =#
 
 # Pages: NB they are public !!! 
-#  https://paologiordani.github.io/HTBoost.jl/
+#  https://paologiordani.github.io/HTBoost.jl
 #  Generate and deploy your documentation: Run the make.jl script to generate and 
 #  deploy your documentation. You can do this by running the following command in the docs/ directory:
 #  julia make.jl
 
 #=
-To run the make.jl gile 
+To run the make.jl file
 - Open the terminar (Command prompt)
 - cd C:\\Users\\A1810185\\OneDrive - BI Norwegian Business School (BIEDU)\\Documents\\A_Julia-scripts\\HTBoost.jl\docs
-- julia make.jl
+- Activate the docs environment and run make.jl with Julia 
+  julia --project=. make.jl
 
 =#
+
+# NB: Documenter expects all However, Documenter.jl expects all source files to be located in the src/ directory or its subdirectories.
 
 # If I need help, use Copilot with question: "I want the documentation for my package HTBoost in GitHub pages. What do I need to do?"
 # NB: after I run the make.jl above,  

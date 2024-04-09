@@ -170,5 +170,5 @@ The degrees-of-freedom are estimated at 2. This is an extremely low number, due 
 (loss = :t, scale = 34.8386, dof = 2.033, variance = "scale*dof/(dof-2)")
 ```
 
-You can run the example [student t](../../../examples/t.jl) to verify that, when the errors are drawn from a student-t distribution, HTBoost consistently estimates its scale and degrees of freedom. 
+You can run the example [student t.jl](../examples/t.jl) to verify that, when the errors are drawn from a student-t distribution, HTBoost consistently estimates its scale and degrees of freedom. 
 

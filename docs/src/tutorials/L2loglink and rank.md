@@ -20,7 +20,7 @@ The reason to specify these two separate options is that a lognormal is consiste
 but not for necessarily E(y|x); the possible adjustment E(y|x) = exp(E(log(y)|x) + 0.5*Var(log(y)|x)) requires fitting a
 separate model for Var(log(y)|x), or hoping that the variance is constant. On the other hand, :L2loglink is consistent for E(y|x).
 
-See [examples/Gamma.jl](../../../examples/Gamma.jl) for a case where :L2loglink approaches the performance of :gamma even when the
+See [Gamma.jl](../examples/Gamma.jl) for a case where :L2loglink approaches the performance of :gamma even when the
 data is generated from a gamma distribution.
 
 ### L2loglink loss as an interesting option for ranking problems.

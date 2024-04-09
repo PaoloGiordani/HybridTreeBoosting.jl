@@ -18,7 +18,7 @@ Note: all Julia symbols can be replaced by strings. e.g. loss=:L2 can be replace
     - :hurdleL2loglink (zero-inflated *y*)
     - :hurdleL2 (zero-inflated *y*)
 
-- See the [examples](../examples/examples.md) and [tutorials](src/tutorials.md) for uses of each loss function. Fixed coefficients (such as shape for :gamma, dispersion and dof for :t, and overdispersion for :gammaPoisson) are computed internally by maximum likelihood. Inspect them using *HTBcoeff()*.
+- See the [examples](Examples.md) and [tutorials](Tutorials.md) for uses of each loss function. Fixed coefficients (such as shape for :gamma, dispersion and dof for :t, and overdispersion for :gammaPoisson) are computed internally by maximum likelihood. Inspect them using *HTBcoeff()*.
 In *HTBpredict()*, predictions are for E(*y*) if predict=:Ey (default), while predict=:Egamma forecasts the fitted parameter ( *E(logit(prob)* for :logistic, *log(E(y))* for :gamma etc ... )
 
 - `modality`         [:compromise]  Options are: :accurate, :compromise (default), :fast, :fastest.  

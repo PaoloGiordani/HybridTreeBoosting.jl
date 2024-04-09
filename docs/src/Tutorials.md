@@ -5,7 +5,7 @@ The [examples](../../examples/examples.md) provide more cases of different loss 
 
 ### Most important user cases 
 
-  * [Basic use](./tutorials/Basic%20use.md) (main options, cv, savings and loading results, variable importance and more post-estimation analysis)
+  * [Basic use](tutorials/Basic%20use.md) (main options, cv, savings and loading results, variable importance and more post-estimation analysis)
   * [Logistic regression](tutorials/Logistic.md) (binary classification; comparison with LightGBM)
   * [Time series and panels](tutorials/Time%20series%20and%20panels.md) (Data Frames, time series and panels/longitudinal data, with various options for cv)
   * [Categorical features](tutorials/Categoricals.md) (how HTBoost handles categorical features; comparison with LightGBM and CatBoost)
