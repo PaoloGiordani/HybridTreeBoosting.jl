@@ -29,7 +29,7 @@ I am working on solutions for R and Python users. Coming soon ...
 - [Parameters](docs/src/Parameters.md)
 - [API](docs/src/JuliaAPI.md)
 - [Tutorials (including comparison with LightGBM)](docs/src/Tutorials.md) 
-- [Examples (including comparison with LightGBM)](docs/src/Examples/Examples.md) 
+- [Examples (including comparison with LightGBM)](docs/src/Examples.md) 
 
 ## Minimal example 
 

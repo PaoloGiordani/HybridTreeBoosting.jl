@@ -1,7 +1,7 @@
 ## HTBoost Tutorials
 
 The following tutorials cover hands-on use of HTBoost.
-The [examples](../../examples/examples.md) provide more cases of different loss functions as well as illustrations to understand what HTBoost does and how it differs from other GBMs.
+The [examples](Examples.md) provide more cases of different loss functions as well as illustrations to understand what HTBoost does and how it differs from other GBMs.
 
 ### Most important user cases 
 
@@ -23,7 +23,7 @@ The [examples](../../examples/examples.md) provide more cases of different loss 
 
 ### Others
 
-  * [Offset (exposure)](tutorials/Offset.jl) (how to add an offset, common in e.g. insurance, biology ...)
+  * [Offset (exposure)](tutorials/Offset.md) (how to add an offset, common in e.g. insurance, biology ...)
   * [Beyond accurate](tutorials/Beyond%20accurate.md) (some suggestions when chasing maximum accuracy)
   
 
