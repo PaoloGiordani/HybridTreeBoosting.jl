@@ -9,7 +9,7 @@
 # PG note: SVectors would make no difference speed-wise, since not building and storing this information barely changes timing (except possibly at VERY low n): not repeated enough times to make a difference
 
 
-"""
+#=
     struct HTBtree{T<:AbstractFloat,I<:Int}
 Collects information about a single HTB tree of depth d
 
@@ -21,7 +21,7 @@ Collects information about a single HTB tree of depth d
 - `β`:             vector of dimension p (number of features), leaf values
 - `fi2`:           vector, d values of feature importance squared: increase in R2 at each split.
 - `σᵧ`:            std of gammafit for projection pursuit
-"""
+=#
 struct HTBtree{T<:AbstractFloat,I<:Int}
     i::AbstractVector{I}                           # selected feature
     μ::AbstractVector{T}
@@ -34,7 +34,7 @@ end
 
 
 
-"""
+#=
     struct Info_xi{I<:Int}
 Collects information about a feature that is used only in estimation (not needed for forecasting)
 
@@ -54,7 +54,7 @@ Collects information about a feature that is used only in estimation (not needed
 - `s`:             Float, std of feature prior to standardization 
 - `min_xi          Float, minimum(xi)   
 - `max_xi          Float, mximum(xi)
-"""
+=#
 struct Info_xi{T<:AbstractFloat,I<:Int}
     i::I                                        
     exclude::Bool 
@@ -76,7 +76,7 @@ end
 
 
 
-"""
+#=
     struct HTBoostTrees{T<:AbstractFloat,I<:Int}
 Collects information about the ensemble of HTB trees.
 
@@ -92,7 +92,7 @@ Collects information about the ensemble of HTB trees.
 - `gammafit`:                 fitted values of natural parameter (fitted values of y for regression)
 - `R2simul`
 - `Info_x`                     p vector with information about each feature 
-"""
+=#
 mutable struct HTBoostTrees{T<:AbstractFloat,I<:Int}
 
     param::HTBparam

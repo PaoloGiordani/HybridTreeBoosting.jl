@@ -4,7 +4,7 @@
 
 When one or more of the following conditions are met:
 
-  * The underlying function is smooth with respect to at least a subset of the features. This can be assessed and visualized using `HTBweightedtau()` (see [Basic use](tutorials/Basic%20use.md))
+  * The underlying function is smooth with respect to at least a subset of the features. This can be assessed and visualized using `HTBweightedtau()` (see [Basic use](tutorials/Basic_use.md))
   * Small or noisy datasets.
 
 ## What to do when HTBoost performs approximately as well as other GBM.

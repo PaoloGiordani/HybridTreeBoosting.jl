@@ -13,6 +13,6 @@ HTBoost should outperform other GBMs in the automatic treatment of missing value
 
 There is an option *HTBparam(delete_missing=true)* to delete all rows with missing values, but, in light of the discussion above, this is not recommended. 
 
-See [Missing.jl](../examples/Missing%20data.jl) for a more detailed discussion and code to reproduce the simulations in Josse et al. 2020, including a comparison with LightGBM.
+See [Missing.jl](../examples/Missing_data.jl) for a more detailed discussion and code to reproduce the simulations in Josse et al. 2020, including a comparison with LightGBM.
 HTBoost strongly outperforms LightGBM in the settings of Josse et al. 2020.
 

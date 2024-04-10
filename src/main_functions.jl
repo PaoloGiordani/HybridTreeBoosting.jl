@@ -87,7 +87,7 @@ end
 
 
 
-"""
+#=
     HTBloglikdivide(df,y_symbol,date_symbol;overlap=0)
 
 loglikdivide is computed internally, so the user does not need to call this function for HTBoost.
@@ -110,7 +110,7 @@ by overlapping observation when y(t) = Y(t+horizon) - Y(t).
 # Example of use
     lld,ess =  HTBloglikdivide(df,:excessret,:date,overlap=h-1)
 
-""" 
+=# 
 function HTBloglikdivide(df::DataFrame,y_symbol,date_symbol;overlap = 0)
 
     overlap = Int(overlap); y_symbol = Symbol(y_symbol); date_symbol = Symbol(date_symbol)  # required by R wrapper
@@ -236,7 +236,7 @@ end
 
 
 
-"""
+#=
     HTBbst(data::HTBdata, param::HTBparam)
 HTBoost fit, number of trees defined by param.ntrees, not cross-validated.
 
@@ -245,7 +245,7 @@ HTBoost fit, number of trees defined by param.ntrees, not cross-validated.
 
 # Example of use
     HTBtrees =  HTBbst(data,param)
-"""
+=#
 function HTBbst(data0::HTBdata, param::HTBparam )
 
     # initialize HTBtrees
