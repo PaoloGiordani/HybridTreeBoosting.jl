@@ -1,5 +1,17 @@
-# Documenter creates html files in build directory. 
+#No error message when:
+#- followed the steps in Documenter.jl to create the build folder. this was probably essential!!! 
+#- I run the make.jl file in the docs directory (environment is docs, directory is docs)
+#- I have removed HTBoost from environment. I don't think this is essential, but then using HTBoost is certain to take the local HTBoost.jl package
+#- It has now created a bunch of html files in build directory. To see them ...  
+# 
+# I have not yet deployed the documentation on GitHub Pages. I will do this later.
+# To see it, open the index.html file in the build directory from FileExplorer. 
+
+# This file creates the scripts that generate the documentation. 
 # To generate the documentation: navigate to the docs directory, then run make.jl with Julia.
+# You can do this by navigating to the docs directory in your terminal and running julia make.jl.
+# you can optionally host your documentation on a website like GitHub Pages or Read the Docs.
+
 
 push!(LOAD_PATH, "../src/")   # for API
 
@@ -52,8 +64,24 @@ deploydocs(repo="github.com/PaoloGiordani/HTBoost.jl.git",
 #  deploy your documentation. You can do this by running the following command in the docs/ directory:
 #  julia make.jl
 
+#=
+To run the make.jl file
+- Open the terminar (Command prompt)
+- cd C:\\Users\\A1810185\\OneDrive - BI Norwegian Business School (BIEDU)\\Documents\\A_Julia-scripts\\HTBoost.jl\docs
+- Activate the docs environment and run make.jl with Julia 
+  julia --project=. make.jl
+
+=#
+
+# NB: Documenter expects all However, Documenter.jl expects all source files to be located in the src/ directory or its subdirectories.
+
+# If I need help, use Copilot with question: "I want the documentation for my package HTBoost in GitHub pages. What do I need to do?"
+# NB: after I run the make.jl above,  
+# your documentation should be available at https://paologiordani.github.io/HTBoost.jl/
+# This will be public, so I should do it only when ready ... 
 
 #=
+
 
 TO GENERATE A TABLE OF CONTENTS FOR MY PACKAGE DOCUMENTATION USING Documenter.jl
 

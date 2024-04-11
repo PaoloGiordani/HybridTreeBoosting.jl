@@ -75,8 +75,8 @@ yf     = HTBpredict(x_test,output)
 
 ## Main features and advantages of HTBoost 
 
-- Hybrid trees build on smooth trees, which are more accurate than standard trees if f(x) is smooth wrt at least some of the features, but can escape local minima that occasionally trap boosted smooth trees. See [Hybrid Trees.jl](examples/Hybrid_trees.jl).
-- Hybrid trees also refine each tree with a modified single-index model, which allows them to more efficiently capture some types of data on which standard trees struggle. See [Projection Pursuit Regression.jl](examples/Projection_pursuit_regression.jl). For more on when HTBoost can be expected to outperform other GBMs, see [Outperforming other GBM](Outperforming_other_GBM.md).
+- Hybrid trees build on smooth trees, which are more accurate than standard trees if f(x) is smooth wrt at least some of the features, but can escape local minima that occasionally trap boosted smooth trees. See [Hybrid Tree](examples/Hybrid_trees.md).
+- Hybrid trees also refine each tree with a modified single-index model, which allows them to more efficiently capture some types of data on which standard trees struggle. See [Projection Pursuit Regression](examples/Projection_pursuit_regression.md). For more on when HTBoost can be expected to outperform other GBMs, see [Outperforming other GBM](Outperforming_other_GBM.md).
 - Ease of use: a parsimonious cross-validation of the most important parameters is performed automatically if modality = :compromise or :accurate, while modality = :fast and :fastest fit just one model at default parameters.
 - Adapts to both dense and sparse settings. Unless n/p is large, one of the parameters being cross-validated is a sparsity-inducing penalization, which can result in more aggressive variable selection compared to standard boosting.
 - Additional coefficients (e.g. overdispersion for gammaPoisson, shape for Gamma, dof for t) are estimated internally by maximum likelihood; no user's input or cv required.

@@ -18,7 +18,7 @@ HTBoost fixes these two problems by correcting for the bias, and recalibrating t
 
 As a result, the :t loss in HTBoost is, unlike the Huber loss in XGBoost and LightGBM, more accurate than the :L2 loss when residuals are leptokurtik (fat-tailed) or strongly skewed, *as long as errors are iid*. If errors are heteroskedastic (i.e. if var(ε) depends on *x*) neither the Huber nor the t distributions will in general recover the true E(*y*|*x*) asymptotically.
 
-See the examples [Huber and t unbiased](../examples/Huber_and_t_unbiased.jl) and [student t](../examples/t.jl) for a slightly more detailed presentation. I intend to discuss these results more extensively in a paper in the near future.
+See the examples [Huber and t unbiased](../examples/Huber_and_t_unbiased.md) and [student t](../examples/t.md) for a slightly more detailed presentation. I intend to discuss these results more extensively in a paper in the near future.
 
 The code below illustrates these points.
 
@@ -170,5 +170,5 @@ The degrees-of-freedom are estimated at 2. This is an extremely low number, due 
 (loss = :t, scale = 34.8386, dof = 2.033, variance = "scale*dof/(dof-2)")
 ```
 
-You can run the example [student t.jl](../examples/t.jl) to verify that, when the errors are drawn from a student-t distribution, HTBoost consistently estimates its scale and degrees of freedom. 
+You can run the example [student t](../examples/t.md) to verify that, when the errors are drawn from a student-t distribution, HTBoost consistently estimates its scale and degrees of freedom. 
 

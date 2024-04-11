@@ -72,7 +72,7 @@ In *HTBpredict()*, predictions are for E(*y*) if predict=:Ey (default), while pr
 - `depth`              [5] tree depth. Unless modality = :fast or :fastest, this is over-written as depth is cross-validated. See *HTBfit()* for more options.
 
 - `weights`                 NOTE: weights for weighted likelihood are set in *HTBdata()*, not in *HTBparam()*.
-- `offset`                  NOTE: offsets (aka exposures) are set in *HTBdata()*, not in *HTBparam()*. See examples/Offset or exposure.jl     
+- `offset`                  NOTE: offsets (aka exposures) are set in *HTBdata()*, not in *HTBparam()*. See [offset tutorial](tutorials/Offset.md) and [offset example](examples/Offset.md)    
 
 - `sparsity_penalization`   [0.3] positive numbers encourage sparsity. The range [0.0-1.5] should cover most scenarios. 
                             Automatically cv in modality=:compromise and :accurate. Increase to obtain a more parsimonious model, set to 0 for standard boosting.
