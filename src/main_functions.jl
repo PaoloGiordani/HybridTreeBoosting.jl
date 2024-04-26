@@ -1350,7 +1350,7 @@ For feature i, computes gamma(x_i) - gamma(x_i=mean(x_i)) for x_i between q1st a
 - `data::HTBdata`
 - `output`
 - `features::Vector{Int}`        position index (in data.x) of features to compute partial dependence plot for
-- `other_xs::Vector{Float}`      (keyword), a size(data.x)[1] vector of values at which to evaluate the responses. []
+- `other_xs::Vector{Float}`      (keyword), a size(data.x)[2] vector of values at which to evaluate the responses. []
                                  Note: other_xs should be expressed in standardized units, i.e. for (x_i-mean(x_i))/std(x_i)   
 - `q1st::Float`                  (keyword) first quantile to compute, e.g. 0.001. Last quantile is 1-q1st. [0.01]
 - `npoints::Int'                 (keyword) number of points at which to evalute f(x). [1000]
