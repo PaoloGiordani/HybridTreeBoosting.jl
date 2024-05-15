@@ -1,31 +1,33 @@
-#=
+# Categoricals
 
-**How to inform HTBoost about categorical features:** 
+## How to inform HTBoost about categorical features: 
 
 - If cat_features is not specified, non-numerical features (e.g. Strings) are treated as categorical
 - If cat_features is specified, it can be a vector of Integers (positions), a vector of Strings (corresponding to 
   data.fnames, which must be provided) or a vector of Symbols (the features' names in the dataframe).
 
-# Example of use: all categorical features are non-numerical. 
+**Example of use: all categorical features are non-numerical.**
+```julia 
     param = HTBparam()  
-
-# Example of use: specify positions in data.x
-
+```
+**Example of use: specify positions in data.x**
+```julia 
     param = HTBparam(cat_features=[1])
     param = HTBparam(cat_features=[1,9])
-
-# Example of use: specify names from data.fnames 
-
+```
+**Example of use: specify names from data.fnames** 
+```julia 
     data = HTBdata(y,x,param,fnames=["country","industry","earnings","sales"]) 
     param = HTBparam(cat_features=["country","industry"])
+```
 
-# Example of use: specify names in dataframe 
-
+**Example of use: specify names in dataframe** 
+```julia 
     data = HTBdata(y,x) #  where x is DataFrame                           
     param = HTBparam(cat_features=[:country,:industry])         
+```
 
-
-**How HTBoost handles categorical features:**
+## How HTBoost handles categorical features:
 
 - Missing values are assigned to a new category.
 - If there are only 2 categories, a 0-1 dummy is created. For anything more than two categories, it uses a variation of target encoding.
@@ -58,7 +60,7 @@ It seems reasonable to assume that target encoding, by its very nature, will gen
 HTBoost a promising tool for high dimensional categorical features. The current treatment of categorical features is however quite
 crude compared to CatBoost, so some of these gains are not yet realized. 
 
-=#
+```julia
 number_workers  = 8  # desired number of workers
 using Distributed
 nprocs()<number_workers ? addprocs( number_workers - nprocs()  ) : addprocs(0)
@@ -190,4 +192,4 @@ println("\n LightGBM default, ignore_cat_lightgbm = $ignore_cat_lightgbm  " )
 println("\n in-sample R2      ", 1 - mean((yhat_gbm_default - y).^2)/var(y)  )
 println(" out-of-sample R2  ", 1 - mean((yf_gbm_default - y_test).^2)/var(y_test) )
 
-
+```

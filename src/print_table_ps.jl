@@ -1,15 +1,15 @@
-"""
+#=
 
 Paul Soderlind printTable, printmat, printlnPs: functions for nicer table and matrix printing.
 
 Downloaded from https://github.com/PaulSoderlind/JuliaTutorial, December 2021
 
-"""
+=#
 
 using Dates
 
 #------------------------------------------------------------------------------
-"""
+#=
     printmat([fh::IO],x...;colNames=[],rowNames=[],
              width=10,prec=3,NoPrinting=false,StringFmt="",cell00="")
 Print all elements of a matrix (or several) with predefined formatting. It can also handle
@@ -50,7 +50,7 @@ printmat(x;colNames=["a","b"],opt...)     #notice ; and ...
 - The prefixN and suffixN could potentially be made function inputs. This would allow
 a fairly flexible way to format tables.
 Paul.Soderlind@unisg.ch
-"""
+=#
 function printmat(fh::IO,x...;colNames=[],rowNames=[],
                   width=10,prec=3,NoPrinting=false,StringFmt="",cell00="")
 
@@ -127,14 +127,14 @@ printmat(x...;colNames=[],rowNames=[],width=10,prec=3,NoPrinting=false,StringFmt
 
 
 #------------------------------------------------------------------------------
-"""
+#=
     printlnPs([fh::IO],z...;width=10,prec=3)
 Subsitute for println, with predefined formatting.
 # Input
 - `fh::IO`:    (optional) file handle. If not supplied, prints to screen
 - `z::String`: string, numbers and arrays to print
 Paul.Soderlind@unisg.ch
-"""
+=#
 function printlnPs(fh::IO,z...;width=10,prec=3)
 
   for x in z                              #loop over inputs in z...
@@ -161,7 +161,7 @@ printlnPs(z...;width=10,prec=3) = printlnPs(stdout::IO,z...;width=width,prec=pre
 
 
 #------------------------------------------------------------------------------
-"""
+#=
     fmtNumPs(z,width=10,prec=2,justify="right";prefix="",suffix="")
 Create a formatted string of a float (eg, "%10.4f"), nothing (""),
 while other values are passed through. Strings are right (or left) justified
@@ -171,7 +171,7 @@ and can optionally be given prefix and suffix (eg, ",")
 to align with the printing of floats with the same prec.
 # Requires
 - Printf (for 1.6-), fmtNumPsC (for < 1.6)
-"""
+=#
 function fmtNumPs(z,width=10,prec=2,justify="right";prefix="",suffix="")
 
   isa(z,Bool) && (z = convert(Int,z))             #Bool -> Int
@@ -215,10 +215,10 @@ end
 
 
 #------------------------------------------------------------------------------
-"""
+#=
     fmtNumPsC(fmt,z)
 c fallback solution for formatting of floating point number. Used if VERSION < v"1.6-"
-"""
+=#
 function fmtNumPsC(fmt,z)                           #c fallback solution
   if ismissing(z) || isnan(z) || isinf(z)    #asprintf does not work for these cases
     str = string(z)

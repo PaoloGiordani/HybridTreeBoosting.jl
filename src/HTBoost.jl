@@ -1,7 +1,7 @@
 module HTBoost
 
-export HTBinfo, HTBloglikdivide, HTBparam, HTBdata, HTBfit, HTBpredict, HTBrelevance, HTBpartialplot,
- HTBmarginaleffect, HTBtree, HTBoostTrees, HTBindexes_from_dates, losscv, HTBweightedtau, HTBmulticlass_loss,
+export HTBinfo, HTBloglikdivide, HTBtree, HTBparam, HTBdata, HTBfit, HTBpredict, HTBrelevance, HTBpartialplot,
+ HTBmarginaleffect, HTBoostTrees, HTBindexes_from_dates, losscv, HTBweightedtau, HTBmulticlass_loss,
  HTBcoeff,HTBoutput 
 
 using Distributed, SharedArrays, LinearAlgebra,Statistics, DataFrames,Dates, Random

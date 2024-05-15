@@ -9,12 +9,12 @@
 # Note: HTBindices_from_dates (for expanding window cv) is in main_functions.jl since it is called by user.
 
 
-"""
+#=
     indicescv(j,nfold,sharevalidation,n,indices)
 indtrain,indtest = indicescv(j,nfold,sharevalidation,n,indices)
 Intended use: ytrain = data.y[indtrain], xtrain = data.x[indtrain,:], ytest = data.y[indtest], xtest = data.x[indtest,:]
 indices = [i for i in 1:n] for contiguous blocks, indices = shuffle([i for i = 1:n]) for randomized train and test data
-"""
+=#
 function indicescv(j::I,nfold::I,sharevalidation,n::I,indices::Vector{I}) where I<:Int  # j = 1,...,nfold
 
     if nfold == I(1)
@@ -45,7 +45,7 @@ end
 
 
 
-"""
+#=
     indicescv_panel_purge(j,nfold,sharevalidation,n,indices,dates,param.overlap)
 
 indtrain,indtest = indicescv_panel_purge(j,nfold,sharevalidation,n,indices,dates,param.overlap)
@@ -58,7 +58,7 @@ Sets the test sample with no concern for the date, and then purges from the trai
 Not the most statistically efficient way to split the data, which would be to have test set start at the first observation of a new date (and end at the last), but
 the loss of efficiency should be small. All data points are part of a test set (most important), but the training sets are not as large as they could be.
 
-"""
+=#
 function indicescv_panel_purge(j::I,nfold::I,sharevalidation,n::I,indices::Vector{I},dates::AbstractVector,overlap::I)  where I<:Int  # j = 1,...,nfold)
 
     indtrain,indtest  = indicescv(j,nfold,sharevalidation,n,indices)  # plain-vanilla split
@@ -100,7 +100,7 @@ end
 
 
 
-"""
+#=
     HTBsequentialcv( data::HTBdata, param::HTBparam; .... )
 
 ntrees,loss,meanloss,stdeloss,HTBtrees = HTBsequentialcv( data::HTBdata, param::HTBparam; .... )
@@ -124,7 +124,7 @@ sequential cross-validation for HTB. validation (early stopping) or n-fold cv fo
 - gammafit_test          vector of fitted values for nfold test samples at lowest loss (corresponding to ntrees), to be compared with y_test
 - ytest                  vector of test observations
 - problems               true if there is a computational problem 
-"""
+=#
 function HTBsequentialcv( data::HTBdata, param::HTBparam; indices=Vector(1:length(data.y)) )
 
     T = typeof(param.lambda)

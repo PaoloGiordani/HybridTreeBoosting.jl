@@ -1,13 +1,14 @@
-#=
+# gammaPoisson 
 
-**GammaPoisson for (possibly) overdisperesed count data.**
+**gammaPoisson for (potentially) overdisperesed count data.**
 
-- HTBoost with gammaPoisson (aka negative binomial) distribution on simulated data. E(y)=μ, var(y)=μ(1+αμ)
+- HTBoost with gammaPoisson (aka negative binomial) distribution on simulated data: E(y)=μ(x), var(y)=μ(1+αμ)
 - The overdispersion parameter α is estimated internally. 
 - loss=:Poisson is also available (α=0)
 
 Note: LightGMB does not have a gammaPoisson option. loss = poisson is used. 
-=#
+
+```julia 
 
 number_workers  = 8  # desired number of workers
 
@@ -173,3 +174,4 @@ end
 
 display(plot(pl[1], pl[2], pl[3], pl[4], layout=(2,2), size=(1300,800)))  # display() will show it in Plots window.
 
+```

@@ -1,5 +1,4 @@
-
-#=
+# Logistic regression for binary classification 
 
 **Short description:**
 
@@ -23,7 +22,8 @@ hyperparameter tuning by cross-validation, because this process is done automati
 for exploratory analysis and to gauge computing time, and then switch to :compromise (default)
 or :accurate.
 
-=#
+```julia 
+
 number_workers  = 8  # desired number of workers
 
 using Distributed
@@ -146,3 +146,4 @@ println("\n n = $n, p = $p, number of simulations = $nsimul, modality = $modalit
 println(" avg out-of-sample RMSE from true natural parameter, HTBoost    ", sqrt(mean(MSE1)) )
 println(" avg out-of-sample RMSE from true natural parameter, lightGBM      ", sqrt(mean(MSE2)) )
 
+```
