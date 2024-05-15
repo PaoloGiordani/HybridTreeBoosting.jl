@@ -20,6 +20,8 @@
 # preparegridsHTB()
 # gridvectorτ()
 # gridmatrixμ()
+#   fill_vectors_mugridmatrix!()
+#   standardize_y_for_kantorovic()
 # kantorovic_distance()                   rough approximate distance between the empirical distribution of xi and y, or between xi and a Gaussian, using deciles
 #
 
@@ -493,12 +495,14 @@ end
 
 
 
-# Rough approximation to the Kantorovic (aslo known as Wasserstein) distance, in terms of quantiles, between p(xi) and a standard normal
+# Rough approximation to the Kantorovic (also known as Wasserstein) distance, in terms of quantiles, between p(xi) and a standard normal
 # or between xi and another vector y (not necessarily of the same length)
 # The p-distance is [∫( q1(u) - q(u) )^p du]^1/p, https://en.wikipedia.org/wiki/Wasserstein_metric.
 # Quantiles are computed in the interval [0.025 0.975] rather than, say, [0.01 0.99] to avoid excessively penalizing fat tails, which HTBoost
 # can handle quite well at default parametrs (τ=1 flattens out in the tail, and features are standardized with a robust std)
-# NB: assumes xi and y are standardized, and, if y is provided, takes the smallest between d(xi,y) and d(xi,-y) (allowing for a minus sign)
+#
+# NB: assumes y is standardized, and (when y provided) takes the smallest between d(xi,y) and d(xi,-y) (allowing for a minus sign)
+# NB: assumes that xi is standardized.   
 # NOTE: distance(xi,y) rather than (xi,N) is appropriate for :L2, :t, :Huber, :quantile, not for :logistic
 # sqrtw=sqrt.(data.weights). y and w are weighted, so the quantiles are computed on ys*sqrt(w), xs*sqrt(w) (multiplied by n/sum(sqrtw) to make the distance a pure number.),
 # where ys and xs are (robust) standardized.
@@ -532,6 +536,28 @@ function kantorovic_distance(xi::AbstractVector{T},sqrtw::AbstractVector{T};p=1,
     return T(d)
 end
 
+# kantorovic_distance() assumes ys and xs have been standardized. Should return T[] if distance should be taken vs a Gausssian rather than y (e.g. logistic.)
+function standardize_y_for_kantorovic(data,param,ssi)   # ssi are indices 
+
+    loss = param.loss
+    T    = param.T 
+
+    # Compute standardized y, used later to compute Kantorovic distance from standardized y if y is continuous, else distance from a Gaussian (ys=[]) ).  
+    if loss in [:L2,:Huber,:t,:quantile,:lognormal]    
+        m   = median(data.y[ssi])
+        ys  = (data.y[ssi] .- m)/(T(1.25)*mean(abs.(data.y .- m))) # standardize similarly to how x has been de-meaned
+    elseif loss in [:gamma,:L2loglink,:Poisson,:gammaPoisson]   # lognormal sets data.y=log, but for not for gamma. Take logs as it is log(mean) which is modeled. 
+        ys  = log.(data.y[ssi].+T(0.01))
+        m   = median(ys)
+        ys  = (ys .- m)/(T(1.25)*mean(abs.(ys .- m)))    # standardize similarly to how x has been de-meaned       
+    elseif loss==:logistic
+        ys = T[]
+    else
+        @error "loss function misspeled or not coded"
+    end
+
+    return ys 
+end  
 
 
 # This long function computes some statistics on each feature: dichotomous, Kantorovic distance, mixed discrete-continuous ....
@@ -550,7 +576,6 @@ function gridmatrixμ(data::HTBdata,param::HTBparam,meanx,stdx;maxn::Int = 100_0
     x        = data.x
     T        = param.T 
     npoints0 = param.mugridpoints
-    loss     = param.loss
     npoints  = npoints0 + 1
     n,p      = size(data.x)
 
@@ -589,20 +614,7 @@ function gridmatrixμ(data::HTBdata,param::HTBparam,meanx,stdx;maxn::Int = 100_0
 
     n>maxn ? ssi=randperm(Random.MersenneTwister(param.seed_datacv),n)[1:maxn] : ssi=collect(1:n)
     w         = data.weights[ssi]     
-
-    # Compute standardized y, used later to compute Kantorovic distance from standardized y if y is continuous, else distance from a Gaussian (ys=[]) ).  
-    if loss in [:L2,:Huber,:t,:quantile,:lognormal]    
-        m = median(data.y[ssi])
-        ys  = (data.y[ssi] .- m)/(T(1.25)*mean(abs.(data.y .- m))) # standardize similarly to how x has been de-meaned
-    elseif loss in [:gamma,:L2loglink,:Poisson,:gammaPoisson]   # lognormal sets data.y=log, but for not for gamma. Take logs as it is log(mean) which is modeled. 
-        ys  = log.(data.y[ssi].+T(0.01))
-        m   = median(ys)
-        ys  = (ys .- m)/(T(1.25)*mean(abs.(ys .- m)))    # standardize similarly to how x has been de-meaned       
-    elseif loss==:logistic
-        ys = T[]
-    else
-        @error "loss function misspeled or not coded"
-    end
+    ys        = standardize_y_for_kantorovic(data,param,ssi)
 
     if distrib_threads
         @threads for i = 1:p

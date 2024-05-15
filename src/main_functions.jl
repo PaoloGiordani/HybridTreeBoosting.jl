@@ -1656,11 +1656,11 @@ best_model=true for single model with lowest CV loss, best_model= false for weig
 
 # Output
 - `avgtau`         scalar, average importance weighted τ over all features (also weighted by variance importance) 
-- `avg_explogtau`  scalar, exponential of average importance weighted log τ over all features (also weighted by variance importance) 
+- `avg_explogtau`  scalar, exponential of average importance weighted log τ over all features (also weighted by variance importance). Arguably the more informative measure. 
 - `avgtau_a`       p-vector of avg importance weighted τ for each feature 
 - `df`             dataframe collecting avgtau_a information (only if verbose=true)
-- `x_plot`         x-axis to plot sigmoid for avgtau, in range [-2 2] for standardized feature 
-- `g_plot`         y-axis to plot sigmoid for avgtau 
+- `x_plot`         x-axis to plot sigmoid for avg_explogtau, in range [-2 2] for standardized feature 
+- `g_plot`         y-axis to plot sigmoid for avg_explogtau 
 
 # Example of use
 
@@ -1695,27 +1695,23 @@ function HTBweightedtau(output,data;verbose::Bool=true,best_model::Bool=false)
     fnames,fi,fnames_sorted,fi_sorted,sortedindx = HTBrelevance(output,data,verbose=false,best_model=best_model)
     
     avgtau  = sum(avgtau_a.*fi)/sum(fi)
-    exp_avglogtau = exp( sum(log.(avgtau_a).*fi)/sum(fi) )
+    ind     = avgtau_a .> 0                                           # if fi=0, tau=0, leading to NaN for log(tau)
+    exp_avglogtau = exp( sum(log.(avgtau_a[ind]).*fi[ind])/sum(fi[ind]) )
 
     df = DataFrame(feature = fnames, importance = fi, avgtau = avgtau_a,
            sorted_feature = fnames_sorted, sorted_importance = fi_sorted, sorted_avgtau = avgtau_a[sortedindx])
 
     if verbose==true
-        df = DataFrame(feature = fnames, importance = fi, avgtau = avgtau_a,
-        sorted_feature = fnames_sorted, sorted_importance = fi_sorted, sorted_avgtau = avgtau_a[sortedindx])
         display(df)
         println("\n Average smoothing parameter τ is $(round(avgtau,digits=1)).")
         println("\n In sufficiently large samples, and if modality=:compromise or :accurate")
         println("\n - Values above 20-25 suggest little smoothness in important features. HTBoost's performance may slightly outperform or slightly underperform other gradient boosting machines.")
         println(" - At 10-15 or lower, HTBoost should outperform other gradient boosting machines, or at least be worth including in an ensemble.")
         println(" - At 5-7 or lower, HTBoost should strongly outperform other gradient boosting machines.")
-
-    else 
-        df = nothing     
     end 
 
     x_plot = collect(-2.0:0.01:2)
-    g_plot = sigmoidf(x_plot,0.0,avgtau,output.bestparam.sigmoid)
+    g_plot = sigmoidf(x_plot,0.0,exp_avglogtau,output.bestparam.sigmoid)
 
     return T(avgtau),T(exp_avglogtau),T.(avgtau_a),df,x_plot,g_plot
 
