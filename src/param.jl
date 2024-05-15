@@ -326,7 +326,6 @@ function HTBparam(;
     min_unique  = :Auto,         # Note: over-writes force_sharp_splits unless set to a large number. minimum number of unique values to consider a feature as continuous
     mixed_dc_sharp = false,
     tau_threshold = 10,         # threshold for imposing sharp splits
-
     force_sharp_splits = Vector{Bool}(undef,0),  # typically hidden to user: optionally, a p vector of Bool, with j-th value set to true if the j-th feature is forced to enter with a sharp split.
     force_smooth_splits = Vector{Bool}(undef,0),  # typically hidden to user: optionally, a p vector of Bool, with j-th value set to true if the j-th feature is forced to enter with a smooth split (high values of λ not allowed)
     exclude_features = Vector{Bool}(undef,0),    # typically hidden to user optionally, a p vector of Bool, with j-th value set to true if the j-th feature should not be considered as a candidate for a split
@@ -347,18 +346,18 @@ function HTBparam(;
     info_date = (date_column=0,date_first=0,date_last=0),
     sparsity_penalization = 0.3,
     p0       = :Auto,
-    sharevs  = 1.0,             # if <1, adds noise to vs, in vs phase takes a random subset. :Auto is 0.5 if n>=250k. ? Speed gains are surprisingly small, maybe because of the need to slices large matrices ?      
+    sharevs  = 1.0,              # if <1, adds noise to vs, in vs phase takes a random subset. :Auto is 0.5 if n>=250k. ? Speed gains are surprisingly small, maybe because of the need to slices large matrices ?      
     refine_obs_from_vs = false,  # true to add randomization to (μ,τ), assuming sharevs<1
     finalβ_obs_from_vs  = false,  # true to add randomization to final β
-    n_refineOptim = 10_000_000,   # Subsample size fore refineOptim. beta is always computed on the full sample.
+    n_refineOptim = 10_000_000,   # Subsample size for refineOptim. beta is always computed on the full sample.
     subsampleshare_columns = 1.0,  # if <1.0, only a random share of features is used at each split (re-drawn at each split)
     sparsevs = :Auto,           # :Auto switches it :On if sparsity_penalization>0, else :Off 
     frequency_update = 1.0,       # when sparsevs, 1 for Fibonacci, 2 to update at 2*Fibonacci etc...               
     number_best_features = 10,    # number of best feature in each node to store into best_features    
-    best_features   = Vector{I}(undef,0),
-    pvs = :Off,              # :On, :Off, :Auto. Experiments suggests modest speed gains when sparsevs=:On, but could speed up with very large p and depth > 5, at some loss of fit.   
-    p_pvs = 100,           # number of features taken to second stage (i.e. when actual G0 is used). 100 chosen by experimentation. No gains to set it lower. 
-    min_d_pvs = 4,        # minimum depth at which to start preliminary vs. >=2. 
+    best_features = Vector{I}(undef,0),
+    pvs = :Off,         # :On, :Off, :Auto. Experiments suggests modest speed gains when sparsevs=:On, but could speed up with very large p and depth > 5, at some loss of fit.   
+    p_pvs = 100,        # number of features taken to second stage (i.e. when actual G0 is used). 100 chosen by experimentation. No gains to set it lower. 
+    min_d_pvs = 4,      # minimum depth at which to start preliminary vs. >=2. 
     # grid and optimization parameters
     mugridpoints = 11,  # points at which to evaluate μ during variable selection. 5 is sufficient on simulated data, but actual data can benefit from more (due to with highly non-Gaussian features. 11 so that at d>=depth_coarse_grid, it takes [2,4,6,8,10] so symmetric.
     taugridpoints = 2,  # points at which to evaluate τ during variable selection. 1-5 are supported. If less than 3, refinement is then on a grid with more points
