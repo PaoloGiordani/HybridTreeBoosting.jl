@@ -742,7 +742,7 @@ end
 # HTBtrees can be HTBtrees_a[i] or HTBtrees_a[argmin(lossgrid)]        
 function find_force_sharp_splits(HTBtrees,data,param,cv_hybrid)
 
-    if param.priortype==:smooth || cv_hybrid==false || !isempty(param.force_sharp_splits)
+    if param.priortype in [:smooth,:sharp] || cv_hybrid==false || !isempty(param.force_sharp_splits) 
         return false,fill(false,1)
     end 
 
