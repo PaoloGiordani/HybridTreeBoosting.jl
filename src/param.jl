@@ -440,7 +440,7 @@ function HTBparam(;
         end
     end 
      
-    param = HTBparam(T,I,Symbol(loss),Symbol(losscv),Symbol(modality),T.(coeff),coeff_updated,Symbol(verbose),Symbol(warnings),I(num_warnings),randomizecv,I(nfold),nofullsample,T(sharevalidation),indtrain_a,indtest_a,T(stderulestop),T(lambda),I(depth),I(depth1),I(depthppr),Symbol(sigmoid),
+    param = HTBparam(T,I,Symbol(loss),Symbol(losscv),Symbol(modality),T.(coeff),coeff_updated,Symbol(verbose),Symbol(warnings),I(num_warnings),randomizecv,I(nfold),nofullsample,sharevalidation,indtrain_a,indtest_a,T(stderulestop),T(lambda),I(depth),I(depth1),I(depthppr),Symbol(sigmoid),
         T(meanlntau),T(varlntau),T(doflntau),T(multiplier_stdtau),T(varmu),T(dofmu),
         T(meanlntau_ppr),T(varlntau_ppr),T(doflntau_ppr),Symbol(priortype),T(max_tau_smooth),I(min_unique),mixed_dc_sharp,T(tau_threshold),force_sharp_splits,force_smooth_splits,exclude_features,augment_mugrid,cat_features,cat_features_extended,cat_dictionary,cat_values,cat_globalstats,I(cat_representation_dimension),T(n0_cat),T(mean_encoding_penalization),
         class_values,Bool(delete_missing),mask_missing,missing_features,info_date,T(sparsity_penalization),p0,sharevs,refine_obs_from_vs,finalβ_obs_from_vs,

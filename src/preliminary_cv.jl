@@ -23,12 +23,13 @@ preliminary_cv_categoricals!
 
 # modifies param0.n0_cat and param0.mean_encoding_penalization
 function preliminary_cv!(param0,data)   
-
+#=
     if param0.modality in [:fast,:fastest]
         return
     end 
-    
+=#
     preliminary_cv_categoricals!(param0,data)
+    @info "mean_encoding_penalization is set to $(param.mean_encoding_penalization) and n0_cat to $(param.n0_cat)"
 
 end     
 
@@ -43,9 +44,10 @@ function preliminary_cv_categoricals!(param0,data)
     param_cv = deepcopy(param0)
 
     param_cv.modality = :fast
-    param_cv.lambda = 0.3 
+    param_cv.lambda = 1.0 
     param_cv.depth  = 3
-    param_cv.verbose = :Off 
+    param_cv.verbose = :Off
+    param_cv.priortype = :smooth     # to avoid fitting twice  
 
     T = param0.T 
 
