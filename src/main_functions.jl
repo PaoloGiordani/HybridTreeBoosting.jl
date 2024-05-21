@@ -359,8 +359,8 @@ Forecasts from HTBoost, for y or the natural parameter.
 - `output`                      output from HTBfit
 
 # Optional inputs
-- `predict`                    [:Ey], :Ey or :Egamma. :Ey returns the forecast of y, :Egamma returns the forecast of the natural parameter.
-                               The natural parameter is logit(prob) for :logistic, and mean(log(y)) if :lognormal.
+- `predict`                    [:Ey], :Ey or :Egamma. :Ey returns the forecast of y, :Egamma returns the forecast of the natural parameter
+                               (e.g. logit(prob) for :logistic and E(log(y)|x) for :lognormal).
 - `best_model`                 [false] true to use only the single best model, false to use stacked weighted average
 - `offset`                     (n) vector, offset (or exposure), in terms of gamma (log exposure if the loss has a log-link)     
 - `cutoff_paralellel`          [20_000] if x has more than these rows, a parallellized algorithm is called (which is slower for few forecasts)
@@ -371,14 +371,14 @@ Forecasts from HTBoost, for y or the natural parameter.
 # Output for hurdle models 
 - `yf`                         (n) vector of forecasts of E(y|x) for the combined model
 - `prob0`                      (n) vector of forecasts of prob(y=0|x)
-- `prob0`                      (n) vector of forecasts of E(y|x,y /=0)
+- `yf_not0`                    (n) vector of forecasts of E(y|x,y /=0)
 
 # Output for loss = :multiclass
 - `yf`                        (n,num_class) matrix, yf[i,j] if the probability that observation i belongs to class j
 - `class_values`              (num_clas) vector, class_value[j] is the value of y associated with class j
 - `ymax`                      (n) vector, ymax[i] is the class value with highest probability at observation i. 
 
-# Example of use
+# Examples of use
     output = HTBfit(data,param)
     yf     = HTBpredict(x_oos,output)
     yf     = HTBpredict(x_oos,output,best_model=true)
@@ -438,12 +438,12 @@ end
 
 
 # prediction for hurdle model, where  param.loss in [:hurdleGamma,:hurdleL2loglink,:hurdleL2]
-# The first model is logistic regression for prob, the second is :gamma of :L2 or :L2loglink.
+# The first model is logistic regression for prob, the second is :gamma or :L2 or :L2loglink.
 # yf,prob0,yf_not0 = HTBpredict_hurdle  
 function HTBpredict_hurdle(x,output,best_model,cutoff_parallel,predict,offset)
 
-    yf_0     = HTBpredict(x,output[1],offset=[],best_model=best_model,cutoff_parallel=cutoff_parallel,predict=predict)   # offset is meant for 
-    yf_not0  = HTBpredict(x,output[2],offset=offset,best_model=best_model,cutoff_parallel=cutoff_parallel,predict=predict)   # offset is meant for 
+    yf_0     = HTBpredict(x,output[1],offset=[],best_model=best_model,cutoff_parallel=cutoff_parallel,predict=predict)    
+    yf_not0  = HTBpredict(x,output[2],offset=offset,best_model=best_model,cutoff_parallel=cutoff_parallel,predict=predict) 
 
     yf    = @. yf_0 * yf_not0    # E(y|x)
     prob0  = @. 1 - yf_0          # prob(y=0)

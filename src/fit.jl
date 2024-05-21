@@ -412,7 +412,7 @@ end
 
 
 
-# prior (minus) penalization for mean target encoding
+# prior (minus) penalization for mean target encoding.
 function lnpMTE(param,info_i,T)
 
     n_cat = info_i.n_cat
@@ -420,9 +420,7 @@ function lnpMTE(param,info_i,T)
     if n_cat <= 2
         return T(0)
     else
-        ncat = n_cat - 2
-        ncatn = ncat/info_i.n
-        pe = 0.5*ncat + 1500*(ncatn.^3).*((ncatn .- 0.025).>0)
+        pe = 0.5*(n_cat - 2)*((1 - param.lambda)^2)^(param.iter - 1)    
         return -T( param.mean_encoding_penalization*pe )
     end
 
@@ -1093,6 +1091,7 @@ function fit_one_tree_inner(y::AbstractVector{T},w,HTBtrees::HTBoostTrees,r::Abs
     gammafit_ensemble,infeatures,fi = HTBtrees.gammafit,HTBtrees.infeatures,HTBtrees.fi
     best_features_current = Vector{param.I}(undef,0)
     ntree = length(HTBtrees.trees)+1
+    param.iter = ntree        
 
     n,p   = size(x)
     I     = param.I
