@@ -45,7 +45,7 @@ function preliminary_cv_categoricals!(param0,data)
     param_cv = deepcopy(param0)
 
     param_cv.modality = :fast
-    param_cv.lambda = max(param.lambda,param.T(0.33)) 
+    param_cv.lambda = max(param0.lambda,param0.T(0.33)) 
     param_cv.depth  = 4
     param_cv.verbose = :Off
 
