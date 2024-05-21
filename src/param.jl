@@ -75,6 +75,7 @@ mutable struct HTBparam{T<:AbstractFloat, I<:Int,R<:Real}
     cat_representation_dimension::I
     n0_cat::T                         # prior on number of observations for categorical data
     mean_encoding_penalization::T     # penalization on mean encoding
+    cv_categoricals::Symbol           # whether to run a preliminary cross-validation for categorical features
     class_values::Union{Vector{String},Vector{R}} # for loss=:multiclass, stores the values of unique(y)
     delete_missing::Bool
     mask_missing::Bool 
@@ -114,6 +115,7 @@ mutable struct HTBparam{T<:AbstractFloat, I<:Int,R<:Real}
     ncores::I        # nprocs()-1, number of cores available
     seed_datacv::I     # sets random seed if randomizecv=true
     seed_subsampling::I   # sets random seed used on subsampling iterations (will be seed=seed_subsampling + iter)
+    iter::I               # used internally, which tree is currently being run 
     # Newton optimization
     newton_gauss_approx::Union{Symbol,Bool}
     newton_max_steps::I
@@ -219,6 +221,12 @@ Note: all Julia symbols can be replaced by strings. e.g. :L2 can be replaced by 
 
 - `cat_features`            [] vector of indices of categorical features, e.g. [2,5], or vector of names in DataFrame,
                             e.g. [:wage,:age] or ["wage","age"]. If empty, categoricals are automatically detected as non-numerical features.
+
+- `cv_categoricals`     [:none] whether to run preliminary cross-validation on parameters related to categorical features.
+                        :none uses default parameters 
+                        :penalty runs a rought cv the penalty associated to the number of categories; recommended if n/n_cat if high for any feature, particularly if SNR is low                             
+                        :n0 runs a rough of cv the strength of the prior shrinking categorical values to the overall mean; recommended with highly unequal number of observations in different categories
+                        :both runs a rough cv or penalty and n0 
 
 - `overlap:`            [0] number of overlaps in time series and panels. Typically overlap = h-1, where y(t) = Y(t+h)-Y(t). Used for purged-CV.
 
@@ -338,7 +346,8 @@ function HTBparam(;
     cat_representation_dimension = 3,           # dimension of the representation of categorical features
     n0_cat = 1,                                  # leave at 1! See preliminary_cv for why (multiplier). automatically cv prior on number of observations for categorical data
                                                  # cv tries higher values but not lower than n0_cat.
-    mean_encoding_penalization = 0.3,            # automatically cv. The upper bound: 0.5 applies half the penalization, since this is done for all trees
+    mean_encoding_penalization = 1.0,
+    cv_categoricals = :none,            
     class_values = Vector{T}(undef,0),
     delete_missing = false,  
     mask_missing = false,                       # If true, adds a mask (dummy) for missing values. Does not seem required in any instance, and may worsen performance, although it may occasionally improve performance in small samples.
@@ -375,6 +384,7 @@ function HTBparam(;
     varGb   = NaN,      # Relevant only for first tree
     seed_datacv = 1,       # sets random seed if randomizecv=true
     seed_subsampling = 2,  # sets random seed used on subsampling iterations (will be seed=seed_subsampling + iter)
+    iter = 0,
     # Newton optimization: good default is one step in preliminary phase, and evaluate actual log-lik, and iterate to convergence for final β
     newton_gauss_approx = :Auto, # true has large speed gains for logistic for large n (loss=...exp.()). If true, and if newton_max_steps=1 (hence not in final) evaluates the Gaussian approximation to the log-likelihood rather than the likelihood itself except in final phase (given i,mu,tau)
     newton_max_steps = 1,         # vs phase. 1 seems sufficient, in combination with gaussian_approx=false, to get most of the gains  
@@ -440,14 +450,15 @@ function HTBparam(;
         end
     end 
      
-    param = HTBparam(T,I,Symbol(loss),Symbol(losscv),Symbol(modality),T.(coeff),coeff_updated,Symbol(verbose),Symbol(warnings),I(num_warnings),randomizecv,I(nfold),nofullsample,T(sharevalidation),indtrain_a,indtest_a,T(stderulestop),T(lambda),I(depth),I(depth1),I(depthppr),Symbol(sigmoid),
+    param = HTBparam(T,I,Symbol(loss),Symbol(losscv),Symbol(modality),T.(coeff),coeff_updated,Symbol(verbose),Symbol(warnings),I(num_warnings),randomizecv,I(nfold),nofullsample,sharevalidation,indtrain_a,indtest_a,T(stderulestop),T(lambda),I(depth),I(depth1),I(depthppr),Symbol(sigmoid),
         T(meanlntau),T(varlntau),T(doflntau),T(multiplier_stdtau),T(varmu),T(dofmu),
         T(meanlntau_ppr),T(varlntau_ppr),T(doflntau_ppr),Symbol(priortype),T(max_tau_smooth),I(min_unique),mixed_dc_sharp,T(tau_threshold),force_sharp_splits,force_smooth_splits,exclude_features,augment_mugrid,cat_features,cat_features_extended,cat_dictionary,cat_values,cat_globalstats,I(cat_representation_dimension),T(n0_cat),T(mean_encoding_penalization),
+        Symbol(cv_categoricals),
         class_values,Bool(delete_missing),mask_missing,missing_features,info_date,T(sparsity_penalization),p0,sharevs,refine_obs_from_vs,finalβ_obs_from_vs,
         I(n_refineOptim),T(subsampleshare_columns),Symbol(sparsevs),T(frequency_update),
         I(number_best_features),best_features,Symbol(pvs),I(p_pvs),I(min_d_pvs),I(mugridpoints),I(taugridpoints),
         I(depth_coarse_grid),I(depth_coarse_grid2),T(xtolOptim),Symbol(method_refineOptim),
-        I(points_refineOptim),I(ntrees),T(theta),loglikdivide,I(overlap),T(multiply_pb),T(varGb),I(ncores),I(seed_datacv),I(seed_subsampling),newton_gauss_approx,
+        I(points_refineOptim),I(ntrees),T(theta),loglikdivide,I(overlap),T(multiply_pb),T(varGb),I(ncores),I(seed_datacv),I(seed_subsampling),I(iter),newton_gauss_approx,
         I(newton_max_steps),I(newton_max_steps_final),T(newton_tol),T(newton_tol_final),I(newton_max_steps_refineOptim),linesearch)
 
     param_constraints!(param) # enforces constraints across options. Must be repeated in HTBfit.
@@ -582,6 +593,18 @@ function HTBdata(y0::Union{AbstractVector,AbstractMatrix,AbstractDataFrame},x::U
     end      
 
     y = y0[:,1]    
+    miny = minimum(y)
+
+    if param.warnings == :On 
+        if param.loss in [:L2,:Huber,:t] && miny>0
+            @info "Since minimum(y)>0, consider using a loss function such as L2loglink,gamma,or lognormal." 
+            if param.loss in [:L2,:Huber,:t] && miny>0
+                @info "Since minimum(y)>0, consider using a loss function such as :L2loglink,:gamma,or :lognormal." 
+            elseif param.loss in [:L2,:Huber,:t] && miny==0
+                @info "Since minimum(y)=0, consider using a loss function such as :L2loglink,:hurdleGamma,:hurdleL2loglink,:hurdleL2,:hurldelognormal" 
+            end 
+        end 
+    end
 
     y = store_class_values!(param,y)   # stores class values in param, and transforms y in T, leaving missing as missing 
 

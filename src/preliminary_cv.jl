@@ -8,7 +8,8 @@ preliminary_cv!
 preliminary_cv_categoricals!
 
 
-1) For categorical data, if modality is not :fastest, runs a preliminary cv to select n0_cat and  mean_encoding_penalization.
+1) For categorical data, can run a preliminary cv to select n0_cat and  mean_encoding_penalization.
+   What is cv depend on param.cv_categoricals, which can be :none,:n0,:penalty,:both
    This is done with a double loop. 
 
    for n0 
@@ -23,11 +24,7 @@ preliminary_cv_categoricals!
 
 # modifies param0.n0_cat and param0.mean_encoding_penalization
 function preliminary_cv!(param0,data)   
-
-    if param0.modality in [:fast,:fastest]
-        return
-    end 
-    
+ 
     preliminary_cv_categoricals!(param0,data)
 
 end     
@@ -36,22 +33,38 @@ end
 
 function preliminary_cv_categoricals!(param0,data)
 
+
     if isempty(param0.cat_features)
+        return
+    end 
+
+    if param0.cv_categoricals==:none
         return
     end 
 
     param_cv = deepcopy(param0)
 
     param_cv.modality = :fast
-    param_cv.lambda = 0.3 
-    param_cv.depth  = 3
-    param_cv.verbose = :Off 
+    param_cv.lambda = max(param.lambda,param.T(0.33)) 
+    param_cv.depth  = 4
+    param_cv.verbose = :Off
 
     T = param0.T 
 
-    n0_multiplier_a = T.([1 10 100])
-    mep_a = T.([0.0, 0.25, 0.5])
-   
+    n0_multiplier_a = T.([1])
+    mep_a = T.([1])
+
+    if param0.cv_categoricals == :n0
+        n0_multiplier_a = T.([0.1,1,10,100])
+    elseif param0.cv_categoricals == :penalty    
+        mep_a = T.([0.0,0.5,1.0,2.0,4.0])
+    elseif param0.cv_categoricals == :both
+        n0_multiplier_a = T.([0.1,1,10,100])
+        mep_a = T.([0.0,0.5,1.0,2.0,4.0])
+    else 
+        @error "param.cv_categoricals must take values in [:none,:n0,:penalty,:both]"    
+    end 
+
     mep_a0 = copy(mep_a)
 
     loss0 = T(Inf)
