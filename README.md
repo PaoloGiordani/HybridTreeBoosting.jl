@@ -119,9 +119,7 @@ See [speeding up HTBoost](docs/src/tutorials/Faster%20large%20n.md) for suggesti
 ## References
 
 
-## Licence ?????? Apache 2 for CatBoost, EvoTrees and H2O, MIT for LightGBM
-
-... Apache something about patent rights ...
+## Licence Apache 2 for CatBoost, EvoTrees and H2O, MIT for LightGBM
 
 © Paolo Giordani, 2024. Licensed under the Apache License, Version 2.0. See LICENSE file for more details.
 

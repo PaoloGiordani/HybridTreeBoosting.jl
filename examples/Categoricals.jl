@@ -30,14 +30,17 @@
 - Missing values are assigned to a new category.
 - If there are only 2 categories, a 0-1 dummy is created. For anything more than two categories, it uses a variation of target encoding.
 - The categories are encoded by their mean, frequency and variance. (For financial variables, the variance may be more informative than the mean.)
-- Smooth splits are particularly promising with target encoding, particularly in high dimensions (lots of categories). 
 - One-hot-encoding with more than 2 categories is not supported, but is easily implemented as data preprocessing.
-- If modality is :accurate or :compromise, a quick and rough cross-validation is performed over two parameters:
-  - The prior sample size n0 for target encoding.
-  - The penalization attached to categorical features, which mitigates the over-representation of categorical features
-    in the final model due to data leakage. (This seems to be a new approach to the problem: it has the advantage of
-    being fast and using the entire sample. Data leakage remains, and implies that train set loss is lower than validation loss). 
-
+- Mean target encoding leads to data leakage, with categorical features selected too frequently. To mitigate this problem, HTBoost employs
+  a penalization on categorical features, which is a function of the number of categories. This penalization is set by param.mean_encoding_penalization
+  (default 1). There is also a param.n0_cat, which controls the strength of the prior shrinking each categorical value to the overall mean (default 1).
+  
+  param.cv_categoricals can be used to perform a rough cross-validation of n0_cat and/or mean_encoding_penalization, as follows:
+ `cv_categoricals`     [:none] whether to run preliminary cross-validation on parameters related to categorical features.
+                        :none uses default parameters 
+                        :penalty runs a rough cv the penalty associated to the number of categories; recommended if n/n_cat if high for any feature, particularly if SNR is low                             
+                        :n0 runs a rough of cv the strength of the prior shrinking categorical values to the overall mean; recommended with highly unequal number of observations in different categories
+                        :both runs a rough cv of penalty and n0 
 
 **An example with simulated data**
 
@@ -49,17 +52,17 @@ LightGBM does not use target encoding, and can completely break down (very poor 
 is high in relation to n (e.g. n=10k,n_cat=1k). (The LightGBM manual https://lightgbm.readthedocs.io/en/latest/Advanced-Topics.html suggests
 treating high dimensional categorical features as numerical or embedding them in a lower-dimensional space.)
 
-CatBoost (note: code in separate Python file), in contrast, adopts target encoding as default, can handle very high dimensionality and
-has a sophisticated approach to avoiding data leakage which HTBoost is missing.
-In spite of the absence of data leakage (which would presumably benefit HTBoost as well), in this simple simulation set-up
-HTBoost substantially outperforms CatBoost if n_cat is high and the categorical feature interacts with the continuous feature,
-presumably because target encoding generates smooth functions in this set-up.   
-It seems reasonable to assume that target encoding, by its very nature, will generate smooth functions in most settings, making 
+CatBoost, in contrast, adopts mean target encoding as default, can handle very high dimensionality and
+has a sophisticated approach to avoiding data leakage which HTBoost is missing. (HTBoost resorts to a penalization on categorical features instead.) CatBoost also interacts categorical features, while HTBoost does not.
+In spite of the less sophisticated treatment of categoricals, in this simple simulation set-up HTBoost substantially outperforms CatBoost if n_cat is high and the categorical feature interacts with the continuous feature,
+presumably because target encoding generates smooth functions in this setting.
+
+It seems reasonable to assume that target encoding, by its very nature, will generate smooth functions in many settings, making 
 HTBoost a promising tool for high dimensional categorical features. The current treatment of categorical features is however quite
 crude compared to CatBoost, so some of these gains are not yet realized. 
 
 =#
-number_workers  = 8  # desired number of workers
+number_workers  = 1  # desired number of workers
 using Distributed
 nprocs()<number_workers ? addprocs( number_workers - nprocs()  ) : addprocs(0)
 @everywhere using HTBoost
@@ -75,14 +78,14 @@ using LightGBM
 Random.seed!(1)
 
 n          =     10_000   # sample size   
-ncat       =     100     # number of categories (actual number may be lower as they are drawn with reimmission)
+ncat       =     1000     # number of categories (actual number may be lower as they are drawn with reimmission)
 
 bcat       =     1.0      # coeff of categorical feature (if 0, categories are not predictive)
 b1         =     1.0      # coeff of continuous feature 
 stde       =     1.0      # error std
 
-cat_distrib =   "chi"  # distribution for categorical effects: "uniform", "normal", "chi", "lognormal" for U(0,1), N(0,1), chi-square(1), lognormal(0,1)
-interaction_type = "step" # "none", "multiplicative", "step", "linear"
+cat_distrib =   "normal"  # distribution for categorical effects: "uniform", "normal", "chi", "lognormal" for U(0,1), N(0,1), chi-square(1), lognormal(0,1)
+interaction_type = "multiplicative" # "none", "multiplicative", "step", "linear"
 
 # specify the function f(x1,x2), with the type of interaction (if any) between x1 (continuous) and x2 (categorical)
 function yhat_x1xcat(b1,b2,x1,interaction_type)
@@ -102,7 +105,8 @@ end
 
 # HTBoost parameters 
 loss         = :L2
-modality     = :compromise # :accurate, :compromise, :fast, :fastest
+modality     = :fast       # :accurate, :compromise, :fast, :fastest
+cv_categoricals= :penalty
 depth        = 3           # fix depth to speed up estimation  
 nfold        = 1           # number of folds in cross-validation. 1 for fair comparison with LightGBM 
 nofullsample = true        # true to speed up execution when nfold=1. true for fair comparison with LightGBM 
@@ -152,7 +156,8 @@ y = yhat + stde*randn(n)
 y_test = yhat_test + stde*randn(n_test)
 
 # Fit HTBoost 
-param  = HTBparam(loss=loss,modality=modality,depth=depth,nfold=nfold,nofullsample=nofullsample,verbose=verbose,cat_features=cat_features)
+param  = HTBparam(loss=loss,modality=modality,depth=depth,nfold=nfold,nofullsample=nofullsample,
+                  verbose=verbose,cat_features=cat_features,cv_categoricals=cv_categoricals)
 data   = HTBdata(y,x,param)
 output = HTBfit(data,param,cv_grid=[depth])
 
@@ -160,14 +165,16 @@ ntrain = Int(round(n*(1-param.sharevalidation)))
 yhat   = HTBpredict(x[1:ntrain,:],output) 
 yf     = HTBpredict(x_test,output) 
 
-println("\n n and number of unique features ", [n length(unique(xcat))])
+println("\n n and number of categories ", [n length(unique(xcat))])
 println("\n HTBoost " )
 println("\n in-sample R2           ", 1 - mean((yhat - y[1:ntrain]).^2)/var(y[1:ntrain])  )
 println(" validation  R2         ", 1 - output.loss/var(y[ntrain+1:end]) )
 println(" out-of-samplesample R2 ", 1 - mean((yf - y_test).^2)/var(y_test) )
 
-println(" Average τ on categorical feature is low, suggesting gains from smoothness. ")
 avgtau,avg_explogtau,avgtau_a,dftau,x_plot,g_plot = HTBweightedtau(output,data,verbose=true,best_model=false)
+if avg_explogtau < 5
+    println(" Average τ on categorical feature is low, suggesting gains from smoothness. ")
+end 
 
 # LightGBM
 if ignore_cat_lightgbm == true
