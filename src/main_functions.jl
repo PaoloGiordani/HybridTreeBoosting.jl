@@ -768,7 +768,7 @@ end
 
 
 # HTBfit for a single model.  
-function HTBfit_single(data::HTBdata, param::HTBparam; cv_grid=[],cv_different_loss::Bool=false,cv_sharp::Bool=false,
+function HTBfit_single(data::HTBdata,param::HTBparam; cv_grid=[],cv_different_loss::Bool=false,cv_sharp::Bool=false,
         cv_sparsity=:Auto,cv_hybrid=true,cv_depthppr=false,skip_full_sample=false)   # skip_full_sample enforces nofullsample even if nfold=1 (used in other functions, not by user)
     
     T,I = param.T,param.I
@@ -783,15 +783,15 @@ function HTBfit_single(data::HTBdata, param::HTBparam; cv_grid=[],cv_different_l
         cv_grid = [1,2,3,4,5,6,7]     # NB: later code assumes this grid when cv depth
     else     
         user_provided_grid = true
-        if maximum(cv_grid)>7 && param.warnings==:On
+        if maximum(cv_grid)>7 && param0.warnings==:On
             @warn "setting param.depth higher than 6, perhaps 7, typically results in very high computing costs."
         end
     end     
 
-    lambda0 = param.lambda
+    lambda0 = param0.lambda
 
     if modality == :compromise
-        param0.lambda = max(param.lambda,param.T(0.2))
+        param0.lambda = max(param0.lambda0,param0.T(0.2))
     end 
 
     if modality in [:fast,:fastest] 
@@ -804,11 +804,11 @@ function HTBfit_single(data::HTBdata, param::HTBparam; cv_grid=[],cv_different_l
     end  
 
     if modality==:fastest
-        param0.lambda = max(param.lambda,param.T(0.2))
+        param0.lambda = max(param0.lambda,param0.T(0.2))
         param0.nofullsample = true
         isempty(param0.indtrain_a) ? param0.nfold = 1 : nothing 
 
-        if param.warnings==:On
+        if param0.warnings==:On
             if isempty(param0.indtrain_a)
                 @info "modality=:fastest is typically for preliminary explorations only. Setting param.nfold=1, param.nofullsample=true, lambda=$(param0.lambda).
                        Switch off this warning with param.warnings=:Off"
@@ -818,8 +818,6 @@ function HTBfit_single(data::HTBdata, param::HTBparam; cv_grid=[],cv_different_l
             end          
         end  
     end
-
-    preliminary_cv!(param0,data)       # preliminary cv of categorical parameters, if modality is not :fast.
 
     cvgrid0 = deepcopy(cv_grid)            
     cvgrid  = vcat(cvgrid0,cvgrid0,fill(cvgrid0[1],n_additional_models)) # default,force_sharp_splits,n_additional_models
@@ -832,7 +830,9 @@ function HTBfit_single(data::HTBdata, param::HTBparam; cv_grid=[],cv_different_l
     indtest_a             = I[]
     problems_somewhere    = 0     
 
-    param.randomizecv==true ? indices = shuffle(Random.MersenneTwister(param.seed_datacv),Vector(1:length(data.y))) : indices = Vector(1:length(data.y)) # done here to guarantee same allocation if randomizecv=true
+    param0.randomizecv==true ? indices = shuffle(Random.MersenneTwister(param0.seed_datacv),Vector(1:length(data.y))) : indices = Vector(1:length(data.y)) # done here to guarantee same allocation if randomizecv=true
+
+    preliminary_cv!(param0,data,indices)       # preliminary cv of categorical parameters, if modality is not :fast.
 
     # Cross-validate depths, on user-defined grid.
     if user_provided_grid==true

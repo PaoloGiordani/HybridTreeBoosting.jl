@@ -22,43 +22,42 @@ preliminary_cv_categoricals!
 =#
 
 
-# modifies param0.n0_cat and param0.mean_encoding_penalization
-function preliminary_cv!(param0,data)   
+# modifies param.n0_cat and param.mean_encoding_penalization
+function preliminary_cv!(param,data,indices)   
  
-    preliminary_cv_categoricals!(param0,data)
+    preliminary_cv_categoricals!(param,data,indices)
 
 end     
 
 
+function preliminary_cv_categoricals!(param,data,indices)
 
-function preliminary_cv_categoricals!(param0,data)
 
-
-    if isempty(param0.cat_features)
+    if isempty(param.cat_features)
         return
     end 
 
-    if param0.cv_categoricals==:none
+    if param.cv_categoricals==:none
         return
     end 
 
-    param_cv = deepcopy(param0)
+    # save values that will be modified in loop (to avoid deepcopy() and StackOverflow)
+    lambda,verbose,depth = param.lambda,param.verbose,param.depth
 
-    param_cv.modality = :fast
-    param_cv.lambda = max(param0.lambda,param0.T(0.33)) 
-    param_cv.depth  = 4
-    param_cv.verbose = :Off
+    # values for fast cv 
+    param.lambda = max(param.lambda,param.T(0.33)) 
+    param.depth  = 4
+    param.verbose = :Off
 
-    T = param0.T 
-
+    T = param.T 
     n0_multiplier_a = T.([1])
     mep_a = T.([1])
 
-    if param0.cv_categoricals == :n0
+    if param.cv_categoricals == :n0
         n0_multiplier_a = T.([0.1,1,10,100])
-    elseif param0.cv_categoricals == :penalty    
+    elseif param.cv_categoricals == :penalty    
         mep_a = T.([0.0,0.5,1.0,2.0,4.0])
-    elseif param0.cv_categoricals == :both
+    elseif param.cv_categoricals == :both
         n0_multiplier_a = T.([0.1,1,10,100])
         mep_a = T.([0.0,0.5,1.0,2.0,4.0])
     else 
@@ -74,13 +73,19 @@ function preliminary_cv_categoricals!(param0,data)
 
         for (j,mep) in enumerate(mep_a)
 
-            param_cv.n0_cat = param0.n0_cat*n0
-            param_cv.mean_encoding_penalization = mep
-            output = HTBfit(data,param_cv) 
-            loss_a[i,j] = output.loss
+            param.n0_cat = param.n0_cat*n0
+            param.mean_encoding_penalization = mep
+            #output = HTBfit(data,param)
+            #loss_a[i,j] = output.loss
+            # loss = output.loss 
+            ntrees,loss,meanloss,stdeloss,HTBtrees1st,indtest,gammafit_test,y_test,problems = HTBsequentialcv(data,param,indices=indices)
+            loss_a[i,j] = loss 
+            #t = HTBsequentialcv(data,param,indices=indices)
+            #loss_a[i,j] = t.loss 
 
-            if output.loss < loss0
-                loss0 = output.loss
+
+            if loss < loss0
+                loss0 = loss
             else 
                  mep_a = mep_a[1:j-1]        # if mep_a = T.([0.0, 0.25, 0.5])
                 break
@@ -93,7 +98,13 @@ function preliminary_cv_categoricals!(param0,data)
     end
 
     minloss,cartesian_index = findmin(loss_a)
-    param0.n0_cat = param0.n0_cat*n0_multiplier_a[cartesian_index[1]]
-    param0.mean_encoding_penalization = mep_a0[cartesian_index[2]]
+    param.n0_cat = param.n0_cat*n0_multiplier_a[cartesian_index[1]]
+    param.mean_encoding_penalization = mep_a0[cartesian_index[2]]
+
+    # reinstate original values
+    param.lambda = lambda 
+    param.depth  = depth 
+    param.verbose = verbose
+    
 
 end 
