@@ -37,18 +37,26 @@ See [Categoricals](../examples/Categoricals.md) for a discussion of how HTBoost 
 - The categories are encoded by their mean, frequency and variance. (For financial variables, the variance may be more informative than the mean.)
 - One-hot-encoding with more than 2 categories is not supported, but is easily implemented as data preprocessing.
 
+## Cross-validation of categorical parameters 
+
+ `param.cv_categoricals` can be used to perform a rough cross-validation of `n0_cat` and/or `mean_encoding_penalization`, as follows:
+ - `cv_categoricals = :none` uses default parameters 
+ - `cv_categoricals = :penalty` runs a rough cv the penalty associated to the number of categories; recommended if n/n_cat if high for any feature, particularly if SNR is low                             
+ - `cv_categoricals = :n0` runs a rough of cv the strength of the prior shrinking categorical values to the overall mean; recommended with highly unequal number of observations in different categories.
+- `cv_categoricals = :both` runs a rough cv of penalty and n0 
+
 ### Comparison to LightGBM and CatBoost
 
 Different packages differ substantially in their treatment of categorical features.  
 LightGBM does not use target encoding, and can completely break down (very poor in-sample and oos fit) when the number of categories is high in relation to n (e.g. n=10k, #cat=1k). (The LightGBM manual suggests
-treating high dimensional categorical features as numerical or embedding them in a lower-dimensional space.) It can, however, perform very well in low-dimensional cases.
+treating high dimensional categorical features as numerical or embedding them in a lower-dimensional space.) It can, however, perform very well in lower-dimensional cases.
 
 CatBoost, in contrast, adopts mean target encoding as default, can handle very high dimensionality and
-has a sophisticated approach to avoiding data leakage which HTBoost is missing.
-In spite of the absence of data leakage (which would presumably benefit HTBoost as well), in this simple simulation set-up HTBoost substantially outperforms CatBoost if n_cat is high and the categorical feature interacts with the continuous feature,
+has a sophisticated approach to avoiding data leakage which HTBoost is missing. (HTBoost resorts to a penalization on categorical features instead.) CatBoost also interacts categorical features, while HTBoost does not.
+In spite of the less sophisticated treatment of categoricals, in this simple simulation set-up HTBoost substantially outperforms CatBoost if n_cat is high and the categorical feature interacts with the continuous feature,
 presumably because target encoding generates smooth functions in this setting.
 
-It seems reasonable to assume that target encoding, by its very nature, will generate smooth functions in most settings, making 
+It seems reasonable to assume that target encoding, by its very nature, will generate smooth functions in many settings, making 
 HTBoost a promising tool for high dimensional categorical features. The current treatment of categorical features is however quite
 crude compared to CatBoost, so some of these gains are not yet realized. 
 
@@ -90,7 +98,8 @@ bcat       =     1.0      # coeff of categorical feature (if 0, categories are n
 b1         =     1.0      # coeff of continuous feature 
 stde       =     1.0      # error std
 
-cat_distrib =   "chi"  # distribution for categorical effects: "uniform", "normal", "chi", "lognormal" for U(0,1), N(0,1), chi-square(1), lognormal(0,1)
+cat_distrib =   "normal"  # distribution for categorical effects: "uniform", "normal", "chi", "lognormal" for U(0,1), N(0,1), chi-square(1), lognormal(0,1)
+interaction_type = "multiplicative" # "none", "multiplicative", "step", "linear"
 
 # specify the function f(x1,x2), with the type of interaction (if any) between x1 (continuous) and x2 (categorical)
 function yhat_x1xcat(b1,b2,x1,interaction_type)
@@ -110,14 +119,17 @@ return yhat
 end 
 
 ```
-We select modality=:compromise rather than :fast to cv parameters related to categoricals. However, to speed up estimation, we fix depth and set nfold = 1. 
+cv_categoricals = :none uses default parameters for categorical features.
+To speed up estimation, we set modality=:fast, depth=3, nfold=1 and nofullsample= true.
 
 ```julia
 
 # HTBoost parameters 
 loss         = :L2
-modality     = :compromise # :accurate, :compromise, :fast, :fastest
-depth        = 3           # fix depth to speed up estimation  
+modality     = :fast       # :accurate, :compromise, :fast, :fastest
+cv_categoricals = :none    # :none (default), :penalty, :n0, :both
+
+depth        = 3           # fix depth to further speed up estimation  
 nfold        = 1           # number of folds in cross-validation. 1 for fair comparison with LightGBM 
 nofullsample = true        # true to speed up execution when nfold=1. true for fair comparison with LightGBM 
 verbose      = :Off
@@ -185,7 +197,7 @@ and now fit HTBoost and LightGBM. (We don't show CatBoost here.)
 
 # Fit HTBoost 
 param  = HTBparam(loss=loss,modality=modality,depth=depth,nfold=nfold,
-                 nofullsample=nofullsample,verbose=verbose,cat_features=cat_features)
+                 nofullsample=nofullsample,verbose=verbose,cat_features=cat_features,cv_categoricals=cv_categoricals)
 data   = HTBdata(y,x,param)
 output = HTBfit(data,param,cv_grid=[depth])  # cv_grid=[depth] needed to combine modality=:compromise with depth not cv    
 
@@ -193,23 +205,22 @@ ntrain = Int(round(n*(1-param.sharevalidation)))
 yhat   = HTBpredict(x[1:ntrain,:],output)    # in-sample fitted value
 yf     = HTBpredict(x_test,output)           # out-of-sample forecasts
 
-println("\n n and number of unique features ", [n length(unique(xcat))])
+println("\n n and number of categories ", [n length(unique(xcat))])
 println("\n HTBoost " )
 println("in-sample R2           ", 1 - mean((yhat - y[1:ntrain]).^2)/var(y[1:ntrain])  )
 println(" validation  R2         ", 1 - output.loss/var(y[ntrain+1:end]) )
 println(" out-of-samples R2      ", 1 - mean((yf - y_test).^2)/var(y_test) )
 
 ```
-
-In this case n/n_cat is fairly low (n=10k,n_cat=100), the effect of data-leakage is very modest:
+Test-set fit is higher than training-sample, but in line with validation-set. 
 
 ```
- n and number of unique features [10000 100]
+ n and number of categories [10000 100]
 
  HTBoost
- in-sample R2           0.6974
- validation  R2         0.6872
- out-of-samples R2      0.6815
+ in-sample R2           0.657
+ validation  R2         0.645
+ out-of-samples R2      0.643
 ```
 
 Let's inspect function smoothness to gauge whether accuracy gains vs LightGBM can be expected, with the caveat that the different treatment of categoricals makes this comparison less reliable here.
@@ -222,17 +233,19 @@ The categorical feature has a very low average τ, indicating near-linearity. La
 
 ```markdown
 
- Row │ feature      importance  avgtau    sorted_feature  sorted_importance  sorted_avgtau 
+Row │ feature      importance  avgtau    sorted_feature  sorted_importance  sorted_avgtau 
      │ String       Float32     Float64   String          Float32            Float64       
 ─────┼─────────────────────────────────────────────────────────────────────────────────────
-   1 │ x1            28.5416    2.50313   x2                      66.77           0.641853 
-   2 │ x2            66.77      0.641853  x1                      28.5416         2.50313  
-   3 │ x2_cat_freq    0.754102  2.2       x2_cat_var               3.93435        1.26217  
-   4 │ x2_cat_var     3.93435   1.26217   x2_cat_freq              0.754102       2.2      
+   1 │ x1             45.4137   0.682357  x2                       46.9929        0.558092
+   2 │ x2             46.9929   0.558092  x1                       45.4137        0.682357
+   3 │ x2_cat_freq     1.78321  1.92352   x2_cat_var                5.81018       1.26407
+   4 │ x2_cat_var      5.81018  1.26407   x2_cat_freq               1.78321       1.92352
 
- Average smoothing parameter τ is 1.2.
-...
-  At 5-7 or lower, HTBoost should strongly outperform other gradient boosting machines.
+ Average smoothing parameter τ is 0.7.
+ 
+ ...
+
+ At 5-7 or lower, HTBoost should strongly outperform other gradient boosting machines.
 
 ```
 Fit LightGBM, at default values. 
@@ -264,42 +277,43 @@ println(" out-of-sample R2  ", 1 - mean((yf_gbm_default - y_test).^2)/var(y_test
 ```markdown
 LightGBM default, ignore_cat_lightgbm = false
 
- in-sample R2      0.6982
- out-of-sample R2  0.6773
+ in-sample R2      0.660
+ out-of-sample R2  0.635
  ```
 
 **High dimensional categoricals**
 
 If we re-run the script withn n=10k, n_cat = 1k, LightGBM breaks down, as expected.  
-Note: while LightGBM is not suited to high-dimensional categorical, it may outperform HTBoost in lower dimensional settings in which target encoding is not appropriate. 
+Note: while LightGBM is not suited to high-dimensional categorical, it may outperform HTBoost in lower dimensional settings in which target encoding is not appropriate or effective.  
 
 ```markdown
- n and number of unique features [10000 1000]
+ n and number of categories [10000 1000]
 
 HTBoost
- out-of-samples R2      0.6173
+ out-of-samples R2      0.500
 
 LightGBM default, ignore_cat_lightgbm = false
- out-of-sample R2  0.2112
+ out-of-sample R2  0.095
 
 LightGBM default, ignore_cat_lightgbm = true
- out-of-sample R2  0.1797
+ out-of-sample R2  0.052
 
 ```
 
 In LightGBM, the bottlenecks seems to be n/n_cat rather than n_cat per se:
 here we set n=100k, n_cat=10k and its performance is again satisfactory.
-The difference in R2 may seem small, but in this example LightGBM would require a sample of roughly 1_000_000 (with n_cat=10k) to match HTBoost with 100_000. 
+The difference in R2 may seem small, but in this example LightGBM would require a sample of n > 1_000_000 (with n_cat=10k) to match HTBoost with n = 100_000. 
+(Because of the extremely smooth function used to simulate the data.)
 
 ```markdown
 
  n and number of unique features [100000 1000]
 
 HTBoost
- out-of-samples R2      0.7044
+ out-of-samples R2      0.648
 
 LightGBM default, ignore_cat_lightgbm = false
- out-of-sample R2       0.6965
+ out-of-sample R2       0.634
 
 ```
 

@@ -20,7 +20,7 @@ Understanding hybrid trees
 Other distributions (loss functions)
   * [Multiclass](examples/Multiclass.md) (multiclass classification)
   * [Zero inflated y](examples/Zero_inflated_y.md) (y≥0, continuous except for positive mass at 0)
-  * [GammaPoisson](examples/GammaPoisson.md) (aka negative binomial for count data)  
+  * [GammaPoisson](examples/gammaPoisson.md) (aka negative binomial for count data)  
   * [Huber and t unbiased](examples/Huber_and_t_unbiased.md) (outlier robust losses in HTBoost and lightGBM)
   * [t distribution](examples/t.md) (the recommended robust loss in HTBoost)
   * [Gamma distribution](examples/Gamma.md) (discusses options if min(y)>0)

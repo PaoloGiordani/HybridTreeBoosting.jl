@@ -35,9 +35,13 @@ makedocs(
 # https://www.theirishroadtrip.com/celtic-tree-of-life-symbol/
 # https://www.pinterest.com/pin/tree-of-life--89368373833333877/
 
-# Uncomment the following lines to deploy the documentation on GitHub Page.
-# NB: the documentation will be public !!!
+# NB: The following code cannot run on my local machine. It has to be on 
+# GitHub Actions, where you set up a CI service to automatically run your make.jl script whenever you push changes to your repository
+# Perhaps I just need the repo to be public? 
+#  THE .github/workflows IS MISSING !!! It's there in smartboost .... 
+# " Explain in detail how to set up the CI service in GtHub Actions."
 
+#=
 deploydocs(repo="github.com/PaoloGiordani/HTBoost.jl.git",
     target="build",
     branch = "gh-pages",
@@ -45,6 +49,7 @@ deploydocs(repo="github.com/PaoloGiordani/HTBoost.jl.git",
     push_preview = false,
     )
 
+=#
 
 # Pages: NB they are public !!! 
 #  https://paologiordani.github.io/HTBoost.jl

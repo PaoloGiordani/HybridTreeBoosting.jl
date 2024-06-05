@@ -69,7 +69,7 @@ warnings    = :On
 While the default in other GBM is to randomize the allocation to train and validation sets,
 the default in HTBoost is block cv, which is suitable for time series and panels.
 Set randomizecv=true to bypass this default. 
-See [Global equity Panel](../examples/Global_equity_Panel.md) for further options on cross-validation (e.g. sequential cv).
+See [Global Equity Panel](../examples/Global_Equity_Panel.md) for further options on cross-validation (e.g. sequential cv).
 
 ```julia
 randomizecv = false       # false (default) to use block-cv. 
@@ -152,7 +152,7 @@ Row │ feature  importance  avgtau     sorted_feature  sorted_importance  sorte
    5 │ x5          18.7333   4.24193   x1                        13.9858       0.462013
    6 │ x6          18.6076  39.6472    x2                        13.3082      32.6656
 
-Average smoothing parameter τ is 18.5.
+Average smoothing parameter τ is 8.8.
 
 In sufficiently large samples, and if modality=:compromise or :accurate
 
