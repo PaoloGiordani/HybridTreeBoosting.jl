@@ -187,6 +187,20 @@ function sigmoidf(x::AbstractVector{T},μ::T,τ::T,sigmoid::Symbol;dichotomous::
          g = @. T(0.5) + T(0.5)*( T(0.5)*τ*(x-μ)/sqrt(( T(1.0) + ( T(0.5)*τ*(x-μ) )^2  )) )
     elseif sigmoid == :sigmoidlogistic
         g = @. T(1) - T(1)/(T(1) + (exp(τ * (x - μ))))
+    elseif sigmoid == :TReLu
+        # The straightforward implementation would not be able to extrapolate for low values of xi
+        g = @. T(0.2)*τ*(x - μ)*(x > μ)
+        @. g = g*(g<1) + T(1)*(g≥1)
+       #=        
+        if μ ≥ 0
+            g = @. T(0.2)*τ*(x - μ)*(x > μ)     # positive slope 
+        else  
+            g = @. -T(0.2)*τ*(x - μ)*(x < μ)    # negative slope 
+        end
+        =#    
+        @. g = g*(g<1) + T(1)*(g≥1)        # truncate at 1
+    else 
+        @error "param.sigmoid is misspelled"     
     end
 
     return g
@@ -1265,7 +1279,7 @@ function fit_one_tree(y::AbstractVector{T},w,HTBtrees::HTBoostTrees,r::AbstractV
 
     if param.depthppr>0
         σᵧ = std(gammafit0)
-        xi = gammafit0/σᵧ    # !!! must standardize gammafit0 and save std 
+        xi = gammafit0/σᵧ    # standardize gammafit0 and save std 
         gammafit0,μfit_pp,τfit_pp,β_pp,fi2_pp = fit_one_tree_ppr(y,w,HTBtrees,r,h,xi,Info_x[end],τgrid,param)
         ifit_pp,mfit_pp = fill(-999,param.depthppr),fill(T(NaN),param.depthppr)
         push!(βfit,β_pp); μfit=vcat(μfit,μfit_pp); τfit=vcat(τfit,τfit_pp); ifit=vcat(ifit,ifit_pp); mfit=vcat(mfit,mfit_pp); fi2=vcat(fi2,fi2_pp)

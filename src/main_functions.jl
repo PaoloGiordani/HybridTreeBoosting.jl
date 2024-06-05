@@ -30,7 +30,7 @@
 #  HTBoutput             collects fitted parameters in matrices
 #  tight_sparsevs          warns if sparsevs seems to compromise fit 
 #  HTBweightedtau        computes weighted smoothing parameter
-#  HTBplotppr            plots projection pursuit regression 
+#  HTBppr_plot           provides tau and plot for projection pursuit for a single tree
 #
 # AUXILIARY FUNCTIONS (not for export)
 # from_gamma_to_Ey
@@ -677,7 +677,7 @@ Unless modality=:accurate, this stacking will typically be equivalent to the bes
 
 - `cv_grid::Vector`         Defaul [2,3,5,6]. The code performs a search in the space depth in [2,3,5,6], trying to fit few models if possible. Provide a
                             vector to over-ride (e.g. [2,4])
-- `cv_sparsity`             Default :Auto. Set to true to guarantee search over sparsity penalization or false to disactivate (and save computing time.)
+- `cv_sparsity`             Default :Auto. Set cv_sparsity = true to guarantee search over sparsity penalization or cv_sparsity=false to disactivate (and save computing time.)
                             In :Auto, whether the cv is performed or not depends on :modality, on the n/p ratio and on the signal-to-noise ratio. 
 - `cv_depthppr`             true to cv whether to add projection pursuit regression. Default is true for modality=:accurate, else false.
 
@@ -791,7 +791,7 @@ function HTBfit_single(data::HTBdata,param::HTBparam; cv_grid=[],cv_different_lo
     lambda0 = param0.lambda
 
     if modality == :compromise
-        param0.lambda = max(param0.lambda0,param0.T(0.2))
+        param0.lambda = max(param0.lambda,param0.T(0.2))
     end 
 
     if modality in [:fast,:fastest] 
@@ -1711,17 +1711,18 @@ function HTBweightedtau(output,data;verbose::Bool=true,best_model::Bool=false)
     end 
 
     x_plot = collect(-2.0:0.01:2)
-    g_plot = sigmoidf(x_plot,0.0,exp_avglogtau,output.bestparam.sigmoid)
+    g_plot = sigmoidf(x_plot,T(0),T(exp_avglogtau),output.bestparam.sigmoid)
 
     return T(avgtau),T(exp_avglogtau),T.(avgtau_a),df,x_plot,g_plot
 
 end 
 
 
-# Visualize impact of projection pursuit.
+# Visualize impact of projection pursuit for an individual tree.
+#  
 # Use: 
-# if depthppr>0
-#    yf1,yf0 = HTBplot_ppr(output,which_tree=1)
+# if param.depthppr>0
+#    yf1,yf0,tau = HTBppr_plot(output,which_tree=1)
 #    plot(yf0,yf1,title="depthppr=$(param.depthppr)")
 # end
 # 
@@ -1750,8 +1751,9 @@ function HTBplot_ppr(output;which_tree=1)
 
     β =  t.β[end]
 
-    return G*β,xi
+    return G*β,xi,t.τ
 end 
+
 
 
 # Use: force_sharp_splits = impose_sharp_splits(HTBtrees_a[best_i],param)

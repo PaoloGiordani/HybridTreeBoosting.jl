@@ -53,7 +53,7 @@ Collects information about a feature that is used only in estimation (not needed
 - `m`:             Float, mean of feature prior to standardization 
 - `s`:             Float, std of feature prior to standardization 
 - `min_xi          Float, minimum(xi)   
-- `max_xi          Float, mximum(xi)
+- `max_xi          Float, maximum(xi)
 =#
 struct Info_xi{T<:AbstractFloat,I<:Int}
     i::I                                        

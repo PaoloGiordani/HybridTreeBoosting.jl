@@ -75,6 +75,12 @@ for depthppr in [0,2]
     println(" depth = $(output.bestvalue), number of trees = $(output.ntrees) ")
     println(" out-of-sample RMSE from truth ", sqrt(sum((yf - f_test).^2)/n_test) )
 
+   if param.depthppr>0    # visualize impact of projection pursuit transformation on first tree
+      yf1,yf0,tau = HTBppr_plot(output,which_tree=1)
+      plot(yf0,yf1,title="depthppr=$(param.depthppr)")
+   end
+
+
 end 
 
 # LightGBM 

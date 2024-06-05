@@ -30,7 +30,7 @@ nprocs()<number_workers ? addprocs( number_workers - nprocs()  ) : addprocs(0)
 @everywhere using HTBoost
 
 using DataFrames, Random, Statistics
-using LinearAlgebra,Plots, Distributions
+using LinearAlgebra,Distributions
 using LightGBM
 
 Random.seed!(1)

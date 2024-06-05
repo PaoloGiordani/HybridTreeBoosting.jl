@@ -47,7 +47,7 @@ mutable struct HTBparam{T<:AbstractFloat, I<:Int,R<:Real}
     depth::I
     depth1::I
     depthppr::I        # projection pursuit depth. 0 to disactivate
-    sigmoid::Symbol  # which simoid function. :sigmoidsqrt or :sigmoidlogistic. sqrt x/sqrt(1+x^2) 10 times faster than exp.
+    sigmoid::Symbol  # which simoid function. :sigmoidsqrt or :sigmoidlogistic or :TReLu. sqrt x/sqrt(1+x^2) 10 times faster than exp.
     meanlntau::T              # Assume a mixture of two student-t for log(tau).
     varlntau::T               #
     doflntau::T
@@ -265,7 +265,7 @@ Note: all Julia symbols can be replaced by strings. e.g. :L2 can be replaced by 
 
 - `theta`                   [1]  numbers larger than 1 imply tighter penalization on β (final leaf values) compared to default.
 
-- `meanlntau`        [1.0] prior mean of log(τ). Set to higher numbers to suggest less smooth functions.        
+- `meanlntau`               [1.0] prior mean of log(τ). Set to higher numbers to suggest less smooth functions.        
 
 - `mugridpoints`       [11] number of points at which to evaluate μ during variable selection. 5 is sufficient on simulated data with normal or uniform distributions, but actual data may benefit from more (due to with highly non-Gaussian features).
                             For extremely complex and nonlinear features, more than 10 may be needed.        
@@ -319,7 +319,7 @@ function HTBparam(;
     depth  = 5,        # 3 allows 2nd degree interaction and is fast. 4 takes almost twice as much per tree on average. 5 can be 8-10 times slower per tree. However, fewer deeper trees are required, so the actual increase in computing costs is smaller.
     depth1 = 10,
     depthppr = 2,      # projection pursuit depth. 0 to disactive.
-    sigmoid = :sigmoidsqrt,  # :sigmoidsqrt or :sigmoidlogistic
+    sigmoid = :sigmoidsqrt,  # :sigmoidsqrt or :sigmoidlogistic or :TReLu
     meanlntau= 1.0,    # Assume a Gaussian for log(tau).
     varlntau = 0.5^2,  # NB see loss.jl/multiplier_stdlogtau_y(). Centers toward quasi-linearity. This is the dispersion of the student-t distribution (not the variance unless dof is high).
     doflntau = 5.0,
