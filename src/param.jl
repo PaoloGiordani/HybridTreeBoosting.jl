@@ -47,6 +47,7 @@ mutable struct HTBparam{T<:AbstractFloat, I<:Int,R<:Real}
     depth::I
     depth1::I
     depthppr::I        # projection pursuit depth. 0 to disactivate
+    ppr_in_vs::Symbol  # :On for projection pursuit included in feature selection stage 
     sigmoid::Symbol  # which simoid function. :sigmoidsqrt or :sigmoidlogistic or :TReLu. sqrt x/sqrt(1+x^2) 10 times faster than exp.
     meanlntau::T              # Assume a mixture of two student-t for log(tau).
     varlntau::T               #
@@ -319,6 +320,7 @@ function HTBparam(;
     depth  = 5,        # 3 allows 2nd degree interaction and is fast. 4 takes almost twice as much per tree on average. 5 can be 8-10 times slower per tree. However, fewer deeper trees are required, so the actual increase in computing costs is smaller.
     depth1 = 10,
     depthppr = 2,      # projection pursuit depth. 0 to disactive.
+    ppr_in_vs = :On,    # :On for projection pursuit included in variable selection phase
     sigmoid = :sigmoidsqrt,  # :sigmoidsqrt or :sigmoidlogistic or :TReLu
     meanlntau= 1.0,    # Assume a Gaussian for log(tau).
     varlntau = 0.5^2,  # NB see loss.jl/multiplier_stdlogtau_y(). Centers toward quasi-linearity. This is the dispersion of the student-t distribution (not the variance unless dof is high).
@@ -364,7 +366,7 @@ function HTBparam(;
     frequency_update = 1.0,       # when sparsevs, 1 for Fibonacci, 2 to update at 2*Fibonacci etc...               
     number_best_features = 10,    # number of best feature in each node to store into best_features    
     best_features = Vector{I}(undef,0),
-    pvs = :Off,         # :On, :Off, :Auto. Experiments suggests modest speed gains when sparsevs=:On, but could speed up with very large p and depth > 5, at some loss of fit.   
+    pvs = :Off,         # :On, :Off, :Auto. Preliminary vs fitting a stomp (added to current fit). Experiments suggests modest speed gains when sparsevs=:On, but could speed up with very large p and depth > 5, at some loss of fit.   
     p_pvs = 100,        # number of features taken to second stage (i.e. when actual G0 is used). 100 chosen by experimentation. No gains to set it lower. 
     min_d_pvs = 4,      # minimum depth at which to start preliminary vs. >=2. 
     # grid and optimization parameters
@@ -376,7 +378,7 @@ function HTBparam(;
     method_refineOptim = :pmap, #  :pmap, :distributed 
     points_refineOptim = 12,    # number of values of tau for refineOptim. Default 12. Other values allowed are 4,7.
     # miscel                    # becomes 7 once coarse_grid kicks in, unless ncores>12.
-    ntrees = 2000, # number of trees. 1000 is CatBoost default, but in HTBoost trees are shallow.  
+    ntrees = 2000, # number of trees. 1000 is CatBoost default (with maxdepth = 6).  
     theta = 1.0,   # numbers larger than 1 imply tighter penalization on β compared to default. 
     loglikdivide = :Auto,   # the log-likelhood is divided by this scalar. Used to improve inference when observations are correlated.
     overlap = 0,
@@ -450,7 +452,8 @@ function HTBparam(;
         end
     end 
      
-    param = HTBparam(T,I,Symbol(loss),Symbol(losscv),Symbol(modality),T.(coeff),coeff_updated,Symbol(verbose),Symbol(warnings),I(num_warnings),randomizecv,I(nfold),nofullsample,sharevalidation,indtrain_a,indtest_a,T(stderulestop),T(lambda),I(depth),I(depth1),I(depthppr),Symbol(sigmoid),
+    param = HTBparam(T,I,Symbol(loss),Symbol(losscv),Symbol(modality),T.(coeff),coeff_updated,Symbol(verbose),Symbol(warnings),I(num_warnings),randomizecv,I(nfold),nofullsample,sharevalidation,indtrain_a,indtest_a,T(stderulestop),T(lambda),I(depth),I(depth1),I(depthppr),
+        Symbol(ppr_in_vs),Symbol(sigmoid),
         T(meanlntau),T(varlntau),T(doflntau),T(multiplier_stdtau),T(varmu),T(dofmu),
         T(meanlntau_ppr),T(varlntau_ppr),T(doflntau_ppr),Symbol(priortype),T(max_tau_smooth),I(min_unique),mixed_dc_sharp,T(tau_threshold),force_sharp_splits,force_smooth_splits,exclude_features,augment_mugrid,cat_features,cat_features_extended,cat_dictionary,cat_values,cat_globalstats,I(cat_representation_dimension),T(n0_cat),T(mean_encoding_penalization),
         Symbol(cv_categoricals),

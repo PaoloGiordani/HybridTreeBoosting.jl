@@ -91,7 +91,7 @@ end
     HTBloglikdivide(df,y_symbol,date_symbol;overlap=0)
 
 loglikdivide is computed internally, so the user does not need to call this function for HTBoost.
-loglikdivide can be found in output = SMARTfit()
+loglikdivide can be found in output = HTBfit()
 
 The only effect of loglikdivide in HTBoost is to calibrate the strength of the prior in relation to the likelihood evidence.
 Accounts (roughly) for cross-sectional correlation using a clustered standard errors approach, and for serial correlation induced
@@ -652,7 +652,7 @@ may then cross-validate the following hyperparamters:
 1) Parameters for categorical features, if any.
 2) depth in the range 1-6.
 3) A penalization to encourage sparsity (fewer relevant features), unless n/p is large.
-4) A model without projection pursuit regression (only if modality=:accurate)
+4) A model without projection pursuit nonlinear expansion of trees (only if modality=:accurate). 
 
 The default range can be replaced by providing a vector cv_grid, e.g. 
   
@@ -678,8 +678,8 @@ Unless modality=:accurate, this stacking will typically be equivalent to the bes
 - `cv_grid::Vector`         Defaul [2,3,5,6]. The code performs a search in the space depth in [2,3,5,6], trying to fit few models if possible. Provide a
                             vector to over-ride (e.g. [2,4])
 - `cv_sparsity`             Default :Auto. Set cv_sparsity = true to guarantee search over sparsity penalization or cv_sparsity=false to disactivate (and save computing time.)
-                            In :Auto, whether the cv is performed or not depends on :modality, on the n/p ratio and on the signal-to-noise ratio. 
-- `cv_depthppr`             true to cv whether to add projection pursuit regression. Default is true for modality=:accurate, else false.
+                            In :Auto, whether the cv is performed or not depends on :modality and on the n/p ratio. (Not implemented yet: it should ideally also depend on the signal-to-noise ratio). 
+- `cv_depthppr`             true to cv whether to remove projection pursuit regression. Default is true for modality in [:compromise,:accurate], else false.
 
 
 # Output (named tuple, or vector of named tuple for hurdle models)
@@ -769,7 +769,7 @@ end
 
 # HTBfit for a single model.  
 function HTBfit_single(data::HTBdata,param::HTBparam; cv_grid=[],cv_different_loss::Bool=false,cv_sharp::Bool=false,
-        cv_sparsity=:Auto,cv_hybrid=true,cv_depthppr=false,skip_full_sample=false)   # skip_full_sample enforces nofullsample even if nfold=1 (used in other functions, not by user)
+        cv_sparsity=:Auto,cv_hybrid=true,cv_depthppr=:Auto,skip_full_sample=false)   # skip_full_sample enforces nofullsample even if nfold=1 (used in other functions, not by user)
     
     T,I = param.T,param.I
 
@@ -1008,7 +1008,7 @@ function HTBfit_single(data::HTBdata,param::HTBparam; cv_grid=[],cv_different_lo
 
     # Additional model: no projection pursuit regression
     if cv_depthppr==:Auto
-        modality==:accurate ? cv_depthppr = true : cv_depthppr = false 
+        modality in [:compromise,:accurate] ? cv_depthppr = true : cv_depthppr = false 
     end     
  
     if cv_depthppr 

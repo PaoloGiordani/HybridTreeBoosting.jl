@@ -27,6 +27,7 @@
 #  Gfitβm
 #  updateinfeatures
 #  add_depth          add one layer to the tree, for given i, using a rough grid search (optional: full optimization)
+#    add_depth_no_ppr
 #  loopfeatures       add_depth looped over features, to select best-fitting feature
 #  best_μτ_excluding_nan   in preliminary variable selection
 #  best_m_given_μτ         in prelminary vs; estimate for missing values at a given μ,τ
@@ -36,7 +37,7 @@
 #  optimize_μτ     called in refineOptim
 #  fit_one_tree
 #   fit_one_tree_inner 
-#   fit_one_tree_ppr
+#   fit_one_tree_ppr_final
 #  updateHTBtrees!
 #  HTBtreebuild
 #  median_weighted_tau  a weighted median value of τ for each feature
@@ -127,7 +128,7 @@ end
 # Efficient computations of G'(G.*h). (and of G'G)
 # If h is constant, GGh does not change and only need computing once.
 # If h is not constant, computing GGh = G'(G.*h) can be speeded up a lot by i) exploiting symmetry/transpose: GGh=Gh'Gh,
-# where Gh = G.*sqrt(t), ii) pre-allocating Gh. GGh is an input in case it does not get modified.
+# where Gh = G.*sqrt(h), ii) pre-allocating Gh. GGh is an input in case it does not get modified.
 # Note to PG: For low tree depth, it would be significantly faster to input sqrt.(h) rather than doing the computation internally,
 # but I will stick to the safer version for now.
 function update_GGh_Gr(GGh,G,Gh,r,nh,h,iter,T,priortype)
@@ -567,10 +568,8 @@ function updateinfeatures(infeatures,ifit)
 
 end
 
-
-
 # Selects best (μ,τ) for a given feature using a rough grid in τ and, as default, a rough grid on μ.
-function add_depth(t)
+function add_depth_no_ppr(t)
 
     loss,τ,μ,nan_present = best_μτ_excluding_nan(t)
 
@@ -579,6 +578,43 @@ function add_depth(t)
     else
         m = t.param.T(0)  # the value of 0 (hence meanx[i] since x here is standardized) should be relevant only when subsampling, so the training set has no missing but the full set does    end
     end
+
+    return loss,τ,μ,m,nan_present
+end 
+
+# Selects best (μ,τ) for a given feature using a rough grid in τ and, as default, a rough grid on μ.
+# If param.ppr_in_vs == :On, the best combination of (μ,τ,m) is then flexibly expanded by ppr. The loss 
+# for this feature then includes the ppr transformation, but (μ,τ,m) are unchanged.
+# This is an attempt to introduce some forward-looking behavior in the greedy feature selection algorithm. 
+function add_depth(t)
+
+    loss,τ,μ,m,nan_present = add_depth_no_ppr(t)
+
+    if t.param.depthppr>0 && t.param.ppr_in_vs==:On
+        # compute gammafit0, replacing nan with m found by rough grid 
+        xi = copy(t.xi)
+
+        if nan_present
+            xi[isnan.(xi)] .= m
+        end 
+
+        n,p = size(t.G0)
+        G   = Matrix{t.param.T}(undef,n,2*p)
+        gL  = sigmoidf(t.xi,μ,τ,t.param.sigmoid,dichotomous=t.info_i.dichotomous)
+        updateG!(G,t.G0,gL)
+        loss,gammafit0,β = fitβ(t.y,t.w,t.gammafit_ensemble,t.r,t.h,G,similar(G),t.param,t.infeatures,t.fi,t.info_i,μ,τ,m,t.param.T(Inf))   
+        zi = gammafit0/std(gammafit0)         # standardize gammafit0 for ppr 
+
+        # fit ppr (zi only feature), retain only loss 
+        # correct priors on μ and τ are given by info_x_ppr = Info_x[end], which however sets penalizations for sparsity and categorical to 0: add these later
+        loss_pp = fit_one_tree_ppr_rough(t,zi)
+
+        logpdfM = lnpM(t.param,t.info_i,t.infeatures,t.fi,t.param.T)
+        logpdfMTE = lnpMTE(t.param,t.info_i,t.param.T)       
+        loss_pp = loss_pp - (logpdfM + logpdfMTE )
+        loss  = min(loss,loss_pp)
+    end     
+
 
     return [loss,τ,μ,m]
 
@@ -638,7 +674,6 @@ function best_m_given_μτ(t,μ,τ)
     return  loss,m
 
 end
-
 
 
 
@@ -795,16 +830,16 @@ function loopfeatures_spawn(outputarray,n,p,ps,y,w,gammafit_ensemble,gammafit,r,
         ps     = ps[randperm(Random.MersenneTwister(param.seed_subsampling+2*ntree),p)[1:psmall]]                  # subs-sample, no reimmission
     end
 
-    # preliminary variable selection
-    d = I(round(log(2*size(G0,2))/log(2))) 
+    d = I(round(log(2*size(G0,2))/log(2)))  # current tree dpeth
 
+    # preliminary variable selection (experimental feature, optional)
     if param.pvs == :On && d >= param.min_d_pvs && length(ps)>2*param.p_pvs    
 
         # By setting gammafit_ensemble=gammafit_ensemble+gammafit, and G0=1, I fit a smooth stomp. 
         @sync for i in ps        
             @async begin # use @async to create a task that will be scheduled to run on any available worker process    
                if Info_x[i].exclude==false  && Info_x[i].n_unique>1
-                   t   = (y=y,w=w,gammafit_ensemble=gammafit_ensemble+gammafit,r=r,h=h,G0=ones(T,n,1),xi=x[:,i],infeatures=infeatures,fi=fi,info_i=Info_x[i],μgridi=μgrid[i],τgrid=τgrid,param=param)
+                   t   = (y=y,w=w,gammafit_ensemble=gammafit_ensemble+gammafit,r=r,h=h,G0=ones(T,n,1),xi=x[:,i],infeatures=infeatures,fi=fi,info_i=Info_x[i],info_x_ppr=Info_x[end],μgridi=μgrid[i],τgrid=τgrid,param=param)
                    future = Distributed.@spawn add_depth(t)
                    outputarray[i,:] = fetch(future)
                 end
@@ -820,7 +855,7 @@ function loopfeatures_spawn(outputarray,n,p,ps,y,w,gammafit_ensemble,gammafit,r,
     @sync for i in ps        
         @async begin # use @async to create a task that will be scheduled to run on any available worker process
             if Info_x[i].exclude==false  && Info_x[i].n_unique>1
-                t   = (y=y,w=w,gammafit_ensemble=gammafit_ensemble,r=r,h=h,G0=G0,xi=x[:,i],infeatures=infeatures,fi=fi,info_i=Info_x[i],μgridi=μgrid[i],τgrid=τgrid,param=param)
+                t   = (y=y,w=w,gammafit_ensemble=gammafit_ensemble,r=r,h=h,G0=G0,xi=x[:,i],infeatures=infeatures,fi=fi,info_i=Info_x[i],info_x_ppr=Info_x[end],μgridi=μgrid[i],τgrid=τgrid,param=param)
                 future = Distributed.@spawn add_depth(t)
                 outputarray[i,:] = fetch(future)
             end
@@ -829,7 +864,6 @@ function loopfeatures_spawn(outputarray,n,p,ps,y,w,gammafit_ensemble,gammafit,r,
 
     return outputarray
 end     
-
 
 
 # outputarray is SharedArray{T}(p,4)
@@ -852,7 +886,7 @@ function loopfeatures_distributed(outputarray,n,p,ps,y,w,gammafit_ensemble,gamma
         @sync @distributed for i in ps
 
             if Info_x[i].exclude==false  && Info_x[i].n_unique>1
-                t   = (y=y,w=w,gammafit_ensemble=gammafit_ensemble+gammafit,r=r,h=h,G0=ones(T,n,1),xi=x[:,i],infeatures=infeatures,fi=fi,info_i=Info_x[i],μgridi=μgrid[i],τgrid=τgrid,param=param)
+                t   = (y=y,w=w,gammafit_ensemble=gammafit_ensemble+gammafit,r=r,h=h,G0=ones(T,n,1),xi=x[:,i],infeatures=infeatures,fi=fi,info_i=Info_x[i],info_x_ppr=Info_x[end],μgridi=μgrid[i],τgrid=τgrid,param=param)
                 outputarray[i,:] = add_depth(t)     # [loss, τ, μ, m ]
             end
   
@@ -867,7 +901,7 @@ function loopfeatures_distributed(outputarray,n,p,ps,y,w,gammafit_ensemble,gamma
     @sync @distributed for i in ps
 
         if Info_x[i].exclude==false  && Info_x[i].n_unique>1
-            t   = (y=y,w=w,gammafit_ensemble=gammafit_ensemble,r=r,h=h,G0=G0,xi=x[:,i],infeatures=infeatures,fi=fi,info_i=Info_x[i],μgridi=μgrid[i],τgrid=τgrid,param=param)
+            t   = (y=y,w=w,gammafit_ensemble=gammafit_ensemble,r=r,h=h,G0=G0,xi=x[:,i],infeatures=infeatures,fi=fi,info_i=Info_x[i],info_x_ppr=Info_x[end],μgridi=μgrid[i],τgrid=τgrid,param=param)
             outputarray[i,:] = add_depth(t)     # [loss, τ, μ, m ]
         end
   
@@ -1198,14 +1232,13 @@ function fit_one_tree_inner(y::AbstractVector{T},w,HTBtrees::HTBoostTrees,r::Abs
 
 end
 
-
-
-# projection pursuit. xi = gammafit/std. info_xi = Info_x[end]. Always fitted on full sample.   
-function fit_one_tree_ppr(y::AbstractVector{T},w,HTBtrees::HTBoostTrees,r::AbstractVector{T},h::AbstractVector{T},xi::AbstractVector{T},info_xi,τgrid,param::HTBparam) where T<:AbstractFloat
-
-    gammafit_ensemble,infeatures,fi = HTBtrees.gammafit,HTBtrees.infeatures,HTBtrees.fi
-
-    n   = length(xi)
+ 
+# gammafit_ensemble is from the sum of previous trees (not including current, so HTBtrees.gammafit)
+# zi = gammafit0/std(gammafit0), where gammafit0 is the fit for the current tree. A tree of depth depthpper is built with zi as the only feature.
+function fit_one_tree_ppr_final(y::AbstractVector{T},w,gammafit_ensemble,infeatures,fi,r::AbstractVector{T},
+         h::AbstractVector{T},zi::AbstractVector{T},info_x_ppr,τgrid,param::HTBparam) where T<:AbstractFloat
+  
+    n   = length(zi)
     G0 = ones(T,n,1)
  
     loss0,gammafit0,μfit,τfit,infeatures,fi2,βfit = T(Inf),zeros(T,n),T[],T[],copy(infeatures),T[],T[]
@@ -1214,16 +1247,17 @@ function fit_one_tree_ppr(y::AbstractVector{T},w,HTBtrees::HTBoostTrees,r::Abstr
     for depth in 1:maxdepth 
 
         μ0,τ0,m0 = T(0),T(1),T(0)
-        loss,τ,μ,m = refineOptim(y,w,gammafit_ensemble,r,h,G0,xi,infeatures,fi,info_xi,μ0,τ0,m0,param,τgrid)
+
+        loss,τ,μ,m = refineOptim(y,w,gammafit_ensemble,r,h,G0,zi,infeatures,fi,info_x_ppr,μ0,τ0,m0,param,τgrid)
 
         # compute β on the full sample, at selected (ι,τ,μ,m) and update G0
         G   = Matrix{T}(undef,n,2^depth)
         Gh  = similar(G)
-        gL  = sigmoidf(xi,μ,τ,param.sigmoid,dichotomous=info_xi.dichotomous)
+        gL  = sigmoidf(zi,μ,τ,param.sigmoid,dichotomous=false)  # ppr is continuous even if xi is dichotomous 
         updateG!(G,G0,gL)
 
         depth==maxdepth ? finalβ="true" : finalβ="false"
-        loss,gammafit,β = fitβ(y,w,gammafit_ensemble,r,h,G,Gh,param,infeatures,fi,info_xi,μ,τ,m,T(-Inf),finalβ=finalβ)
+        loss,gammafit,β = fitβ(y,w,gammafit_ensemble,r,h,G,Gh,param,infeatures,fi,info_x_ppr,μ,τ,m,T(-Inf),finalβ=finalβ)
  
         # store values and update matrices
         μfit,τfit,βfit  = vcat(μfit,μ),vcat(τfit,τ),β
@@ -1232,7 +1266,40 @@ function fit_one_tree_ppr(y::AbstractVector{T},w,HTBtrees::HTBoostTrees,r::Abstr
 
     end
 
-    return gammafit0,μfit,τfit,βfit,fi2
+    return gammafit0,μfit,τfit,βfit,fi2,loss0
+
+end
+
+
+# gammafit_ensemble is from the sum of previous trees (not including current, so HTBtrees.gammafit)
+# zi = gammafit0/std(gammafit0), where gammafit0 is the fit for the current tree. A tree of depth depthppr is built with zi as the only feature.
+function fit_one_tree_ppr_rough(t,zi::AbstractVector{T}) where T<:AbstractFloat
+    
+# zi instead of xi and info_i = info_x_ppr 
+t2  = (y=t.y,w=t.w,gammafit_ensemble=t.gammafit_ensemble,r=t.r,h=t.h,t.G0,xi=zi,infeatures=t.infeatures,fi=t.fi,info_i=t.info_x_ppr,μgridi=t.μgridi,τgrid=t.τgrid,param=t.param)
+
+n   = length(zi)
+G0 = ones(T,n,1)
+
+loss = T(Inf)
+maxdepth = t.param.depthppr
+
+for depth in 1:maxdepth 
+
+   loss,τ,μ,m,nan_present = add_depth_no_ppr(t2)  
+
+   # update G0 and compute loss 
+   G   = Matrix{T}(undef,n,2^depth)
+   Gh  = similar(G)
+   gL  = sigmoidf(zi,μ,τ,t.param.sigmoid,dichotomous=false)   # ppr is continuous even if xi is dichotomous 
+   updateG!(G,G0,gL)
+
+   loss,gammafit,β = fitβ(t.y,t.w,t.gammafit_ensemble,t.r,t.h,G,Gh,t.param,t.infeatures,t.fi,t.info_x_ppr,μ,τ,m,T(-Inf),finalβ="false")
+   G0 = G
+
+end
+
+return loss
 
 end
 
@@ -1279,8 +1346,9 @@ function fit_one_tree(y::AbstractVector{T},w,HTBtrees::HTBoostTrees,r::AbstractV
 
     if param.depthppr>0
         σᵧ = std(gammafit0)
-        xi = gammafit0/σᵧ    # standardize gammafit0 and save std 
-        gammafit0,μfit_pp,τfit_pp,β_pp,fi2_pp = fit_one_tree_ppr(y,w,HTBtrees,r,h,xi,Info_x[end],τgrid,param)
+        zi = gammafit0/σᵧ    # standardize gammafit0 and save std 
+        gammafit0,μfit_pp,τfit_pp,β_pp,fi2_pp,loss_pp = 
+        fit_one_tree_ppr_final(y,w,HTBtrees.gammafit,HTBtrees.infeatures,HTBtrees.fi,r,h,zi,Info_x[end],τgrid,param)
         ifit_pp,mfit_pp = fill(-999,param.depthppr),fill(T(NaN),param.depthppr)
         push!(βfit,β_pp); μfit=vcat(μfit,μfit_pp); τfit=vcat(τfit,τfit_pp); ifit=vcat(ifit,ifit_pp); mfit=vcat(mfit,mfit_pp); fi2=vcat(fi2,fi2_pp)
     else 

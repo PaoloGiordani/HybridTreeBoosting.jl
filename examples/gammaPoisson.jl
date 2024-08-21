@@ -109,7 +109,7 @@ estimator = LGBMRegression(
     early_stopping_round = 100,
     num_threads = number_workers,
     max_depth = 6,      # -1 default
-    min_data_in_leaf = 100,  # 100 default 
+    min_data_in_leaf = 20,  # 20 default 
     num_leaves = 127         # 127 default  
 )
 

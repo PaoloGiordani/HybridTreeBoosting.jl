@@ -46,7 +46,7 @@ stde        = 0.1                # 0.1 in paper
 
 # Some options for HTBoost
 priortype = :hybrid        # :hybrid (default) or :smooth or :sharp
-modality  = :compromise    # :accurate, :compromise, :fast, :fastest 
+modality  = :fast       # :accurate, :compromise, :fast, :fastest 
 
 nfold           = 1        # nfold cv. 1 faster (single validation sets), default 4 is slower, but more accurate. Here nfold = 1 for fair comparison with LightGBM.
 
@@ -200,7 +200,7 @@ estimator = LGBMRegression(
     early_stopping_round = 100,
     num_threads = number_workers,
     max_depth = 6,      # -1 default
-    min_data_in_leaf = 100,  # 100 default 
+    min_data_in_leaf = 20,  # 20 default 
     num_leaves = 127         # 127 default  
 )
 

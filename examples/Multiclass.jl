@@ -117,7 +117,7 @@ estimator = LGBMClassification(   # LGBMRegression(...)
     metric = ["multi_logloss"],
     num_threads = number_workers,
     max_depth = -1,      # -1 default
-    min_data_in_leaf = 100,  # 100 default 
+    min_data_in_leaf = 20,  # 20 default 
     num_leaves = 127         # 127 default  
  )
 

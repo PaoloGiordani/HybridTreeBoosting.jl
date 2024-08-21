@@ -11,7 +11,8 @@ Documentation:
 
 A Julia implementation of Hybrid Trees Boosting as described in [HTBoost paper](provide link!!) 
 
-HTBoost attempts to eliminate or mitigate some limitations of standard boosted trees in dealing with smooth and partially smooth functions. HTBoost is slower than other boosting packages, but the use of hybrid trees (an evolution of the smooth trees in [SMARTboost](https://github.com/PaoloGiordani/SMARTboost.jl)) delivers superior accuracy in many situations, making them a promising tool, particularly when data is limited or very noisy. The [papers](##References), examples, and tutorials document instances in which HTBoost matches the performance of other GBMs with less than 20% of the data.  
+HTBoost attempts to eliminate or mitigate some limitations of standard boosted trees in dealing with smooth and partially smooth functions. It also differs from other packages in the estimation of fixed parameters and in its ability to find sparse structures.
+HTBoost is slower than other boosting packages, but the use of hybrid trees (an evolution of the smooth trees in [SMARTboost](https://github.com/PaoloGiordani/SMARTboost.jl)) delivers superior accuracy in many situations, making them a promising tool, particularly when data is limited or very noisy. The [papers](##References), examples, and tutorials document instances in which HTBoost matches the performance of other GBMs with less than 20% of the data.  
 
 ## Installation
 Latest:
