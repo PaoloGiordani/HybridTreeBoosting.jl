@@ -375,7 +375,7 @@ function HTBparam(;
     depth_coarse_grid = 5, # at this depth and higher, vs uses only τ=5 and every other second point in mugrid. 
     depth_coarse_grid2 = 7, # at this depth and higher, vs uses only τ=5 and every third second point in mugrid. 
     xtolOptim = 0.01,  # tolerance in the optimization e.g. 0.01 (measured in dμ). It is automatically reduced if tau is large 
-    method_refineOptim = :pmap, #  :pmap, :distributed 
+    method_refineOptim = :distributed, #  :pmap, :distributed 
     points_refineOptim = 12,    # number of values of tau for refineOptim. Default 12. Other values allowed are 4,7.
     # miscel                    # becomes 7 once coarse_grid kicks in, unless ncores>12.
     ntrees = 2000, # number of trees. 1000 is CatBoost default (with maxdepth = 6).  
