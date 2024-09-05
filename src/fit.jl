@@ -1067,7 +1067,7 @@ function refineOptim_μτ_excluding_nan(y,w,gammafit_ensemble,r::AbstractVector{
 
     elseif param.method_refineOptim == :distributed
 
-        @sync @distributed for indexτ in 1:eachindex(τgrid)
+        @sync @distributed for indexτ in eachindex(τgrid)
             res = optimize_μτ(y,w,gammafit_ensemble,r,h,G0,xi,param,infeatures,fi,info_i,τgrid[indexτ],μ0,T,llik0)
             lossmatrix[indexτ,1] = res.minimum
             lossmatrix[indexτ,2] = res.minimizer[1]
