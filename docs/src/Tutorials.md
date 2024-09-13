@@ -23,7 +23,9 @@ The [examples](Examples.md) provide more cases of different loss functions as we
 
 ### Others
 
+  * [Average tau](tutorials/tau_values.md) (interpreting average tau values and break-down by feature)
   * [Offset (exposure)](tutorials/Offset.md) (how to add an offset, common in e.g. insurance, biology ...)
   * [Beyond accurate](tutorials/Beyond_accurate.md) (some suggestions when chasing maximum accuracy)
+  
   
 
