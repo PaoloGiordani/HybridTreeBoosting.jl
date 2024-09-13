@@ -1440,12 +1440,12 @@ end
 
 
 
-# Computes mean weighted value of tau as. Dichotomous features are counted as sharp splits.
+# Computes mean weighted value of tau. Dichotomous features are counted as sharp splits.
 # Can then be used to force sharp splits on those features where HTBoost selects high τ, if these features contribute non-trivially to the fit.
 # Argument: sharpness may be difficult for HTBoost to fit due to the greedy, iterative nature of the algorithm (the first values will tend to be smooth)
 # Note: bounds Inf at 40, and treats dichotomous as sharp splits (so τ=40)
 # Use:
-# weighted_meean_tau = meean_weighted_tau(output.HTBtrees)   # output is (p,1), vector of median weighted values of tau
+# weighted_mean_tau = mean_weighted_tau(output.HTBtrees)   # output is (p,1), vector of median weighted values of tau
 function mean_weighted_tau(HTBtrees)
 
     i,μ,τ,fi2 = HTBoutput(HTBtrees)
