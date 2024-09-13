@@ -1656,7 +1656,8 @@ best_model=true for single model with lowest CV loss, best_model= false for weig
 
 # Output
 - `avgtau`         scalar, average importance weighted τ over all features (also weighted by variance importance) 
-- `avg_explogtau`  scalar, exponential of average importance weighted log τ over all features (also weighted by variance importance). Arguably the more informative measure. 
+- `avg_explogtau`  scalar, exponential of average importance weighted log τ over all features (also weighted by variance importance).
+                   NB: Default in printed output and plot. (Arguably the more informative measure.) 
 - `avgtau_a`       p-vector of avg importance weighted τ for each feature 
 - `df`             dataframe collecting avgtau_a information (only if verbose=true)
 - `x_plot`         x-axis to plot sigmoid for avg_explogtau, in range [-2 2] for standardized feature 
@@ -1703,7 +1704,7 @@ function HTBweightedtau(output,data;verbose::Bool=true,best_model::Bool=false)
 
     if verbose==true
         display(df)
-        println("\n Average smoothing parameter τ is $(round(avgtau,digits=1)).")
+        println("\n Average smoothing parameter τ is $(round(exp_avglogtau,digits=1)).")
         println("\n In sufficiently large samples, and if modality=:compromise or :accurate")
         println("\n - Values above 20-25 suggest little smoothness in important features. HTBoost's performance may slightly outperform or slightly underperform other gradient boosting machines.")
         println(" - At 10-15 or lower, HTBoost should outperform other gradient boosting machines, or at least be worth including in an ensemble.")
@@ -1764,3 +1765,7 @@ function impose_sharp_splits(HTBtrees::HTBoostTrees,param)
     
     return force_sharp_splits 
 end
+
+
+# EXPORT IT !!!
+function HTBplot_tau(output,) 
