@@ -30,7 +30,9 @@
 #  HTBoutput             collects fitted parameters in matrices
 #  tight_sparsevs          warns if sparsevs seems to compromise fit 
 #  HTBweightedtau        computes weighted smoothing parameter
-#  HTBppr_plot           provides tau and plot for projection pursuit for a single tree
+#  HTBplot_tau           plotting a sigmoid for a given tau 
+#  HTBplot_ppr           provides tau and plot for projection pursuit for a single tree
+#  
 #
 # AUXILIARY FUNCTIONS (not for export)
 # from_gamma_to_Ey
@@ -1580,8 +1582,8 @@ Output fitted parameters estimated from each tree, collected in matrices. Exclud
 - `fi2`       (ntrees,depth) matrix of feature importance, increase in R2 at each split
 
 # Example of use
-output = HTBfit(data,param)
-i,μ,τ,fi2 = HTBoutput(output.HTBtrees)
+    output = HTBfit(data,param)
+    i,μ,τ,fi2 = HTBoutput(output.HTBtrees)
 
 """
 function HTBoutput(HTBtrees::HTBoostTrees;exclude_pp = true)
@@ -1665,12 +1667,12 @@ best_model=true for single model with lowest CV loss, best_model= false for weig
 
 # Example of use
 
-output = HTBfit(data,param)
-avgtau,avg_explogtau,avgtau_a,dftau,x_plot,g_plot = HTBweightedtau(output,data)
-avgtau,avg_explogtau,avgtau_a,dftau,x_plot,g_plot = HTBweightedtau(output,data,verbose=false,plot_tau=false,best_model=true)
+    output = HTBfit(data,param)
+    avgtau,avg_explogtau,avgtau_a,dftau,x_plot,g_plot = HTBweightedtau(output,data)
+    avgtau,avg_explogtau,avgtau_a,dftau,x_plot,g_plot = HTBweightedtau(output,data,verbose=false,plot_tau=false,best_model=true)
 
-using Plots
-plot(x_plot,g_plot,title="avg smoothness of splits",xlabel="standardized x",label=:none,legend=:bottomright)
+    using Plots
+    plot(x_plot,g_plot,title="avg smoothness of splits",xlabel="standardized x",label=:none,legend=:bottomright)
 """
 function HTBweightedtau(output,data;verbose::Bool=true,best_model::Bool=false)
 
@@ -1718,16 +1720,17 @@ function HTBweightedtau(output,data;verbose::Bool=true,best_model::Bool=false)
 
 end 
 
+""" 
+    HTBplot_ppr(output;which_tree=1)
 
-# Visualize impact of projection pursuit for an individual tree.
-#  
-# Use: 
-# if param.depthppr>0
-#    yf1,yf0,tau = HTBppr_plot(output,which_tree=1)
-#    plot(yf0,yf1,title="depthppr=$(param.depthppr)")
-# end
-# 
-# where yf0 is the standardized prediction from the tree, and yf1 is the (non-standardized) prediction after ppr      
+Visualize impact of projection pursuit for an individual tree.
+  
+# Example of use 
+    yf1,yf0,tau = HTBplot_ppr(output,which_tree=1)
+    plot(yf0,yf1)
+
+    where yf0 is the standardized prediction from the tree, and yf1 is the (non-standardized) prediction after ppr      
+"""
 function HTBplot_ppr(output;which_tree=1)
 
     t = output.HTBtrees.trees[which_tree]
@@ -1767,5 +1770,38 @@ function impose_sharp_splits(HTBtrees::HTBoostTrees,param)
 end
 
 
-# EXPORT IT !!!
-function HTBplot_tau(output,) 
+""" 
+
+    HTBplot_tau(tau;mu=0,sigmoid=:sigmoidsqrt,range=2)
+
+Produces x and y to plot sigmoid function for a given τ (typically the average τ for a feature).  
+
+# Input 
+- `tau`                       smoothing parameter τ
+
+# Optional inputs 
+- `mu`        [0]             location parameter for sigmoid
+- `sigmoid`   [sigmoidsqrt]   :sigmoidsqrt or :sigmoidlogistic
+- `range`     [2]             x range for plot, [-range range]. x is standardized
+
+# Output
+- `x_plot`         x-axis to plot sigmoid for tau, in range [-2 2] for standardized feature 
+- `g_plot`         y-axis to plot sigmoid for tau 
+
+# Example of use
+
+    output = HTBfit(data,param)
+    avgtau,avg_explogtau,avgtau_a,dftau,x_plot,g_plot = HTBweightedtau(output,data)
+    x_plot,g_plot = HTBplot_tau(avgtau[1])     # tau of first feature
+    using Plots
+    plot(x_plot,g_plot,title="avg tau of feature 1",xlabel="standardized x",label=:none,legend=:bottomright)
+"""
+function HTBplot_tau(tau;sigmoid=:sigmoidsqrt,mu=0,range=2)
+
+    T      = Float64
+    x_plot = T.(collect(-range:0.01:range))
+    g_plot = sigmoidf(x_plot,T(0),T(tau),sigmoid)
+
+    return x_plot,g_plot
+
+end 
