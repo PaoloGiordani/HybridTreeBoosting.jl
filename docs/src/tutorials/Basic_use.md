@@ -130,7 +130,7 @@ avgtau_a is a vector array with the importance weighted tau for each feature.
 ```julia
 avgtau,avg_explogtau,avgtau_a,dftau,x_plot,g_plot = HTBweightedtau(output,data,verbose=true);
 
-plot(x_plot,g_plot,title="smoothness of splits",xlabel="standardized x",label=:none)
+plot(x_plot,g_plot,title="avg smoothness of splits",xlabel="standardized x",label=:none)
 ```
 
 The plot gives an idea of the average (importance weighted) smoothness across all splits.... 
