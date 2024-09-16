@@ -1655,6 +1655,7 @@ best_model=true for single model with lowest CV loss, best_model= false for weig
 
 # Optional inputs 
 - `verbose`   [true]  prints out the results to screen as DataFrame
+- `max_tau`   [40]    values of τ at or above this are set to Inf (hard splits) for plotting purposes
 
 # Output
 - `avgtau`         scalar, average importance weighted τ over all features (also weighted by variance importance) 
@@ -1674,7 +1675,7 @@ best_model=true for single model with lowest CV loss, best_model= false for weig
     using Plots
     plot(x_plot,g_plot,title="avg smoothness of splits",xlabel="standardized x",label=:none,legend=:bottomright)
 """
-function HTBweightedtau(output,data;verbose::Bool=true,best_model::Bool=false)
+function HTBweightedtau(output,data;verbose::Bool=true,best_model::Bool=false,max_tau=40.0)
 
     T = Float64
 
@@ -1713,8 +1714,11 @@ function HTBweightedtau(output,data;verbose::Bool=true,best_model::Bool=false)
         println(" - At 5-7 or lower, HTBoost should strongly outperform other gradient boosting machines.")
     end 
 
+    tau = exp_avglogtau   # arguably the best measure for the average smoothness of the model
+    tau ≥ max_tau ? tau = T(Inf) : tau = tau
+
     x_plot = collect(-2.0:0.01:2)
-    g_plot = sigmoidf(x_plot,T(0),T(exp_avglogtau),output.bestparam.sigmoid)
+    g_plot = sigmoidf(x_plot,T(0),tau,output.bestparam.sigmoid)
 
     return T(avgtau),T(exp_avglogtau),T.(avgtau_a),df,x_plot,g_plot
 
@@ -1783,10 +1787,15 @@ Produces x and y to plot sigmoid function for a given τ (typically the average 
 - `mu`        [0]             location parameter for sigmoid
 - `sigmoid`   [sigmoidsqrt]   :sigmoidsqrt or :sigmoidlogistic
 - `range`     [2]             x range for plot, [-range range]. x is standardized
+- `max_tau`   [40]            tau at which a hard split is assumed
+
 
 # Output
 - `x_plot`         x-axis to plot sigmoid for tau, in range [-2 2] for standardized feature 
 - `g_plot`         y-axis to plot sigmoid for tau 
+
+# Note 
+- tau ≥ 40 is interpreted as a hard split. 
 
 # Example of use
 
@@ -1796,11 +1805,13 @@ Produces x and y to plot sigmoid function for a given τ (typically the average 
     using Plots
     plot(x_plot,g_plot,title="avg tau of feature 1",xlabel="standardized x",label=:none,legend=:bottomright)
 """
-function HTBplot_tau(tau;sigmoid=:sigmoidsqrt,mu=0,range=2)
+function HTBplot_tau(tau;sigmoid=:sigmoidsqrt,mu=0,range=2,max_tau=40.0)
 
     T      = Float64
+    tau ≥ max_tau ? tau = T(Inf) : tau = tau
+
     x_plot = T.(collect(-range:0.01:range))
-    g_plot = sigmoidf(x_plot,T(0),T(tau),sigmoid)
+    g_plot = sigmoidf(x_plot,T(0),tau,sigmoid)
 
     return x_plot,g_plot
 
