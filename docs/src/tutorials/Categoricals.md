@@ -226,7 +226,7 @@ Test-set fit is higher than training-sample, but in line with validation-set.
 Let's inspect function smoothness to gauge whether accuracy gains vs LightGBM can be expected, with the caveat that the different treatment of categoricals makes this comparison less reliable here.
 
 ```julia
-avgtau,avg_explogtau,avgtau_a,dftau,x_plot,g_plot = HTBweightedtau(output,data,verbose=true,best_model=false)
+avgtau,gavgtau,avgtau_a,dftau,x_plot,g_plot = HTBweightedtau(output,data,verbose=true,best_model=false)
 ```
 The categorical feature has a very low average τ, indicating near-linearity. Large gains compared to LightGBM and CatBoost would not be surprising in this case.  
 

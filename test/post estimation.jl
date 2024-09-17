@@ -15,7 +15,7 @@ y   = f + randn(n)
     output = HTBfit(data,param)
 
     @testset "avgtau" begin
-        avgtau,avg_explogtau,avgtau_a,dftau,x_plot,g_plot = HTBweightedtau(output,data,verbose=false)
+        avgtau,gavgtau,avgtau_a,dftau,x_plot,g_plot = HTBweightedtau(output,data,verbose=false)
         @test avgtau < 1
     end
 

@@ -1214,7 +1214,7 @@ function fit_one_tree_inner(y::AbstractVector{T},w,HTBtrees::HTBoostTrees,r::Abs
 
         # store values and update matrices and param.best_features
         ifit, μfit, τfit, mfit, βfit  = vcat(ifit,i),vcat(μfit,μ),vcat(τfit,τ),vcat(mfit,m),β
-        fi2 =vcat(fi2,( sum(gammafit.^2) - sum(gammafit0.^2) )/n)  # compute feature importance: decrease in mse
+        fi2 = vcat(fi2,( sum(gammafit.^2) - sum(gammafit0.^2) )/n)  # compute feature importance: decrease in mse
         G0, loss0, gammafit0 = G, loss, gammafit
 
     end
@@ -1372,8 +1372,8 @@ function updateHTBtrees!(HTBtrees,Gβ,tree,ntree,param)
   HTBtrees.param = param
 
   for d in 1:depth
-    HTBtrees.fi2[tree.i[d]]  += tree.fi2[d]
-    HTBtrees.fr[tree.i[d]]  += 1
+    HTBtrees.fi2[tree.i[d]]  += tree.fi2[d]   # update feature importance
+    HTBtrees.fr[tree.i[d]]  += 1              # update frequency of inclusion
   end
 
   #fi = sqrt.(abs.(HTBtrees.fi2.*(HTBtrees.fi2 .>=0.0) ))  # fi is feature importance

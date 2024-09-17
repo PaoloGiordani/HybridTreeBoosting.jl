@@ -169,7 +169,7 @@ println(" validation  R2         ", 1 - output.loss/var(y[ntrain+1:end]) )
 println(" out-of-samplesample R2 ", 1 - mean((yf - y_test).^2)/var(y_test) )
 
 println(" Average τ on categorical feature is low, suggesting gains from smoothness. ")
-avgtau,avg_explogtau,avgtau_a,dftau,x_plot,g_plot = HTBweightedtau(output,data,verbose=true,best_model=false)
+avgtau,gavgtau,avgtau_a,dftau,x_plot,g_plot = HTBweightedtau(output,data,verbose=true,best_model=false)
 
 # LightGBM
 if ignore_cat_lightgbm == true

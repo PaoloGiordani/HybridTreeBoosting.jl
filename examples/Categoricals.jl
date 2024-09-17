@@ -171,8 +171,8 @@ println("\n in-sample R2           ", 1 - mean((yhat - y[1:ntrain]).^2)/var(y[1:
 println(" validation  R2         ", 1 - output.loss/var(y[ntrain+1:end]) )
 println(" out-of-samplesample R2 ", 1 - mean((yf - y_test).^2)/var(y_test) )
 
-avgtau,avg_explogtau,avgtau_a,dftau,x_plot,g_plot = HTBweightedtau(output,data,verbose=true,best_model=false)
-if avg_explogtau < 5
+avgtau,gavgtau,avgtau_a,dftau,x_plot,g_plot = HTBweightedtau(output,data,verbose=true,best_model=false)
+if gavgtau < 5
     println(" Average τ on categorical feature is low, suggesting gains from smoothness. ")
 end 
 

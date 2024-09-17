@@ -124,7 +124,7 @@ pl   = Vector(undef,length(dgp_a))
 
 for i in eachindex(dgp_a)
 
-    avgtau,avg_explogtau,avgtau_a,dftau,x_plot,g_plot = HTBweightedtau(output_a[i],data,verbose=false,best_model=false);
+    avgtau,gavgtau,avgtau_a,dftau,x_plot,g_plot = HTBweightedtau(output_a[i],data,verbose=false,best_model=false);
 
     pl[i]   = plot( x_plot,g_plot,
            title =  dgp_a[i],
@@ -153,7 +153,7 @@ While the actual function will typically be more nonlinear than implied by these
 Printing a more detailed break-down for a specific function (here Threshold Friedman)
 
 ```julia
-avgtau,avg_explogtau,avgtau_a,dftau,x_plot,g_plot = HTBweightedtau(output_a[which_function],data_a[which_function],verbose=true,best_model=false);
+avgtau,gavgtau,avgtau_a,dftau,x_plot,g_plot = HTBweightedtau(output_a[which_function],data_a[which_function],verbose=true,best_model=false);
 ```
 Notice how x6, which operates a hard split, has a high avg tau, x1,x2,x3, which enter nonlinearly, have average values of tau, and x4 and x5, which enter linearly, have small values.
 

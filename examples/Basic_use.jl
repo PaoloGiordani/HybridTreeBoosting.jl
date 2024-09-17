@@ -91,7 +91,7 @@ output = HTBfit(data,param)
 yf     = HTBpredict(x_test,output)  
 
 # feature importance and average smoothing parameter for each feature
-avgtau,avg_explogtau,avgtau_a,dftau,x_plot,g_plot = HTBweightedtau(output,data,verbose=true,best_model=false);
+avgtau,gavgtau,avgtau_a,dftau,x_plot,g_plot = HTBweightedtau(output,data,verbose=true,best_model=false);
 plot(x_plot,g_plot,title="avg smoothness of splits",xlabel="standardized x",label=:none)
 
 println(" \n modality = $(param.modality), nfold = $nfold ")

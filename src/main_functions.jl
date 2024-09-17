@@ -1659,18 +1659,18 @@ best_model=true for single model with lowest CV loss, best_model= false for weig
 
 # Output
 - `avgtau`         scalar, average importance weighted τ over all features (also weighted by variance importance) 
-- `avg_explogtau`  scalar, exponential of average importance weighted log τ over all features (also weighted by variance importance).
+- `gavgtau`        scalar, geometric average of importance weighted log τ over all features (also weighted by variance importance).
                    NB: Default in printed output and plot. (Arguably the more informative measure.) 
 - `avgtau_a`       p-vector of avg importance weighted τ for each feature 
 - `df`             dataframe collecting avgtau_a information (only if verbose=true)
-- `x_plot`         x-axis to plot sigmoid for avg_explogtau, in range [-2 2] for standardized feature 
-- `g_plot`         y-axis to plot sigmoid for avg_explogtau 
+- `x_plot`         x-axis to plot sigmoid for gavgtau, in range [-2 2] for standardized feature 
+- `g_plot`         y-axis to plot sigmoid for gavgtau 
 
 # Example of use
 
     output = HTBfit(data,param)
-    avgtau,avg_explogtau,avgtau_a,dftau,x_plot,g_plot = HTBweightedtau(output,data)
-    avgtau,avg_explogtau,avgtau_a,dftau,x_plot,g_plot = HTBweightedtau(output,data,verbose=false,plot_tau=false,best_model=true)
+    avgtau,gavgtau,avgtau_a,dftau,x_plot,g_plot = HTBweightedtau(output,data)
+    avgtau,gavgtau,avgtau_a,dftau,x_plot,g_plot = HTBweightedtau(output,data,verbose=false,plot_tau=false,best_model=true)
 
     using Plots
     plot(x_plot,g_plot,title="avg smoothness of splits",xlabel="standardized x",label=:none,legend=:bottomright)
@@ -1700,27 +1700,27 @@ function HTBweightedtau(output,data;verbose::Bool=true,best_model::Bool=false,ma
     
     avgtau  = sum(avgtau_a.*fi)/sum(fi)
     ind     = avgtau_a .> 0                                           # if fi=0, tau=0, leading to NaN for log(tau)
-    exp_avglogtau = exp( sum(log.(avgtau_a[ind]).*fi[ind])/sum(fi[ind]) )
+    gavgtau = exp( sum(log.(avgtau_a[ind]).*fi[ind])/sum(fi[ind]) )   # geometric weighted average 
 
     df = DataFrame(feature = fnames, importance = fi, avgtau = avgtau_a,
            sorted_feature = fnames_sorted, sorted_importance = fi_sorted, sorted_avgtau = avgtau_a[sortedindx])
 
     if verbose==true
         display(df)
-        println("\n Average smoothing parameter τ is $(round(exp_avglogtau,digits=1)).")
+        println("\n Average smoothing parameter τ is $(round(gavgtau,digits=1)).")
         println("\n In sufficiently large samples, and if modality=:compromise or :accurate")
         println("\n - Values above 20-25 suggest little smoothness in important features. HTBoost's performance may slightly outperform or slightly underperform other gradient boosting machines.")
         println(" - At 10-15 or lower, HTBoost should outperform other gradient boosting machines, or at least be worth including in an ensemble.")
         println(" - At 5-7 or lower, HTBoost should strongly outperform other gradient boosting machines.")
     end 
 
-    tau = exp_avglogtau   # arguably the best measure for the average smoothness of the model
+    tau = gavgtau   # arguably the best measure for the average smoothness of the model
     tau ≥ max_tau ? tau = T(Inf) : tau = tau
 
     x_plot = collect(-2.0:0.01:2)
     g_plot = sigmoidf(x_plot,T(0),tau,output.bestparam.sigmoid)
 
-    return T(avgtau),T(exp_avglogtau),T.(avgtau_a),df,x_plot,g_plot
+    return T(avgtau),T(gavgtau),T.(avgtau_a),df,x_plot,g_plot
 
 end 
 
@@ -1800,7 +1800,7 @@ Produces x and y to plot sigmoid function for a given τ (typically the average 
 # Example of use
 
     output = HTBfit(data,param)
-    avgtau,avg_explogtau,avgtau_a,dftau,x_plot,g_plot = HTBweightedtau(output,data)
+    avgtau,gavgtau,avgtau_a,dftau,x_plot,g_plot = HTBweightedtau(output,data)
     x_plot,g_plot = HTBplot_tau(avgtau[1])     # tau of first feature
     using Plots
     plot(x_plot,g_plot,title="avg tau of feature 1",xlabel="standardized x",label=:none,legend=:bottomright)

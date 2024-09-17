@@ -200,7 +200,7 @@ avgtau is a summary of the smoothness of f(x), with features weighted by their i
 avgtau_a is a vector array with the importance weighted tau for each feature.  
 
 ```julia
-avgtau,avg_explogtau,avgtau_a,dftau,x_plot,g_plot = HTBweightedtau(output,data,verbose=true);
+avgtau,gavgtau,avgtau_a,dftau,x_plot,g_plot = HTBweightedtau(output,data,verbose=true);
 
 plot(x_plot,g_plot,title="smoothness of splits",xlabel="standardized x",label=:none)
 ```
