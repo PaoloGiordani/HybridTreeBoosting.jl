@@ -173,9 +173,9 @@ avgtau,gavgtau,avgtau_a,dftau,x_plot,g_plot = HTBweightedtau(output,data,verbose
 
 # LightGBM
 if ignore_cat_lightgbm == true
-    estimator = LGBMRegression(objective = "regression",num_iterations = 1000,early_stopping_round = 100,max_depth=4)
+    estimator = LGBMRegression(objective = "regression",num_iterations = 1000,early_stopping_round = 100)
 else 
-    estimator = LGBMRegression(objective = "regression",num_iterations = 1000,early_stopping_round = 100,max_depth=4,
+    estimator = LGBMRegression(objective = "regression",num_iterations = 1000,early_stopping_round = 100,
             categorical_feature = cat_features)
 end 
 

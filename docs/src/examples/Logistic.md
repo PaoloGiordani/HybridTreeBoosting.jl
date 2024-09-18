@@ -82,10 +82,7 @@ function simul_logistic(n,p,nsimul,modality,dgp)
     early_stopping_round = 100,
     metric = ["binary_logloss"],
     num_threads = number_workers,
-    device_type="cpu",
-    max_depth = -1,      # -1 default
-    min_data_in_leaf = 100,  # 100 default 
-    num_leaves = 127         # 127 default  
+    device_type="cpu"
  )
 
  for simul in 1:nsimul

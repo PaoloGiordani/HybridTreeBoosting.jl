@@ -94,15 +94,11 @@ estimator = LGBMRegression(   # LGBMRegression(...)
     objective = "regression",
     categorical_feature = [],  # or [1,2,3,5,6,7,8], treating date as a category, as probably Lightgbm would.
     num_iterations = ntrees,   # default 100
-    learning_rate = 0.1,    # default 0.1
+    learning_rate = 0.1,      # default 0.1
     early_stopping_round = 50,  # default 0, i.e. Inf
     bagging_fraction = 1.0,
-    feature_fraction = 1.0,
     metric = ["l2"],
-    num_threads = number_workers,
-    max_depth = -1,         # -1 for default
-    #device_type="cpu",
-    #max_depth = -1   # no limit
+    num_threads = number_workers
 )
 
 sharevalidation = 0.3

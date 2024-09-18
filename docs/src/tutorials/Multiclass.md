@@ -116,7 +116,7 @@ Compare predictions using the (minus) multinomial log-likelihood and the hit rat
 ```julia
 
 # fit HTBoost
-param  = HTBparam(loss=loss,nfold=nfold,nofullsample=nofullsampleverbose=verbose,modality=modality)
+param  = HTBparam(loss=loss,nfold=nfold,nofullsample=nofullsample,verbose=verbose,modality=modality)
 data   = HTBdata(y,x,param)
 output = HTBfit(data,param)
 
@@ -142,10 +142,7 @@ estimator = LGBMClassification(   # LGBMRegression(...)
     learning_rate = 0.1,
     early_stopping_round = 100,
     metric = ["multi_logloss"],
-    num_threads = number_workers,
-    max_depth = -1,      # -1 default
-    min_data_in_leaf = 100,  # 100 default 
-    num_leaves = 127         # 127 default  
+    num_threads = number_workers
  )
 
 n_train = Int(round((1-param.sharevalidation)*length(y)))
@@ -187,6 +184,6 @@ println("\n LightGBM hit rate $hit_rate and loss $loss ")
 ```
 HTBoost in this case has a substantially lower loss, which is not surprising given that the simulated data has substantial smoothness. 
 ```markdown 
-HTBoost hit rate 0.5255 and loss 96171.01
+HTBoost hit rate 0.5263 and loss 96175.13
 LightGBM hit rate 0.52407 and loss 96276.94
 ```

@@ -107,10 +107,7 @@ param  = HTBparam(loss=loss,nfold=1,nofullsample=true,modality=modality,warnings
     learning_rate = 0.1,
     early_stopping_round = 100,
     metric = ["binary_logloss"],
-    num_threads = number_workers,
-    max_depth = -1,          # -1 default
-    min_data_in_leaf = 100,  # 100 default 
-    num_leaves = 127         # 127 default  
+    num_threads = number_workers
  )
 
 ```
@@ -187,9 +184,9 @@ println("RMSE from true natural parameter, lightGBM                      ", sqrt
 ```markdown
 
 n = 10000, p = 10
-RMSE from true natural parameter, HTBoost, modality = fast        0.5615
-RMSE from true natural parameter, HTBoost, modality = compromise  0.5125
-RMSE from true natural parameter, lightGBM                        0.6435
+RMSE from true natural parameter, HTBoost, modality = fast        0.5346
+RMSE from true natural parameter, HTBoost, modality = compromise  0.4665
+RMSE from true natural parameter, lightGBM                        0.6375
 
 ```
 
@@ -214,28 +211,27 @@ This explains why HTBoost outperforms LightGBM so strongly.
 
 ```markdown
 
-Row │ feature  importance  avgtau    sorted_feature  sorted_importance  sorted_avgtau 
-     │ String   Float32     Float64   String          Float32            Float64       
-─────┼─────────────────────────────────────────────────────────────────────────────────
-   1 │ x1        40.4326     1.04795  x1                      40.4326          1.04795
-   2 │ x2        17.9978    11.9914   x4                      19.9693          2.63904
-   3 │ x3        14.4546     2.57154  x2                      17.9978         11.9914
-   4 │ x4        19.9693     2.63904  x3                      14.4546          2.57154
-   5 │ x5         1.09162    1.5      x9                       2.63876         1.54776
-   6 │ x6         1.33539    1.5      x6                       1.33539         1.5
-   7 │ x7         0.304846   1.5      x5                       1.09162         1.5
-   8 │ x8         0.907542   1.5      x8                       0.907542        1.5
-   9 │ x9         2.63876    1.54776  x10                      0.867542        1.5
-  10 │ x10        0.867542   1.5      x7                       0.304846        1.5
+ Row │ feature  importance  avgtau   sorted_feature  sorted_importance  sorted_avgtau 
+     │ String   Float32     Float64  String          Float32            Float64       
+─────┼────────────────────────────────────────────────────────────────────────────────
+   1 │ x1        37.1133    1.07181  x1                      37.1133          1.07181
+   2 │ x2        18.5243    4.6509   x4                      20.5592          7.44056
+   3 │ x3        16.9142    2.72758  x2                      18.5243          4.6509
+   4 │ x4        20.5592    7.44056  x3                      16.9142          2.72758
+   5 │ x5         1.21922   1.5      x9                       2.38085         1.5
+   6 │ x6         1.37907   1.5      x6                       1.37907         1.5
+   7 │ x7         0.0       0.0      x5                       1.21922         1.5
+   8 │ x8         0.879137  1.5      x10                      1.03073         1.5
+   9 │ x9         2.38085   1.5      x8                       0.879137        1.5
+  10 │ x10        1.03073   1.5      x7                       0.0             0.0
 
- Average smoothing parameter τ is 3.6.
+ Average smoothing parameter τ is 2.5.
 
  In sufficiently large samples, and if modality=:compromise or :accurate
 
  - Values above 20-25 suggest little smoothness in important features. HTBoost's performance may slightly outperform or slightly underperform other gradient boosting machines.
  - At 10-15 or lower, HTBoost should outperform other gradient boosting machines, or at least be worth including in an ensemble.
  - At 5-7 or lower, HTBoost should strongly outperform other gradient boosting machines.
-
 ```
 
 **Larger sample size**
@@ -252,7 +248,6 @@ RMSE from true natural parameter, HTBoost, modality = compromise  0.2201
 RMSE from true natural parameter, lightGBM                        0.3346
 
 n = 500000, p = 10
-RMSE from true natural parameter, HTBoost, modality = compromise  0.???
 RMSE from true natural parameter, lightGBM                        0.2115
 
 ```

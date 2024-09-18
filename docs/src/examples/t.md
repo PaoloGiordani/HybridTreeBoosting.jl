@@ -66,10 +66,7 @@ estimator = LGBMRegression(
     num_iterations = 1000,
     learning_rate = 0.1,
     early_stopping_round = 100,
-    num_threads = number_workers,
-    max_depth = 6,      # -1 default
-    min_data_in_leaf = 100,  # 100 default 
-    num_leaves = 127         # 127 default  
+    num_threads = number_workers
 )
 
 estimator_huber = LGBMRegression(
@@ -77,10 +74,7 @@ estimator_huber = LGBMRegression(
     num_iterations = 1000,
     learning_rate = 0.1,
     early_stopping_round = 100,
-    num_threads = number_workers,
-    max_depth = -1,      # -1 default
-    min_data_in_leaf = 100,  # 100 default 
-    num_leaves = 127         # 127 default  
+    num_threads = number_workers
 )
 
 
