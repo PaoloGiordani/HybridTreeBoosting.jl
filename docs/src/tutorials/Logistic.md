@@ -102,7 +102,7 @@ param  = HTBparam(loss=loss,nfold=1,nofullsample=true,modality=modality,warnings
 
  estimator = LGBMClassification(   # LGBMRegression(...)
     objective = "binary",
-    num_class = 1,
+    #num_class = 1,           # relevant only for multiclass
     num_iterations = 1000,
     learning_rate = 0.1,
     early_stopping_round = 100,
