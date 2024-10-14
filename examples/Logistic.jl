@@ -75,7 +75,7 @@ function simul_logistic(n,p,nsimul,modality,dgp)
  # Create an estimator with the desired parameters—leave other parameters at the default values.
  estimator = LGBMClassification(   # LGBMRegression(...)
     objective = "binary",
-    #num_class = 1,              # relevant only for multiclass
+    num_class = 1,              # relevant only for multiclass
     categorical_feature = Int[],
     num_iterations = 1000,
     learning_rate = 0.1,
