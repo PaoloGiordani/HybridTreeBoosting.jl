@@ -757,7 +757,8 @@ function SharedMatrixErrorRobust(x,param)
 end
 
 
-# Adjusts lambda based on the number of trees and on param.double_lambda, doubling lambda every double_lambda trees
+# Adjusts lambda based on the number of trees and on param.double_lambda, doubling lambda every double_lambda trees,
+# capped at 1.
 # λᵢ = effective_lambda(param,iter)
 function effective_lambda(param::HTBparam,iter::Int)
 
@@ -765,5 +766,7 @@ function effective_lambda(param::HTBparam,iter::Int)
         return param.lambda
     end
     m=param.I(floor(iter/param.double_lambda))
-    return param.lambda*(2^m)
+    lambda = min(param.T(1),param.lambda*(2^m))
+
+    return lambda
 end     
