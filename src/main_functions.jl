@@ -1715,10 +1715,12 @@ Output fitted parameters estimated from each tree, collected in matrices. Exclud
 - `μ`         (ntrees,depth) matrix of threshold points
 - `τ`         (ntrees,depth) matrix of sigmoid parameters
 - `fi2`       (ntrees,depth) matrix of feature importance, increase in R2 at each split
+- `m`         (ntrees,depth) matrix of threshold points for missing values 
+- `β`         (ntrees,2^depth) matrix of leaf coefficients (1st phase, excluding ppr)
 
 # Example of use
     output = HTBfit(data,param)
-    i,μ,τ,fi2 = HTBoutput(output.HTBtrees)
+    i,μ,τ,fi2,m,β = HTBoutput(output.HTBtrees)
 
 """
 function HTBoutput(HTBtrees::HTBoostTrees;exclude_pp = true)
@@ -1732,10 +1734,13 @@ function HTBoutput(HTBtrees::HTBoostTrees;exclude_pp = true)
     μ   = Matrix{T}(undef,ntrees,d)
     τ   = Matrix{T}(undef,ntrees,d)
     fi2 = Matrix{T}(undef,ntrees,d)
+    m   = Matrix{T}(undef,ntrees,d)
+    β   = Matrix{T}(undef,ntrees,2^HTBtrees.param.depth)  # only the first phase
 
     for j in 1:ntrees
         tree = HTBtrees.trees[j]
-        i[j,:],μ[j,:],τ[j,:],fi2[j,:] = tree.i,tree.μ,tree.τ,tree.fi2
+        i[j,:],μ[j,:],τ[j,:],fi2[j,:],m[j,:] = tree.i,tree.μ,tree.τ,tree.fi2,tree.m
+        β[j,:] = tree.β[1]   # β[1] excludes the projection pursuit regression parameters    
     end
 
     # delete the columns that refer to projection pursuit regression
@@ -1749,7 +1754,7 @@ function HTBoutput(HTBtrees::HTBoostTrees;exclude_pp = true)
         fi2 = fi2[:,1:depth]
     end  
 
-    return i,μ,τ,fi2
+    return i,μ,τ,fi2,m,β
 end
 
 

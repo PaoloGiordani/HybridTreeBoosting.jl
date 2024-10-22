@@ -3,11 +3,11 @@
 EXPERIMENTS 
 
 =#
-number_workers  = 4  # desired number of workers
+number_workers  = 8  # desired number of workers
 using Distributed
 nprocs()<number_workers ? addprocs( number_workers - nprocs()  ) : addprocs(0)
-@everywhere using HTBoost
-#include("C:\\Users\\A1810185\\Documents\\A_Julia-scripts\\Modules\\HTBoostLOCAL.jl") 
+#@everywhere using HTBoost
+include("C:\\Users\\A1810185\\Documents\\A_Julia-scripts\\Modules\\HTBoostLOCAL.jl") 
 
 using Random
 using Statistics
@@ -20,7 +20,7 @@ using LightGBM
 Random.seed!(1)
 
 n          =     10_000   # sample size   
-ncat       =     100     # number of categories (actual number may be lower as they are drawn with reimmission)
+ncat       =     1000     # number of categories (actual number may be lower as they are drawn with reimmission)
 
 bcat       =     1.0      # coeff of categorical feature (if 0, categories are not predictive)
 b1         =     1.0      # coeff of continuous feature 
@@ -113,17 +113,13 @@ println("\n n and number of categories ", [n length(unique(xcat))])
 println("\n HTBoost " )
 println("\n in-sample R2           ", 1 - mean((yhat - y[1:ntrain]).^2)/var(y[1:ntrain])  )
 println(" validation  R2         ", 1 - output.loss/var(y[ntrain+1:end]) )
-println(" out-of-samplesample R2 ", 1 - mean((yf - y_test).^2)/var(y_test) )
+println(" out-of-samples R2      ", 1 - mean((yf - y_test).^2)/var(y_test) )
 
 avgtau,gavgtau,avgtau_a,dftau,x_plot,g_plot = HTBweightedtau(output,data,verbose=false,
 best_model=false)
 if gavgtau < 5
     println(" Average τ on categorical feature is low, suggesting gains from smoothness. ")
 end 
-
-avgtau,gavgtau,avgtau_a,dftau,x_plot,g_plot = HTBweightedtau(output,data,verbose=true,
-best_model=false)
-
 
 # LightGBM
 if ignore_cat_lightgbm == true

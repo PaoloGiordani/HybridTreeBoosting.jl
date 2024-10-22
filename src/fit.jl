@@ -275,9 +275,9 @@ end
 
 
 # Computes log t-density of the prior on log(τ). The mean of this density is a function of the Kantorovic distance of feature i.
-# τ is trucated at τmax=100 to allow for Inf (sharp threshold) to have finite density. d is tree dimension as in size(G,2)= 2^d 
-# function lnpτ(τ0::Union{T,Vector{T}},param::HTBparam,info_i,d;τmax=T(100) )::T where T<:AbstractFloat     # NOTE: modifications required for τ0 a vector.
-function lnpτ(τ0::T,param::HTBparam,info_i,d;τmax=T(100) )::T where T<:AbstractFloat
+# τ is trucated at τmax=50 to allow for Inf (sharp threshold) to have finite density. d is tree dimension as in size(G,2)= 2^d 
+# function lnpτ(τ0::Union{T,Vector{T}},param::HTBparam,info_i,d;τmax=T(50) )::T where T<:AbstractFloat     # NOTE: modifications required for τ0 a vector.
+function lnpτ(τ0::T,param::HTBparam,info_i,d;τmax=T(50) )::T where T<:AbstractFloat
 
     τ = @.  (abs(τ0)<=τmax)*τ0 +  (τ0>τmax)*τmax 
 
@@ -300,9 +300,11 @@ function lnpτ(τ0::T,param::HTBparam,info_i,d;τmax=T(100) )::T where T<:Abstra
         @error "loss function misspelled or not implemented"
     end
 
-    β        =  0.3
-    m        =  param.meanlntau + α*param.multiplier_stdtau*( -β + info_i.kd  )
+    # prior on meanlntau has a higher intercept for categorical features (more likely to be non-smooth)
+    β₁ = 0.3
+    dm = param.d_meanlntau_cat*(info_i.i in param.cat_features )
 
+    m        =  dm + param.meanlntau + α*param.multiplier_stdtau*( -β₁ + info_i.kd  )
     lnp = sum(logpdft.(log.(τ),T(m),T(stdlntau),param.doflntau ))
 
     # If mixture of two student-t
@@ -1099,7 +1101,7 @@ function optimize_μτ(y,w,gammafit_ensemble,r,h,G0,xi,param,infeatures,fi,info_
     G   = Matrix{T}(undef,n,p*2)
     Gh  = similar(G)
 
-    x_tol = param.xtolOptim/T(1+(τ>=5)+2*(τ>=10)+4*(τ>100))
+    x_tol = param.xtolOptim/T(1+(τ>=5)+2*(τ>=10)+4*(τ>50))
 
     res  = Optim.optimize( μ -> Gfitβ2(y,w,gammafit_ensemble,r,h,G0,xi,param,infeatures,fi,info_i,μ,τ,T(0),G,Gh,llik0),[μ0],Optim.BFGS(linesearch = LineSearches.BackTracking()), Optim.Options(iterations = 100,x_tol = x_tol  ))
 

@@ -53,6 +53,7 @@ mutable struct HTBparam{T<:AbstractFloat, I<:Int,R<:Real}
     varlntau::T               #
     doflntau::T
     multiplier_stdtau::T
+    d_meanlntau_cat::T       # difference in intercept meanlntau for categorical features (prior that they are less smooth)
     varmu::T                # Helps in preventing very large mu, which otherwise can happen in final trees. 1.0 or even 2.0
     dofmu::T
     meanlntau_ppr::T         # for projection pursuit 
@@ -332,6 +333,7 @@ function HTBparam(;
     varlntau = 0.5^2,  # NB see loss.jl/multiplier_stdlogtau_y(). Centers toward quasi-linearity. This is the dispersion of the student-t distribution (not the variance unless dof is high).
     doflntau = 5.0,
     multiplier_stdtau = 5.0,
+    d_meanlntau_cat = 1.0,  # difference in intercept of meanlntau for categorical features (prior that they are less smooth)
     varmu   = 2.0^2,    # smaller number make it increasingly unlikely to have nonlinear behavior in the tails. DISPERSION, not variance
     dofmu   = 10.0,
     meanlntau_ppr = log(0.2),  # for projection pursuit regression. Center on quasi-linearity. log(0.2) ≈ -1.6.  
@@ -465,7 +467,7 @@ function HTBparam(;
      
     param = HTBparam(T,I,Symbol(loss),Symbol(losscv),Symbol(modality),T.(coeff),coeff_updated,Symbol(verbose),Symbol(warnings),I(num_warnings),randomizecv,I(nfold),nofullsample,sharevalidation,indtrain_a,indtest_a,T(stderulestop),T(lambda),I(depth),I(depth1),I(depthppr),
         Symbol(ppr_in_vs),Symbol(sigmoid),
-        T(meanlntau),T(varlntau),T(doflntau),T(multiplier_stdtau),T(varmu),T(dofmu),
+        T(meanlntau),T(varlntau),T(doflntau),T(multiplier_stdtau),T(d_meanlntau_cat),T(varmu),T(dofmu),
         T(meanlntau_ppr),T(varlntau_ppr),T(doflntau_ppr),Symbol(priortype),T(max_tau_smooth),I(min_unique),mixed_dc_sharp,T(tau_threshold),force_sharp_splits,force_smooth_splits,exclude_features,augment_mugrid,cat_features,cat_features_extended,cat_dictionary,cat_values,cat_globalstats,I(cat_representation_dimension),T(n0_cat),T(mean_encoding_penalization),
         Symbol(cv_categoricals),
         class_values,Bool(delete_missing),mask_missing,missing_features,info_date,T(sparsity_penalization),p0,sharevs,refine_obs_from_vs,finalβ_obs_from_vs,
