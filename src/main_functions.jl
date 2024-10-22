@@ -277,7 +277,7 @@ function HTBbst(data0::HTBdata, param::HTBparam )
         displayinfo(param.verbose,iter)
         Gβ,i,μ,τ,m,β,fi2,σᵧ  = fit_one_tree(data.y,data.weights,HTBtrees,rh.r,rh.h,data.x,μgrid,Info_x,τgrid,param)
         param = updatecoeff(param,data.y,HTBtrees.gammafit+Gβ,data.weights,iter) # +Gβ, NOT +λGβ
-        updateHTBtrees!(HTBtrees,Gβ,HTBtree(i,μ,τ,m,β,fi2,σᵧ),iter,param)          # updates gammafit=gammafit_old+λGβ
+        updateHTBtrees!(HTBtrees,Gβ,HTBtree(i,μ,τ,m,β,fi2,σᵧ),iter,param)          # updates gammafit=gammafit_old+λ*Gβ
         rh,param = gradient_hessian( data.y,data.weights,HTBtrees.gammafit,param,2)
     end
 
@@ -323,9 +323,10 @@ function HTBpredict_internal(x::AbstractMatrix,HTBtrees::HTBoostTrees,predict;cu
 
         gammafit = HTBtrees.gamma0*ones(T,size(x,1))
     
-        for j in 1:length(HTBtrees.trees)
-            tree     =  HTBtrees.trees[j]          
-            gammafit += HTBtrees.param.lambda*HTBtreebuild(x,tree.i,tree.μ,tree.τ,tree.m,tree.β,tree.σᵧ,HTBtrees.param)    
+        for i in 1:length(HTBtrees.trees)
+            tree     =  HTBtrees.trees[i]
+            λᵢ       = effective_lambda(HTBtrees.param,i)          
+            gammafit += λᵢ*HTBtreebuild(x,tree.i,tree.μ,tree.τ,tree.m,tree.β,tree.σᵧ,HTBtrees.param)    
         end
     end
 
@@ -347,7 +348,7 @@ function HTBpredict_distributed(x::AbstractMatrix,HTBtrees::HTBoostTrees)
     x       = SharedMatrixErrorRobust(x,HTBtrees.param)
 
     gammafit = @distributed (+) for j = 1:length(HTBtrees.trees)
-        HTBtrees.param.lambda*HTBtreebuild(x,HTBtrees.trees[j].i,HTBtrees.trees[j].μ,HTBtrees.trees[j].τ,HTBtrees.trees[j].m,HTBtrees.trees[j].β,HTBtrees.trees[j].σᵧ,HTBtrees.param)
+        effective_lambda(HTBtrees.param,j)*HTBtreebuild(x,HTBtrees.trees[j].i,HTBtrees.trees[j].μ,HTBtrees.trees[j].τ,HTBtrees.trees[j].m,HTBtrees.trees[j].β,HTBtrees.trees[j].σᵧ,HTBtrees.param)
     end
 
     return gammafit + HTBtrees.gamma0*ones(T,size(x,1))

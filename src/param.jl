@@ -12,8 +12,8 @@
 # param_constraints!
 # SharedMatrixErrorRobust
 # convert_df_matrix   # converts a dataframe to a Matrix{T} 
+# effective_lambda                Potentially allows a schedule of lambda(iter)
 #
-
 
 
 
@@ -106,9 +106,12 @@ mutable struct HTBparam{T<:AbstractFloat, I<:Int,R<:Real}
     xtolOptim::T
     method_refineOptim::Symbol  # which method for refineOptim, e.g. pmap, @distributed, .... 
     points_refineOptim::I      # number of values of tau for refineOptim. Default 12. Other values allowed are 4,7.
-    # others
+    # number of trees
     ntrees::I   # number of trees
-    theta::T  # penalization of β: multiplies the default precision. Default 1. Higher values give tighter priors.
+    double_lambda::Union{Symbol,I}  # double λ every double_lambda trees (so lambda could quadruple etc...). In :Auto, default is 1000, and Inf if :accurate
+    # penalization of β
+    theta::T  # penalization of β: multiplies the default precision. Default 1. Higher values give tighter priors.    
+    # others
     loglikdivide::Union{Symbol,T}  # the log-likelhood is divided by this scalar. Used to improve inference when observations are correlated.
     overlap::I       # used in purged-CV and HTBloglikdivide
     multiply_pb::T
@@ -242,6 +245,9 @@ Note: all Julia symbols can be replaced by strings. e.g. :L2 can be replaced by 
                      The default is 0.1, except in modality = :fastest, where it's 0.2. Modality = :compromise carries out the cv at lambda=0.2 and then fits the best model at 0.1.
                      Consider 0.05 if tiny improvements in accuracy are important and computing time is not a concern.
 
+- `double_lambda`    [:Auto] the learning rate λ doubles every double_lambda trees. In :Auto, default is 1000, and Inf if modality=:accurate
+                      Used to speed up computations where many trees are needed, with some loss in accuracy.               
+
 - `depth`              [5] tree depth. Unless modality = :fast or :fastest, this is over-written as depth is cross-validated. See HTBfit() for more options.
 
 - `weights`                 NOTE: weights for weighted likelihood are set in HTBdata, not in HTBparam.
@@ -275,7 +281,7 @@ Note: all Julia symbols can be replaced by strings. e.g. :L2 can be replaced by 
 
 - `force_smooth_splits`     [] optionally, a p vector of Bool, with j-th value set to true if the j-th feature is forced to enter with a smooth split (high values of τ not allowed).
 
-- `cat_representation_dimension`  [3] 1 for mean encoding, 2 adds frequency, 3 adds variance.
+- `cat_representation_dimension`  [5 (2 for classification)] 1 for mean encoding, 2 adds frequency, 3 adds variance, 4 adds robust skewness, 5 adds robust kurtosis
 
 - `losscv`                  [:default] loss function for cross-validation (:mse,:mae,:logistic,:sign). 
 
@@ -344,8 +350,8 @@ function HTBparam(;
     cat_features_extended = Vector{I}(undef,0),
     cat_dictionary=Vector{Dict}(undef,0),       # global variable to store the dictionary mapping each category to a number
     cat_values = Vector{NamedTuple}(undef,0),
-    cat_globalstats = (mean_y=T(0),var_y=T(0),q_y=T(0),n_0=T(0)),
-    cat_representation_dimension = 3,           # dimension of the representation of categorical features
+    cat_globalstats = (mean_y=T(0),var_y=T(0),q_y=T(0),n_0=T(0),mad_y=T(0),skew_y=T(0),kurt_y=T(0)),  # global statistics for categorical features
+    cat_representation_dimension = 5,           # dimension of the representation of categorical features: mean,frequency,std,skew,kurt (robust measures)
     n0_cat = 1,                                  # leave at 1! See preliminary_cv for why (multiplier). automatically cv prior on number of observations for categorical data
                                                  # cv tries higher values but not lower than n0_cat.
     mean_encoding_penalization = 1.0,
@@ -378,7 +384,8 @@ function HTBparam(;
     method_refineOptim = :distributed, #  :pmap, :distributed 
     points_refineOptim = 12,    # number of values of tau for refineOptim. Default 12. Other values allowed are 4,7.
     # miscel                    # becomes 7 once coarse_grid kicks in, unless ncores>12.
-    ntrees = 2000, # number of trees. 1000 is CatBoost default (with maxdepth = 6).  
+    ntrees = 2000, # number of trees. 1000 is CatBoost default (with maxdepth = 6). 
+    double_lambda = :Auto,  # double λ every so double_lambda trees. In :Auto, default is 1000, and Inf if :accurate 
     theta = 1.0,   # numbers larger than 1 imply tighter penalization on β compared to default. 
     loglikdivide = :Auto,   # the log-likelhood is divided by this scalar. Used to improve inference when observations are correlated.
     overlap = 0,
@@ -432,6 +439,10 @@ function HTBparam(;
     loglikdivide==:Auto ? nothing : loglikdivide=T(loglikdivide)
     p0==:Auto ? nothing : p0=I(p0)   # if :Auto, set in param_given_data!()
     
+    if double_lambda==:Auto
+        modality==:accurate ? double_lambda=Inf : double_lambda=1000
+    end     
+
     if min_unique==:Auto
         modality in [:fast,:fastest] ? min_unique = 10 : min_unique = 5
     end     
@@ -461,7 +472,7 @@ function HTBparam(;
         I(n_refineOptim),T(subsampleshare_columns),Symbol(sparsevs),T(frequency_update),
         I(number_best_features),best_features,Symbol(pvs),I(p_pvs),I(min_d_pvs),I(mugridpoints),I(taugridpoints),
         I(depth_coarse_grid),I(depth_coarse_grid2),T(xtolOptim),Symbol(method_refineOptim),
-        I(points_refineOptim),I(ntrees),T(theta),loglikdivide,I(overlap),T(multiply_pb),T(varGb),I(ncores),I(seed_datacv),I(seed_subsampling),I(iter),newton_gauss_approx,
+        I(points_refineOptim),I(ntrees),I(double_lambda),T(theta),loglikdivide,I(overlap),T(multiply_pb),T(varGb),I(ncores),I(seed_datacv),I(seed_subsampling),I(iter),newton_gauss_approx,
         I(newton_max_steps),I(newton_max_steps_final),T(newton_tol),T(newton_tol_final),I(newton_max_steps_refineOptim),linesearch)
 
     param_constraints!(param) # enforces constraints across options. Must be repeated in HTBfit.
@@ -742,3 +753,15 @@ function SharedMatrixErrorRobust(x,param)
         return x
     end
 end
+
+
+# Adjusts lambda based on the number of trees and on param.double_lambda, doubling lambda every double_lambda trees
+# λᵢ = effective_lambda(param,iter)
+function effective_lambda(param::HTBparam,iter::Int)
+
+    if param.double_lambda==Inf
+        return param.lambda
+    end
+    m=param.I(floor(iter/param.double_lambda))
+    return param.lambda*(2^m)
+end     

@@ -1366,7 +1366,8 @@ function updateHTBtrees!(HTBtrees,Gβ,tree,ntree,param)
   T   = typeof(Gβ[1])
   n, depth = length(Gβ),param.depth
 
-  HTBtrees.gammafit   = HTBtrees.gammafit + HTBtrees.param.lambda*Gβ
+  λᵢ = effective_lambda(HTBtrees.param,ntree)
+  HTBtrees.gammafit   = HTBtrees.gammafit + λᵢ*Gβ
   push!(HTBtrees.trees,tree)
 
   HTBtrees.param = param

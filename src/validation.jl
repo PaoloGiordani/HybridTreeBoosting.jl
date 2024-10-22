@@ -202,7 +202,10 @@ function HTBsequentialcv( data::HTBdata, param::HTBparam; indices=Vector(1:lengt
             param_a[nf] = updatecoeff(param_a[nf],data_nf.y,HTBtrees_a[nf].gammafit+Gβ,data_nf.weights,i) # +Gβ, NOT +λGβ
             updateHTBtrees!(HTBtrees_a[nf],Gβ,HTBtree(ij,μj,τj,mj,βj,fi2j,σᵧ),i,param_a[nf])
             rh_a[nf],param_a[nf] = gradient_hessian( data_nf.y,data_nf.weights,HTBtrees_a[nf].gammafit,param_a[nf],2)
-            gammafit_test_a[nf] = gammafit_test_a[nf] + param.lambda*HTBtreebuild(x_test,ij,μj,τj,mj,βj,σᵧ,param_a[nf])
+
+            λᵢ = effective_lambda(param_a[nf],i)
+            gammafit_test_a[nf] = gammafit_test_a[nf] + λᵢ*HTBtreebuild(x_test,ij,μj,τj,mj,βj,σᵧ,param_a[nf])
+            
             bias,gammafit_test_ba_a[nf] = bias_correct(gammafit_test_a[nf],data_nf.y,HTBtrees_a[nf].gammafit+Gβ,param)
  
             lossv = vcat(lossv,losses)
