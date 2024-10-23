@@ -246,9 +246,6 @@ Note: all Julia symbols can be replaced by strings. e.g. :L2 can be replaced by 
                      The default is 0.1, except in modality = :fastest, where it's 0.2. Modality = :compromise carries out the cv at lambda=0.2 and then fits the best model at 0.1.
                      Consider 0.05 if tiny improvements in accuracy are important and computing time is not a concern.
 
-- `double_lambda`    [:Auto] the learning rate λ doubles every double_lambda trees. In :Auto, default is 1000, and Inf if modality=:accurate
-                      Used to speed up computations where many trees are needed, with some loss in accuracy.               
-
 - `depth`              [5] tree depth. Unless modality = :fast or :fastest, this is over-written as depth is cross-validated. See HTBfit() for more options.
 
 - `weights`                 NOTE: weights for weighted likelihood are set in HTBdata, not in HTBparam.
@@ -387,7 +384,7 @@ function HTBparam(;
     points_refineOptim = 12,    # number of values of tau for refineOptim. Default 12. Other values allowed are 4,7.
     # miscel                    # becomes 7 once coarse_grid kicks in, unless ncores>12.
     ntrees = 2000, # number of trees. 1000 is CatBoost default (with maxdepth = 6). 
-    double_lambda = :Auto,  # double λ every so double_lambda trees. In :Auto, default is 1000, and Inf if :accurate 
+    double_lambda = :Auto,  # double λ every so double_lambda trees. 
     theta = 1.0,   # numbers larger than 1 imply tighter penalization on β compared to default. 
     loglikdivide = :Auto,   # the log-likelhood is divided by this scalar. Used to improve inference when observations are correlated.
     overlap = 0,
@@ -442,7 +439,8 @@ function HTBparam(;
     p0==:Auto ? nothing : p0=I(p0)   # if :Auto, set in param_given_data!()
     
     if double_lambda==:Auto
-        modality==:accurate ? double_lambda=Inf : double_lambda=1000
+        double_lambda = 100_000   # disactivate 
+        #modality==:accurate ? double_lambda=100_000 : double_lambda=1000
     end     
 
     if min_unique==:Auto
