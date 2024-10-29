@@ -54,7 +54,7 @@ mutable struct HTBparam{T<:AbstractFloat, I<:Int,R<:Real}
     doflntau::T
     multiplier_stdtau::T
     d_meanlntau_cat::T       # difference in intercept meanlntau for categorical features (prior that they are less smooth)
-    varmu::T                # Helps in preventing very large mu, which otherwise can happen in final trees. 1.0 or even 2.0
+    varmu::T                # Helps in preventing very large mu, which otherwise can happen in final trees. e.g. 2.0. No gain in accuracy though.
     dofmu::T
     meanlntau_ppr::T         # for projection pursuit 
     varlntau_ppr::T 
@@ -279,7 +279,7 @@ Note: all Julia symbols can be replaced by strings. e.g. :L2 can be replaced by 
 
 - `force_smooth_splits`     [] optionally, a p vector of Bool, with j-th value set to true if the j-th feature is forced to enter with a smooth split (high values of τ not allowed).
 
-- `cat_representation_dimension`  [5 (2 for classification)] 1 for mean encoding, 2 adds frequency, 3 adds variance, 4 adds robust skewness, 5 adds robust kurtosis
+- `cat_representation_dimension`  [4 (2 for classification)] 1 for mean encoding, 2 adds frequency, 3 adds variance, 4 adds robust skewness, 5 adds robust kurtosis
 
 - `losscv`                  [:default] loss function for cross-validation (:mse,:mae,:logistic,:sign). 
 
@@ -327,11 +327,11 @@ function HTBparam(;
     ppr_in_vs = :On,    # :On for projection pursuit included in variable selection phase
     sigmoid = :sigmoidsqrt,  # :sigmoidsqrt or :sigmoidlogistic or :TReLu
     meanlntau= 1.0,    # Assume a Gaussian for log(tau).
-    varlntau = 0.5^2,  # NB see loss.jl/multiplier_stdlogtau_y(). Centers toward quasi-linearity. This is the dispersion of the student-t distribution (not the variance unless dof is high).
+    varlntau = 0.5^2,  # [0.5^2]. Set to Inf to disactivate (log(p(τ)=0)).  See loss.jl/multiplier_stdlogtau_y().  This is the dispersion of the student-t distribution (not the variance unless dof is high).
     doflntau = 5.0,
     multiplier_stdtau = 5.0,
     d_meanlntau_cat = 1.0,  # difference in intercept of meanlntau for categorical features (prior that they are less smooth)
-    varmu   = 2.0^2,    # smaller number make it increasingly unlikely to have nonlinear behavior in the tails. DISPERSION, not variance
+    varmu   = Inf,    # default Inf to disactivate (then lnpμ sets p(μ)=1.) Otherwise 1-3. Smaller number make it increasingly unlikely to have nonlinear behavior in the tails. DISPERSION, not variance
     dofmu   = 10.0,
     meanlntau_ppr = log(0.2),  # for projection pursuit regression. Center on quasi-linearity. log(0.2) ≈ -1.6.  
     varlntau_ppr = 1^2,        # one-sided 
@@ -350,7 +350,7 @@ function HTBparam(;
     cat_dictionary=Vector{Dict}(undef,0),       # global variable to store the dictionary mapping each category to a number
     cat_values = Vector{NamedTuple}(undef,0),
     cat_globalstats = (mean_y=T(0),var_y=T(0),q_y=T(0),n_0=T(0),mad_y=T(0),skew_y=T(0),kurt_y=T(0)),  # global statistics for categorical features
-    cat_representation_dimension = 5,           # dimension of the representation of categorical features: mean,frequency,std,skew,kurt (robust measures)
+    cat_representation_dimension = 4,           # dimension of the representation of categorical features: mean,frequency,std,skew,kurt (robust measures)
     n0_cat = 1,                                  # leave at 1! See preliminary_cv for why (multiplier). automatically cv prior on number of observations for categorical data
                                                  # cv tries higher values but not lower than n0_cat.
     mean_encoding_penalization = 1.0,

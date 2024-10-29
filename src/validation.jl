@@ -224,17 +224,6 @@ function HTBsequentialcv( data::HTBdata, param::HTBparam; indices=Vector(1:lengt
 
         displayinfo(param.verbose,i,meanloss[i],stdeloss[i])
 
-#******************* temporary code for debugging *******************
-
-if i>550
-@show HTBtrees_a[1][i].i
-@show HTBtrees_a[1][i].μ
-@show HTBtrees_a[1][i].τ
-@show HTBtrees_a[1][i].β    
-end 
-
-#******************* end temporary code for debugging *******************
-
         # warn if loss jumps up by more than 5 standard errors
         #=
         if i>5 && param.warnings==:On

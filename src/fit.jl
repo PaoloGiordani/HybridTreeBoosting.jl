@@ -247,9 +247,13 @@ function logpdft(x::T,m::T,s::T,v::T) where T<:AbstractFloat
 end
 
 
-
+# Not active in default settings.
 # NOTE: for the purpose of evaluating the density, μ is truncated at μmax (e.g. 5). (Some extremely non-Gaussian features may have very large values even when standardized)
 function lnpμ(μ0::Union{T,Vector{T}},varmu::T,dofmu::T,info_i,d;μmax =T(5)) where T<:AbstractFloat
+
+    if varmu == T(Inf)
+        return T(0)
+    end
 
     μ = @. T( (abs(μ0)<=μmax)*μ0 +  (abs(μ0)>μmax)*μmax )
     #s  = sqrt(varmu*(dofmu-T(2))/dofmu)  # to intrepret varmu as an actual variance.
@@ -279,7 +283,14 @@ end
 # function lnpτ(τ0::Union{T,Vector{T}},param::HTBparam,info_i,d;τmax=T(50) )::T where T<:AbstractFloat     # NOTE: modifications required for τ0 a vector.
 function lnpτ(τ0::T,param::HTBparam,info_i,d;τmax=T(50) )::T where T<:AbstractFloat
 
+    if param.varlntau == T(Inf)
+        return T(0)
+    end
+
     τ = @.  (abs(τ0)<=τmax)*τ0 +  (τ0>τmax)*τmax 
+
+    stdlntau   = sqrt(param.varlntau)                 # to intrepret varlntau as dispersion
+    #stdlntau  = sqrt( (param.varlntau)*(param.doflntau-T(2))/param.doflntau )  # to intrepret varlntau as an actual variance.
 
     if param.priortype==:sharp || info_i.force_sharp==true
         return T(0)
@@ -290,8 +301,6 @@ function lnpτ(τ0::T,param::HTBparam,info_i,d;τmax=T(50) )::T where T<:Abstrac
         return T(lnp)
     end      
 
-    stdlntau   = sqrt(param.varlntau)                 # to intrepret varlntau as dispersion
-    #stdlntau  = sqrt( (param.varlntau)*(param.doflntau-T(2))/param.doflntau )  # to intrepret varlntau as an actual variance.
     if param.loss in [:L2,:gamma,:Huber,:quantile,:t,:lognormal,:L2loglink,:Poisson,:gammaPoisson]    
         α=1
     elseif param.loss==:logistic
@@ -359,6 +368,8 @@ function fitβ(y,w,gammafit_ensemble,r0::AbstractVector{T},h0::AbstractVector{T}
 
     loss,β,Gβ = loss0,β0,Vector{T}(undef,n)
 
+
+
     for iter in 1:maxsteps
 
         GGh,Gr = update_GGh_Gr(GGh,G,Gh,r,nh,h,iter,T,param.priortype)
@@ -398,32 +409,28 @@ function fitβ(y,w,gammafit_ensemble,r0::AbstractVector{T},h0::AbstractVector{T}
 end
 
 
-
+# Adding priors and penalization to the log-posterior, where not already included in the likelihood.
+# As a general rule, be careful with weak, nearly uninformative priors added to the posterior (or, worse, marginal). Typically best to omit them.  
 function logpdfpriors(β,μ,τ,m,d,p,pb,param,info_i,infeatures,fi,T)
 
-    logpdfβ = -T(0.5)*( p*T(log(2π)) - p*log(pb) + pb*(β'β) )      # NB: assumes Pb is pb*I.
-    #logpdfβ = T(0)                     # leave out unless extending to a fully Bayesian setting 
-
-    if info_i.dichotomous
+    if param.priortype == :disperse
+        logpdfτ,logpdfμ,logpdfm = 0,0,0
+    elseif info_i.dichotomous
         logpdfμ,logpdfτ,logpdfm = 0,0,0
     elseif param.priortype==:sharp
         logpdfτ = 0
         logpdfμ = lnpμ(μ,param.varmu,param.dofmu,info_i,d)
         logpdfm = lnpμ(m,param.varmu,param.dofmu,info_i,d)     # prior for missing value same as for μ
     else
-        logpdfμ = lnpμ(μ,param.varmu,param.dofmu,info_i,d)
         logpdfτ = lnpτ(τ,param,info_i,d)
+        logpdfμ = lnpμ(μ,param.varmu,param.dofmu,info_i,d)
         logpdfm = lnpμ(m,param.varmu,param.dofmu,info_i,d)     # prior for missing value same as for μ
     end
 
     logpdfM   = lnpM(param,info_i,infeatures,fi,T)   # sparsity prior
     logpdfMTE = lnpMTE(param,info_i,T)               # penalization for mean target encoding features
-
-    if param.priortype == :disperse
-      logpdfτ,logpdfμ,logpdfm = 0,0,0
-    end   
-
-    return T(logpdfβ+logpdfμ+logpdfτ+logpdfm+logpdfM+logpdfMTE)
+    
+    return T(logpdfμ+logpdfm+logpdfτ+logpdfM+logpdfMTE)
 
 end
 
@@ -593,6 +600,7 @@ function add_depth(t)
     loss,τ,μ,m,nan_present = add_depth_no_ppr(t)
 
     if t.param.depthppr>0 && t.param.ppr_in_vs==:On
+
         # compute gammafit0, replacing nan with m found by rough grid 
         xi = copy(t.xi)
 
@@ -605,7 +613,14 @@ function add_depth(t)
         gL  = sigmoidf(t.xi,μ,τ,t.param.sigmoid,dichotomous=t.info_i.dichotomous)
         updateG!(G,t.G0,gL)
         loss,gammafit0,β = fitβ(t.y,t.w,t.gammafit_ensemble,t.r,t.h,G,similar(G),t.param,t.infeatures,t.fi,t.info_i,μ,τ,m,t.param.T(Inf))   
-        zi = gammafit0/std(gammafit0)         # standardize gammafit0 for ppr 
+
+        std_gammafit0 = std(gammafit0)
+
+        if std_gammafit0 < 1e-6
+            return [loss,τ,μ,m]
+        end
+
+        zi = gammafit0/std_gammafit0         # standardize gammafit0 for ppr 
 
         # fit ppr (zi only feature), retain only loss 
         # correct priors on μ and τ are given by info_x_ppr = Info_x[end], which however sets penalizations for sparsity and categorical to 0: add these later
@@ -1347,7 +1362,7 @@ function fit_one_tree(y::AbstractVector{T},w,HTBtrees::HTBoostTrees,r::AbstractV
     βfit[1]=β1
 
     if param.depthppr>0
-        σᵧ = std(gammafit0)
+        σᵧ = max(std(gammafit0),T(1e-10))  
         zi = gammafit0/σᵧ    # standardize gammafit0 and save std 
         gammafit0,μfit_pp,τfit_pp,β_pp,fi2_pp,loss_pp = 
         fit_one_tree_ppr_final(y,w,HTBtrees.gammafit,HTBtrees.infeatures,HTBtrees.fi,r,h,zi,Info_x[end],τgrid,param)
