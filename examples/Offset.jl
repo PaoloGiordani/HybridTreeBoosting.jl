@@ -2,7 +2,7 @@
 
 Short description:
 
-offset is added to γ (NOT multiplied by E(y|x)), where γ = link(E(y|x)). It should therefore be in logs for
+offset is added to γ (NOT multiplied by E(y|x)), where γ = E(link(y)|x)). It should therefore be in logs for
 loss in [:L2loglink,:gamma,:Poisson,:gammaPoisson,:hurdleGamma, :hurdleL2loglink],
 and logit for loss in [:logistic].
 
@@ -42,7 +42,7 @@ number_workers  = 8  # desired number of workers
 
 using Distributed
 nprocs()<number_workers ? addprocs( number_workers - nprocs()  ) : addprocs(0)
-@everywhere using HTBoost
+#@everywhere using HTBoost
 
 using Random,Plots,Statistics
 import Distributions 

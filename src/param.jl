@@ -46,7 +46,7 @@ mutable struct HTBparam{T<:AbstractFloat, I<:Int,R<:Real}
     # Tree structure, priors, categorical data, missing
     depth::I
     depth1::I
-    depthppr::I        # projection pursuit depth. 0 to disactivate
+    depthppr::I        # projection pursuit depth. 0 to disactivate.
     ppr_in_vs::Symbol  # :On for projection pursuit included in feature selection stage 
     sigmoid::Symbol  # which simoid function. :sigmoidsqrt or :sigmoidlogistic or :TReLu. sqrt x/sqrt(1+x^2) 10 times faster than exp.
     meanlntau::T              # Assume a mixture of two student-t for log(tau).
@@ -227,11 +227,12 @@ Note: all Julia symbols can be replaced by strings. e.g. :L2 can be replaced by 
 - `cat_features`            [] vector of indices of categorical features, e.g. [2,5], or vector of names in DataFrame,
                             e.g. [:wage,:age] or ["wage","age"]. If empty, categoricals are automatically detected as non-numerical features.
 
-- `cv_categoricals`     [:none] whether to run preliminary cross-validation on parameters related to categorical features.
+- `cv_categoricals`     [:default] whether to run preliminary cross-validation on parameters related to categorical features.
                         :none uses default parameters 
-                        :penalty runs a rought cv the penalty associated to the number of categories; recommended if n/n_cat if high for any feature, particularly if SNR is low                             
+                        :penalty runs a rough cv the penalty associated to the number of categories; recommended if n/n_cat if low for any feature, particularly if SNR is low                             
                         :n0 runs a rough of cv the strength of the prior shrinking categorical values to the overall mean; recommended with highly unequal number of observations in different categories
                         :both runs a rough cv or penalty and n0 
+                        :default uses :none for modality in [:fastest,:fast], :penalty for :compromise, and :both for :accurate        
 
 - `overlap:`            [0] number of overlaps in time series and panels. Typically overlap = h-1, where y(t) = Y(t+h)-Y(t). Used for purged-CV.
 
@@ -323,7 +324,7 @@ function HTBparam(;
     # Tree structure and priors
     depth  = 5,        # 3 allows 2nd degree interaction and is fast. 4 takes almost twice as much per tree on average. 5 can be 8-10 times slower per tree. However, fewer deeper trees are required, so the actual increase in computing costs is smaller.
     depth1 = 10,
-    depthppr = 2,      # projection pursuit depth. 0 to disactive.
+    depthppr = 2,      # projection pursuit depth. 0 to disactive. 
     ppr_in_vs = :On,    # :On for projection pursuit included in variable selection phase
     sigmoid = :sigmoidsqrt,  # :sigmoidsqrt or :sigmoidlogistic or :TReLu
     meanlntau= 1.0,    # Assume a Gaussian for log(tau).
@@ -354,7 +355,7 @@ function HTBparam(;
     n0_cat = 1,                                  # leave at 1! See preliminary_cv for why (multiplier). automatically cv prior on number of observations for categorical data
                                                  # cv tries higher values but not lower than n0_cat.
     mean_encoding_penalization = 1.0,
-    cv_categoricals = :none,            
+    cv_categoricals = :default,            
     class_values = Vector{T}(undef,0),
     delete_missing = false,  
     mask_missing = false,                       # If true, adds a mask (dummy) for missing values. Does not seem required in any instance, and may worsen performance, although it may occasionally improve performance in small samples.
@@ -437,7 +438,17 @@ function HTBparam(;
     sharevs==:Auto ? nothing : sharevs=T(sharevs)
     loglikdivide==:Auto ? nothing : loglikdivide=T(loglikdivide)
     p0==:Auto ? nothing : p0=I(p0)   # if :Auto, set in param_given_data!()
-    
+
+    if cv_categoricals==:default
+        if modality in [:fastest,:fast]
+            cv_categoricals=:none
+        elseif modality == :compromise
+            cv_categoricals=:penalty
+        else     
+            cv_categoricals=:both
+        end 
+    end     
+
     if double_lambda==:Auto
         double_lambda = 100_000   # disactivate 
         #modality==:accurate ? double_lambda=100_000 : double_lambda=1000
@@ -536,12 +547,16 @@ end
 # separate function enforces constraints across options.
 function param_constraints!(param::HTBparam)
 
+    # no ppr if depth=1? Probably worse performance without ppr, but half the computing cost. 
+    #param.depth==1 ? param.depthppr=param.I(0) : nothing 
+    
     if param.meanlntau==Inf; param.priortype==:sharp; end;
 
     if param.priortype==:smooth
         param.doflntau=100
     end
 
+    # no sense taking variance, skew and kurtosis of y when y is binary: the mean has the same info
     if param.loss == :logistic 
         param.cat_representation_dimension = min(2,param.cat_representation_dimension)
     end     
@@ -759,12 +774,12 @@ end
 # capped at 1.
 # λᵢ = effective_lambda(param,iter)
 function effective_lambda(param::HTBparam,iter::Int)
-
-    if param.double_lambda==Inf
+    
+    if param.double_lambda>=100_000
         return param.lambda
     end
     m=param.I(floor(iter/param.double_lambda))
-    lambda = min(param.T(1),param.lambda*(2^m))
+    lambda = min(1,param.lambda*(2^m))
 
-    return lambda
+    return param.T(lambda)
 end     

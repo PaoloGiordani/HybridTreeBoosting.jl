@@ -2,7 +2,7 @@
 
 HTBoost provides the option to include an offset (exposure), a practice common in many fields, including biology and insurance. 
 
-The offset is added to γ (NOT multiplied by E(y|x)), where γ = link(E(y|x)). It should therefore be in logs for
+The offset is added to γ (NOT multiplied by E(y|x)), where γ = E(link(y)|x). It should therefore be in logs for
 loss ∈ [:L2loglink, :gamma, :Poisson, :gammaPoisson, :hurdleGamma, :hurdleL2loglink],
 and logit for loss =:logistic.
 
