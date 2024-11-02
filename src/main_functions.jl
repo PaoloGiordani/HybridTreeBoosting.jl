@@ -93,7 +93,7 @@ function HTBinfo()
 end
 
 
-
+    
 #=
     HTBloglikdivide(df,y_symbol,date_symbol;overlap=0)
 
@@ -269,13 +269,13 @@ function HTBbst(data0::HTBdata, param::HTBparam )
     rh,param       = gradient_hessian( data.y,data.weights,gammafit,param,0)
 
     # prelimiminary run to calibrate coefficients and priors
-    Gβ,trash  = fit_one_tree(data.y,data.weights,HTBtrees,rh.r,rh.h,data.x,μgrid,Info_x,τgrid,param)
+    Gβ,trash  = fit_one_tree(data.y,data.weights,HTBtrees,rh.r,rh.h,data.x,μgrid,Info_x,τgrid,param,999)
     param = updatecoeff(param,data.y,HTBtrees.gammafit+Gβ,data.weights,0) # +Gβ, NOT +λGβ
     trash,param = gradient_hessian( data.y,data.weights,HTBtrees.gammafit+Gβ,param,1)
 
     for iter in 1:param.ntrees
         displayinfo(param.verbose,iter)
-        Gβ,i,μ,τ,m,β,fi2,σᵧ  = fit_one_tree(data.y,data.weights,HTBtrees,rh.r,rh.h,data.x,μgrid,Info_x,τgrid,param)
+        Gβ,i,μ,τ,m,β,fi2,σᵧ  = fit_one_tree(data.y,data.weights,HTBtrees,rh.r,rh.h,data.x,μgrid,Info_x,τgrid,param,iter)
         param = updatecoeff(param,data.y,HTBtrees.gammafit+Gβ,data.weights,iter) # +Gβ, NOT +λGβ
         updateHTBtrees!(HTBtrees,Gβ,HTBtree(i,μ,τ,m,β,fi2,σᵧ),iter,param)          # updates gammafit=gammafit_old+λ*Gβ
         rh,param = gradient_hessian( data.y,data.weights,HTBtrees.gammafit,param,2)
@@ -326,7 +326,7 @@ function HTBpredict_internal(x::AbstractMatrix,HTBtrees::HTBoostTrees,predict;cu
         for i in 1:length(HTBtrees.trees)
             tree     =  HTBtrees.trees[i]
             λᵢ       = effective_lambda(HTBtrees.param,i)          
-            gammafit += λᵢ*HTBtreebuild(x,tree.i,tree.μ,tree.τ,tree.m,tree.β,tree.σᵧ,HTBtrees.param)    
+            gammafit += λᵢ*HTBtreebuild(x,tree.i,tree.μ,tree.τ,tree.m,tree.β,tree.σᵧ,HTBtrees.param,i)    
         end
     end
 
@@ -348,7 +348,7 @@ function HTBpredict_distributed(x::AbstractMatrix,HTBtrees::HTBoostTrees)
     x       = SharedMatrixErrorRobust(x,HTBtrees.param)
 
     gammafit = @distributed (+) for j = 1:length(HTBtrees.trees)
-        effective_lambda(HTBtrees.param,j)*HTBtreebuild(x,HTBtrees.trees[j].i,HTBtrees.trees[j].μ,HTBtrees.trees[j].τ,HTBtrees.trees[j].m,HTBtrees.trees[j].β,HTBtrees.trees[j].σᵧ,HTBtrees.param)
+        effective_lambda(HTBtrees.param,j)*HTBtreebuild(x,HTBtrees.trees[j].i,HTBtrees.trees[j].μ,HTBtrees.trees[j].τ,HTBtrees.trees[j].m,HTBtrees.trees[j].β,HTBtrees.trees[j].σᵧ,HTBtrees.param,j)
     end
 
     return gammafit + HTBtrees.gamma0*ones(T,size(x,1))

@@ -1352,13 +1352,12 @@ end
 
 
 function fit_one_tree(y::AbstractVector{T},w,HTBtrees::HTBoostTrees,r::AbstractVector{T},
-    h::AbstractVector{T},x::AbstractArray{T},μgrid,Info_x,τgrid,param::HTBparam) where T<:AbstractFloat
+    h::AbstractVector{T},x::AbstractArray{T},μgrid,Info_x,τgrid,param::HTBparam,iter) where T<:AbstractFloat
 
     I = param.I
 
     βfit = Vector{AbstractVector{T}}(undef,1)
-
-    gammafit0,ifit,μfit,τfit,mfit,β1,fi2=fit_one_tree_inner(y,w,HTBtrees,r,h,x,μgrid,Info_x,τgrid,param;depth2=0)   # standard
+    gammafit0,ifit,μfit,τfit,mfit,β1,fi2=fit_one_tree_inner(y,w,HTBtrees,r,h,x,μgrid,Info_x,τgrid,param;depth2=0)     
     βfit[1]=β1
 
     if param.depthppr>0
@@ -1381,8 +1380,10 @@ end
 function updateHTBtrees!(HTBtrees,Gβ,tree,ntree,param)
 
   T   = typeof(Gβ[1])
-  n, depth = length(Gβ),param.depth
+  n   = length(Gβ)
 
+  depth = length(tree.i) - param.depthppr
+  
   λᵢ = effective_lambda(HTBtrees.param,ntree)
   HTBtrees.gammafit   = HTBtrees.gammafit + λᵢ*Gβ
   push!(HTBtrees.trees,tree)
@@ -1402,12 +1403,12 @@ end
 
 
 
-function HTBtreebuild(x::AbstractMatrix{T},ij,μj::AbstractVector{T},τj::AbstractVector{T},mj::AbstractVector{T},βj,σᵧ::T,param::HTBparam)::AbstractVector{T} where T<:AbstractFloat
+function HTBtreebuild(x::AbstractMatrix{T},ij,μj::AbstractVector{T},τj::AbstractVector{T},mj::AbstractVector{T},βj,σᵧ::T,param::HTBparam,iter)::AbstractVector{T} where T<:AbstractFloat
 
     sigmoid = param.sigmoid
     missing_features = param.missing_features
-    depth = param.depth
     depthppr = param.depthppr
+    depth=length(ij)-depthppr  # general, allows for different depths 
 
     n   = size(x,1)
     gammafit = ones(T,n)
@@ -1537,6 +1538,8 @@ function tau_info(HTBtrees::HTBoostTrees)
     postprob2 = mean(p2./(p1+p2))
 
     return mw,varw,mse,postprob2
+
+    return 0,0,0,0    
 end
 
 

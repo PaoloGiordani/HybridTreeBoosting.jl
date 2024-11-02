@@ -723,7 +723,7 @@ function HTBdata(y0::Union{AbstractVector,AbstractMatrix,AbstractDataFrame},x::U
     extended_categorical_features!(param,fnames1)   # finds categorical features needing an extensive (more than one column) representation
     xp = replace_missing_with_nan(xp)   # SharedArray do not accept missing.
 
-    if !isempty(param.cat_features) && !isempty(offset)
+    if !isempty(param.cat_features) && !isempty(offset) && param.warnings==:On
         @warn "Categorical features with more than two categories are not currently handled correctly (by the mean targeting transformation)
         with offsets. The program will run but categorical information will be used sub-optimally, particularly if the
         average offset differs across categories. If categorical features are important, it may be better
@@ -774,12 +774,14 @@ end
 # capped at 1.
 # λᵢ = effective_lambda(param,iter)
 function effective_lambda(param::HTBparam,iter::Int)
-    
-    if param.double_lambda>=100_000
-        return param.lambda
-    end
-    m=param.I(floor(iter/param.double_lambda))
-    lambda = min(1,param.lambda*(2^m))
 
-    return param.T(lambda)
+    T = param.T 
+    lambda = param.lambda
+
+    if param.double_lambda<100_000
+        m=param.I(floor(iter/param.double_lambda))
+        lambda = min(1,param.lambda*(2^m))
+    end 
+
+    return T(lambda)
 end     
