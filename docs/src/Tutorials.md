@@ -11,7 +11,7 @@ The [examples](Examples.md) provide more cases of different loss functions as we
   * [Categorical features](tutorials/Categoricals.md) (how HTBoost handles categorical features; comparison with LightGBM and CatBoost)
   * [Missing data](tutorials/Missing.md) (HTBoost excels at handling missing data)
   * [Speeding up HTBoost with large n](tutorials/Faster_large_n.md) (strategies to reduce computing time for large n)
-
+  * [User's controlled cross-validation](tutorials/User_controlled_cv.md)( when to go beyond HTBfit for cross-validation)
 
 ### Other distributions (loss functions)
 

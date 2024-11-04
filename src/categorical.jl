@@ -1,12 +1,18 @@
 # 
 # Functions to work with categorical data.
 # Target encoding for categorical features, where the encoding depends on the loss function:
-#  
+# 
+# A categorical feature is replaced by param.cat_representation_dimension features. The first new feature, which replacs the original, 
+# is a standard target encoding, adapted to the loss functions. 
+# 
 # - :L2, :Huber, :t  -> mean 
 # - :quantile        -> quantile
 # - :logistic        -> logit of mean
 # - :sigma           -> log of std dev
 # 
+# If param.cat_representation_dimension>1, additional columns are added to the data frame, each with a different target encoding:
+# 2) frequency, 3) robust std, 4) robust skewness, 5) robust kurtosis.
+#
 #
 # The following functions in data_preparation.jl are also used to detect categorical data:
 # they are applied once, when HTBdata() is first called, so that all possible categories can be listed.
@@ -15,7 +21,7 @@
 # - map_cat_convert_to_float!()     converts categorical features (as from param.cat_features) to 0,1,... by mapping each unique value to a number,
 #                                   and saves the mapping in param.cat_dictionary
 #
-# The following components of param store information on with categoricals
+# The following components of param store information with categoricals
 #
 # - param.cat_features        can be provided by the user or automatically detected by categorical_features!() 
 # - param.cat_dictionary      mapping between original value of the category and 0,1,...
@@ -24,50 +30,99 @@
 #                             NamedTuple is a collection of matrices
 #
 # The functions below are applied ex-novo to each training set, and to each test set.
-# NB: categorical encoding is provisional, currently using posterior mean only. 
+# Note for PG: these functions could be simplied... they were written for a Bayesian approach, drawing encoding values from their posterior
 #
+# - global_stats()                  computes mean,variance,skew,....,quantile (if :quantile) etc... for all data in a training set
+#    auxiliary functions: mad_skewness(),mad_kurtosis()
 # -f_posteriors_list()               Creates a vector of functions, each computing the posterior mean of a representation dimension for target encoding (e.g. mean,frequency)
 # -f_priors_list()                   Creates a vector of functions, each computing the prior mean (for forecasting) of a representation dimension for target encoding (e.g. mean,frequency)
 #                                    Not all representation are always used: how many depends on param.cat_representation_dimension
-# - target_encoding_values!()         Computes target encoding values for categorical features. Done once for each training set. 
-#   - global_stats()                  computes mean,variance,quantile (if :quantile) etc... for all  data
-#   - draw_categoricals
-#     - f_posterior_1                 function to compute the appropriate mean target encoding (first moment) depending on loss 
-#       cat_posterior_L2,cat_posterior_logistic,cat_posterior_quantile,cat_posterior_logvar
+#                                    Priors are used in forecasting. 
+# - target_encoding_values!()         Computes target encoding values for categorical features, stores them in param.cat_values Done once for each training set. 
+#   - draw_categoricals               Currently a misnomer, and I dropped randomness in favor of deterministic target encoding.
+#     - f_posterior_m                 function to compute the appropriate mean target encoding (first moment) depending on loss 
+#       cat_posterior_L2,cat_posterior_logistic,cat_posterior_quantile,cat_posterior_logvar,....
 #       cat_prior_L2,....
 #     - f_posterior_ni                function to compute the number of observations in each category
-#     - f_posterior_2                function to compute the appropriate log variance (or log dispersion) target encoding (second moment) depending on loss
-#   - f_prior_1
+#     - f_posterior_s                function to compute the appropriate log variance (or log dispersion) target encoding (second moment) depending on loss
+#   - f_prior_m
 #   - f_prior_ni
-#   - f_prior_2
+#   - f_prior_s
 # - target_encoding                 Replace categoricals column with target encoding values stored in param.cat_values
 
+# measure of skewenss based on MAD. Equivalent to Groeneveld and Meeden. If mad is not defined (x has 1 unique value), returns 0.
+function mad_skewness(x::Vector{T}) where T<:Real 
+    m = mean(x)
+    med = median(x)
+    mad = mean(abs.(x .- m))  # 
+    if mad>0
+        return (m - med)/mad
+    else
+        return T(0)
+    end          
+end
 
-# f_posteriors = f_posteriors_list(loss)  
+# measure of kurtosis based on MAD, proposed by Pinsky 2024 (eq. 8) "Mean Absolute Deviation (About Mean) Metric for Kurtosis
+# if the measure is not defined (x has 1 unique value), returns 0.6, the kurtosis of a Gaussian (with this metric)
+function mad_kurtosis(x::Vector{T}) where T<:Real
+
+    if length(x)==1
+        return T(0.6)    
+    end
+
+    μ  = mean(x)
+    omega_L = x .< μ
+    omega_R = x .>= μ
+    μ_L = mean(x[omega_L])
+    μ_R = mean(x[omega_R])
+    H_L = mean(abs.(x[omega_L] .- μ_L))
+    H_R = mean(abs.(x[omega_R] .- μ_R))
+    H   = mean(abs.(x .- μ))
+    if H>0
+        xs  = sort(x)
+        F   = sum(xs .<= μ)/length(x) 
+        k  = (F*H_L + (1-F)*H_R)/H
+        return k
+    else 
+        return T(0.6)
+    end     
+
+end
+
+
+# compute mean,variance,quantile (if :quantile) and other statistics for all data
+# NB: updates param.globalstats = (mean_y=mean_y,var_y=var_y,q_y=q_y,n_0=param.n0_cat,mad_y=mad_y,skew_y=skew_y,kurt_y=kurt_y)
+#    Modify param.cat_globalstats in param.jl if you want to add more statistics or change their names
+function global_stats!(param,data)
+
+    mean_y  = mean(data.y)
+    var_y   = var(data.y)
+    mad_y   = mean(abs.(data.y .- mean_y))
+    skew_y  = mad_skewness(data.y)
+    kurt_y  = mad_kurtosis(data.y)
+
+    param.loss==:quantile ? q_y=quantile(data.y,param.coeff[1]) : q_y=quantile(data.y,0.5)
+
+    globalstats = (mean_y=mean_y,var_y=var_y,q_y=q_y,n_0=param.n0_cat,mad_y=mad_y,skew_y=skew_y,kurt_y=kurt_y)
+    param.cat_globalstats = globalstats
+
+end 
+
+
+# f_posteriors = f_posteriors_list(loss) 
+# Target encoding of values of y in each category:
+# 1) mean 2) frequency 3) logvar 4) robust skew  5) robust kurtosis. The measures may depend on the loss function. 
 function f_posteriors_list(loss)
-    f_posteriors = [f_posterior_1(loss), f_posterior_ni(loss), f_posterior_2(loss)]
+    f_posteriors = [f_posterior_m(loss),f_posterior_ni(loss),f_posterior_s(loss),f_posterior_sk(loss),f_posterior_k(loss)]
     return f_posteriors
 end 
 
 
 # f_priors = f_priors_list(loss)
+# Values assigned in forecasting to new categories 
 function f_priors_list(loss)
-    f_priors = [f_prior_1(loss), f_prior_ni(loss), f_prior_2(loss)]
+    f_priors = [f_prior_m(loss),f_prior_ni(loss),f_prior_s(loss),f_prior_sk(loss),f_prior_k(loss)]
     return f_priors
-end 
-
-
-# compute mean,variance,quantile (if :quantile) for all data
-# updates param.globalstats = (mean_y=mean_y,var_y=var_y,q_y=q_y)
-function global_stats!(param,data)
-
-        mean_y  = mean(data.y)
-        var_y   = var(data.y)
-        param.loss==:quantile ? q_y=quantile(data.y,param.coeff[1]) : q_y=quantile(data.y,0.5)
-    
-        globalstats = (mean_y=mean_y,var_y=var_y,q_y=q_y,n_0=param.n0_cat)
-        param.cat_globalstats = globalstats
-
 end 
 
 
@@ -153,11 +208,10 @@ function draw_categoricals(globalstats::NamedTuple,y::Vector{T},xj::Vector{T},i:
         indexes[i] = findall(xj .== value) 
     end
     
-    f_posteriors = f_posteriors_list(param.loss)
     cat_values_m = Matrix{param.T}(undef,length(indexes),param.cat_representation_dimension)  
 
     for j in 1:param.cat_representation_dimension
-        f_posterior = f_posteriors[j]
+        f_posterior = f_posteriors_list(param.loss)[j]
         for (i,ind) in enumerate(indexes)
             cat_values_m[i,j] = f_posterior(y,ind,globalstats) 
         end
@@ -266,7 +320,7 @@ end
 
 
 # For each category, computes posterior mean (moment 1). How this is done depends on the loss function.
-function f_posterior_1(loss)
+function f_posterior_m(loss)
 
     if loss in [:L2,:Huber,:t,:lognormal,:gamma,:L2loglink,:Poisson,:gammaPoisson]
         f_posterior = cat_posterior_L2
@@ -284,14 +338,9 @@ function f_posterior_1(loss)
 end 
 
 
-# For each category, computes posterior log variance (moment 2). How this is done depends on the loss function.
-# For some functions (e.g. :logistic) it returns nothing (e.g. f = f_posterior_2(loss) ... check with isnothing(f))
-function f_posterior_2(loss)
-    if loss==:logistic
-        return nothing 
-    else f_posterior = cat_posterior_logvar
-    end 
-
+# For each category, computes a robust measure of posterior std (moment 2).
+function f_posterior_s(loss)
+    f_posterior = cat_posterior_mad
     return f_posterior
 end 
 
@@ -303,8 +352,19 @@ function f_posterior_ni(loss)
 end  
 
 
+function f_posterior_sk(loss)
+    f_posterior = cat_posterior_skew
+    return f_posterior
+end 
+
+function f_posterior_k(loss)
+    f_posterior = cat_posterior_kurtosis
+    return f_posterior
+end 
+
+
 # prior for first moment 
-function f_prior_1(loss)
+function f_prior_m(loss)
 
     if loss in [:L2,:Huber,:t,:lognormal,:gamma,:L2loglink,:Poisson,:gammaPoisson]
         f_prior = cat_prior_L2
@@ -321,23 +381,6 @@ function f_prior_1(loss)
     return f_prior
 end 
 
-function f_prior_ni(loss)
-    f_prior = cat_prior_ni
-    return f_prior
-end 
-
-
-function f_prior_2(loss)   # check isnothing(f), where f = f_prior_2(loss)
-    if loss==:logistic
-        return nothing 
-    else
-        f_prior = cat_prior_logvar
-    end 
-
-    return f_prior
-end 
-
-
 
 function cat_prior_L2(globalstats)  
     mean_y,var_y,q_y,n_0 = globalstats.mean_y, globalstats.var_y,globalstats.q_y,globalstats.n_0
@@ -347,6 +390,11 @@ end
 function cat_prior_logistic(globalstats)  
     mean_y,var_y,q_y,n_0 = globalstats.mean_y, globalstats.var_y,globalstats.q_y,globalstats.n_0
     return log(mean_y/(1-mean_y))
+end
+
+function cat_prior_logvar(globalstats)  
+    mean_y,var_y,q_y,n_0 = globalstats.mean_y, globalstats.var_y,globalstats.q_y,globalstats.n_0
+    return log(var_y)
 end
 
 function cat_prior_quantile(globalstats)
@@ -359,16 +407,102 @@ function cat_prior_ni(globalstats)
     return n_0
 end
 
-function cat_prior_logvar(globalstats)  
-    mean_y,var_y,q_y,n_0 = globalstats.mean_y, globalstats.var_y,globalstats.q_y,globalstats.n_0
-    return log(var_y)
+function cat_prior_mad(globalstats)
+    mean_y,var_y,q_y,n_0,mad_y,sk_y,k_y = globalstats.mean_y, globalstats.var_y,globalstats.q_y,globalstats.n_0,
+                                            globalstats.mad_y,globalstats.skew_y,globalstats.kurt_y
+    return mad_y
 end
+
+
+function cat_prior_skew(globalstats)
+    mean_y,var_y,q_y,n_0,mad_y,sk_y,k_y = globalstats.mean_y, globalstats.var_y,globalstats.q_y,globalstats.n_0,
+                                            globalstats.mad_y,globalstats.skew_y,globalstats.kurt_y
+    return sk_y
+end
+
+function cat_prior_kurtosis(globalstats)
+    mean_y,var_y,q_y,n_0,mad_y,sk_y,k_y = globalstats.mean_y, globalstats.var_y,globalstats.q_y,globalstats.n_0,
+                                            globalstats.mad_y,globalstats.skew_y,globalstats.kurt_y
+    return k_y
+end
+
+
+
+function f_prior_ni(loss)
+    f_prior = cat_prior_ni
+    return f_prior
+end 
+
+function f_prior_s(loss)   
+    f_prior = cat_prior_mad
+    return f_prior
+end 
+
+function f_prior_sk(loss)  
+    f_prior = cat_prior_skew
+    return f_prior
+end 
+
+function f_prior_k(loss)  
+    f_prior = cat_prior_kurtosis
+    return f_prior
+end 
 
 # For each category, computes number of instances n_0 + n_i in that category
 function cat_posterior_ni(y,ind,globalstats)
     mean_y,var_y,q_y,n_0 = globalstats.mean_y, globalstats.var_y,globalstats.q_y,globalstats.n_0
     return length(ind) + n_0
 end  
+
+
+# mad measure of dispersion   
+function cat_posterior_mad(y,ind,globalstats)  
+
+    n_i = length(ind)
+    mean_y,var_y,q_y,n_0,mad_y,skew_y,kurt_y = globalstats.mean_y, globalstats.var_y,globalstats.q_y,globalstats.n_0,globalstats.mad_y,globalstats.skew_y,globalstats.kurt_y
+
+    if isempty(ind)
+        return mad_y
+    else
+        mad_i =  mean( abs.(y[ind] .- mean(y[ind])) )
+        return sqrt( (n_0*mad_y^2 + n_i*mad_i^2)/(n_0+n_i ) )  # in a quasi-Gaussian setting, this seems the right formula
+        #return (n_0*mad_y + n_i*mad_i)/(n_0+n_i )  # not obvious to me which is the best way to combine the two MADs in a non-Gaussian setting
+    end     
+
+end
+
+
+function cat_posterior_skew(y,ind,globalstats)  
+
+    n_i = length(ind)
+    mean_y,var_y,q_y,n_0,mad_y,skew_y,kurt_y = globalstats.mean_y, globalstats.var_y,globalstats.q_y,globalstats.n_0,globalstats.mad_y,globalstats.skew_y,globalstats.kurt_y
+
+    if isempty(ind)
+        return skew_y
+    else
+        skew_i =  mad_skewness(y[ind])
+        return (n_0*skew_y + n_i*skew_i)/(n_0+n_i )
+    end     
+
+end
+
+
+function cat_posterior_kurtosis(y,ind,globalstats)  
+
+    n_i = length(ind)
+    mean_y,var_y,q_y,n_0,mad_y,skew_y,kurt_y = globalstats.mean_y, globalstats.var_y,globalstats.q_y,globalstats.n_0,globalstats.mad_y,globalstats.skew_y,globalstats.kurt_y
+
+    if isempty(ind)
+        return kurt_y
+    else
+        kurt_i =  mad_kurtosis(y[ind])
+        return (n_0*kurt_y + n_i*kurt_i)/(n_0+n_i )
+    end     
+
+end
+
+
+
 
 # log of approximate posterior mean of var   
 function cat_posterior_logvar(y,ind,globalstats)  
@@ -377,11 +511,9 @@ function cat_posterior_logvar(y,ind,globalstats)
     mean_y,var_y,q_y,n_0 = globalstats.mean_y, globalstats.var_y,globalstats.q_y,globalstats.n_0
 
     if isempty(ind)
-        mean_i = mean_y
         var_i  = var_y
     else
-        mean_i = mean(y[ind])
-        var_i =  mean((y[ind] .- mean_i).^2)
+        var_i =  mean((y[ind] .- mean(y[ind])).^2)
     end     
 
     posterior_mean  = log((n_0*var_y + n_i*var_i )/(n_0+n_i)) 
@@ -391,28 +523,25 @@ function cat_posterior_logvar(y,ind,globalstats)
 end
 
 
-# posterior distribution.  
+# approximate posterior mean of mean
 function cat_posterior_L2(y,ind,globalstats)  
 
     n_i = length(ind)
     mean_y,var_y,q_y,n_0 = globalstats.mean_y, globalstats.var_y,globalstats.q_y,globalstats.n_0
 
     if isempty(ind)
-        mean_i = mean_y
-        var_i  = var_y
+        return mean_y
     else
         mean_i = mean(y[ind])
-        var_i =  mean((y[ind] .- mean_i).^2)
+        return (n_0*mean_y + n_i*mean_i)/(n_0+n_i)
     end     
-
-    posterior_mean = (n_0*mean_y + n_i*mean_i)/(n_0+n_i)
 
     return posterior_mean
 
 end
 
 
-# posterior distribution.  
+# approximate posterior distribution of mean for logistic loss  
 function cat_posterior_logistic(y,ind,globalstats)  
 
     n_i = length(ind)
@@ -420,10 +549,8 @@ function cat_posterior_logistic(y,ind,globalstats)
 
     if isempty(ind)
         mean_i = mean_y
-        var_i  = var_y
     else
         mean_i = mean(y[ind])
-        var_i =  mean((y[ind] .- mean_i).^2)
     end     
 
     m              = (n_0*mean_y + n_i*mean_i)/(n_0+n_i)

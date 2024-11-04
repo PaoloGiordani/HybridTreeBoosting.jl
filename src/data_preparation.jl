@@ -156,7 +156,17 @@ function extended_categorical_features!(param,fnames)
             push!(param.cat_features_extended,j)    # keep track of extended cat features
 
             for c in 1:(param.cat_representation_dimension-1)
-                if c==1; name_ext = "_cat_freq"; elseif c==2; name_ext = "_cat_var"; else; name_ext = "cat_ext"*"$c"; end
+                if c==1
+                    name_ext = "_cat_freq"
+                elseif c==2
+                    name_ext = "_cat_std"
+                elseif c==3 
+                    name_ext = "_cat_skew"
+                elseif c==4 
+                    name_ext = "_cat_kurt"
+                elseif c>=5
+                    name_ext = "_cat_ext"*"$c"    
+                end
                 fnames = push!(fnames,fnames[j]*name_ext)
             end
     
@@ -301,7 +311,7 @@ end
 
 
 
-# Unlike the first version of the code, I use 1.25*mean|z| instead of 1.42*median|z|, because the second measure breaks down (goes to 0) with very sparse data.
+# Unlike the first version of the SMARTboost code, I use 1.25*mean|z| instead of 1.42*median|z|, because the second measure breaks down (goes to 0) with very sparse data.
 # In the first version of the paper and code, I computed the robust std only on non-zero values, now I computed on all values,
 # which implies a prior of much sharper, less smooth functions on sparse features. Mixed discrete-continuous features therefore are given a much weaker prior.
 function robust_mean_std(x::AbstractMatrix{T}) where T <: AbstractFloat # where x = data.x

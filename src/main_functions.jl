@@ -14,7 +14,8 @@
 #    HTBfit_single       main function, building block for composite and multi-parameter models 
 #       find_force_sharp_splits 
 #    HTBfit_hurdle       hurdle models: y continuous, split into y=0 and y /=0   
-#    HTBfit_multiclass   multiclass classicaition 
+#    HTBfit_multiclass   multiclass classication
+#  HTBcv                 user-controlled cross-validation 
 #  HTBbst                fits HTB when nothing needs to be cross-validated (not even number of trees)
 #  HTBpredict            prediction from HTBtrees::HTBoostTrees
 #    HTBpredict          output is vector of tuples (composite models)
@@ -53,6 +54,7 @@ Basic information about the main functions in HTBoost (see help on each function
 # Fitting and forecasting 
 - `HTBfit`             fits HTBoost with cv (or validation/early stopping) of number of trees and, optionally, depth or other parameter
 - `HTBpredict`         predictions for y or natural parameter
+- `HTBcv`              user-controlled cross-validation. (Note that the recommended process is to use :modality in HTBfit rather than HTBcv.)            
 
 #  POST-ESTIMATION ANALYSIS
 - `HTBcoeff`           provides information on constant coefficients, e.g. dispersion and dof for loss=:t
@@ -61,6 +63,9 @@ Basic information about the main functions in HTBoost (see help on each function
 - `HTBmarginaleffect`  Numerical computation of marginal effects.
 - `HTBoutput`          collects fitted parameters in matrices
 - `HTBweightedtau`     computes weighted smoothing parameter to help assess function smoothness
+- `HTBplot_tau`        plotting sigmoid for a given tau 
+- `HTBplot_ppr`        provides tau and plot for projection pursuit for a single tree
+
 
 Example of use of info function 
 
@@ -88,7 +93,7 @@ function HTBinfo()
 end
 
 
-
+    
 #=
     HTBloglikdivide(df,y_symbol,date_symbol;overlap=0)
 
@@ -186,8 +191,8 @@ Computes indexes of training set and test set for cumulative CV and pseudo-real-
 
 * Example of use
 
-- first_date = Date("2017-12-31", Dates.DateFormat("y-m-d"))
-- indtrain_a,indtest_a = HTBindexes_from_dates(df,:date,first_date,12)
+    first_date = Date("2017-12-31", Dates.DateFormat("y-m-d"))
+    indtrain_a,indtest_a = HTBindexes_from_dates(df,:date,first_date,12)
 
 * NOTES
 
@@ -264,15 +269,15 @@ function HTBbst(data0::HTBdata, param::HTBparam )
     rh,param       = gradient_hessian( data.y,data.weights,gammafit,param,0)
 
     # prelimiminary run to calibrate coefficients and priors
-    Gβ,trash  = fit_one_tree(data.y,data.weights,HTBtrees,rh.r,rh.h,data.x,μgrid,Info_x,τgrid,param)
+    Gβ,trash  = fit_one_tree(data.y,data.weights,HTBtrees,rh.r,rh.h,data.x,μgrid,Info_x,τgrid,param,999)
     param = updatecoeff(param,data.y,HTBtrees.gammafit+Gβ,data.weights,0) # +Gβ, NOT +λGβ
     trash,param = gradient_hessian( data.y,data.weights,HTBtrees.gammafit+Gβ,param,1)
 
     for iter in 1:param.ntrees
         displayinfo(param.verbose,iter)
-        Gβ,i,μ,τ,m,β,fi2,σᵧ  = fit_one_tree(data.y,data.weights,HTBtrees,rh.r,rh.h,data.x,μgrid,Info_x,τgrid,param)
+        Gβ,i,μ,τ,m,β,fi2,σᵧ  = fit_one_tree(data.y,data.weights,HTBtrees,rh.r,rh.h,data.x,μgrid,Info_x,τgrid,param,iter)
         param = updatecoeff(param,data.y,HTBtrees.gammafit+Gβ,data.weights,iter) # +Gβ, NOT +λGβ
-        updateHTBtrees!(HTBtrees,Gβ,HTBtree(i,μ,τ,m,β,fi2,σᵧ),iter,param)          # updates gammafit=gammafit_old+λGβ
+        updateHTBtrees!(HTBtrees,Gβ,HTBtree(i,μ,τ,m,β,fi2,σᵧ),iter,param)          # updates gammafit=gammafit_old+λ*Gβ
         rh,param = gradient_hessian( data.y,data.weights,HTBtrees.gammafit,param,2)
     end
 
@@ -318,9 +323,10 @@ function HTBpredict_internal(x::AbstractMatrix,HTBtrees::HTBoostTrees,predict;cu
 
         gammafit = HTBtrees.gamma0*ones(T,size(x,1))
     
-        for j in 1:length(HTBtrees.trees)
-            tree     =  HTBtrees.trees[j]          
-            gammafit += HTBtrees.param.lambda*HTBtreebuild(x,tree.i,tree.μ,tree.τ,tree.m,tree.β,tree.σᵧ,HTBtrees.param)    
+        for i in 1:length(HTBtrees.trees)
+            tree     =  HTBtrees.trees[i]
+            λᵢ       = effective_lambda(HTBtrees.param,i)          
+            gammafit += λᵢ*HTBtreebuild(x,tree.i,tree.μ,tree.τ,tree.m,tree.β,tree.σᵧ,HTBtrees.param,i)    
         end
     end
 
@@ -342,7 +348,7 @@ function HTBpredict_distributed(x::AbstractMatrix,HTBtrees::HTBoostTrees)
     x       = SharedMatrixErrorRobust(x,HTBtrees.param)
 
     gammafit = @distributed (+) for j = 1:length(HTBtrees.trees)
-        HTBtrees.param.lambda*HTBtreebuild(x,HTBtrees.trees[j].i,HTBtrees.trees[j].μ,HTBtrees.trees[j].τ,HTBtrees.trees[j].m,HTBtrees.trees[j].β,HTBtrees.trees[j].σᵧ,HTBtrees.param)
+        effective_lambda(HTBtrees.param,j)*HTBtreebuild(x,HTBtrees.trees[j].i,HTBtrees.trees[j].μ,HTBtrees.trees[j].τ,HTBtrees.trees[j].m,HTBtrees.trees[j].β,HTBtrees.trees[j].σᵧ,HTBtrees.param,j)
     end
 
     return gammafit + HTBtrees.gamma0*ones(T,size(x,1))
@@ -738,6 +744,135 @@ function HTBfit(data::HTBdata, param::HTBparam; cv_grid=[],cv_different_loss::Bo
     return output 
 end 
 
+
+
+"
+    HTBcv(data,param,params_cv;internal_cv=true)
+
+User's controlled cross-validation for HTBoost.
+
+The recommended process for HTBoost is to use *modality* (:fast, :compromise, :accurate) in HTBfit() rather than HTBcv().
+The various modalities in HTBfit() internally control the most important hyperparameters, being as parsimonious as possible due 
+to the high computational costs of HTB. HTBfit() also stacks the models, which is not done here.
+All modalities use early stopping to determine the number of trees, so ntrees should not be cv. 
+
+The function HTBcv() is provided for advanced users who want to fully control the cross-validation process and can incur the costs.
+In most cases HTBcv() will be less accurate and efficient than HTBfit(), unless internal_cv=true, in
+which case cv is also performed internally (at increase cost).
+    
+A good use of HTBcv() is to cv a parameter that is not included in the modality (e.g. the strength of the smoothness prior),
+in conjunction with internal_cv = true. (At increase computational cost.)
+
+# Inputs 
+
+- `data`                    HTBdata type 
+- `param`                   HTBparam type. Includes number of folds, randomization (or block-cv) and, optionally, indexes of train and validation folds
+- `params_cv`               Array of Dictionaries. Each dictionary contains the hyperparameters to be cv'ed (keys) and the values to be cv'ed (values). 
+
+# Optional Inputs 
+
+- `internal_cv`             [true] If true, it will perform internal cv (as dictated by param.modality) for each element of the dictionary.
+                            This could be very slow. Set to false if you want to fully control the cv process.
+                            NOTE: if false, param.modality is irrelevant (set to :fast)
+
+# Output (named tuple)
+
+- `bestindex`               Index of the best model in params_cv 
+- `bestparam`               param (type HTBparam) of the best model
+- `output`                  output of the best model
+- `loss`                    loss of the best model
+- `output_a`                Array of outputs for all models
+- `loss_a`                  Array of losses for all models
+
+# Example of use: cv over varlntau (strength of smoothness prior), and also cv internally.
+
+    # Set up model and data 
+    param  = HTBparam(loss=:L2,modality=:accurate,nfold=4)  # number of folds, randomization (or block-cv) and, optionally, indexes of train and validation folds
+    data   = HTBdata(x,y,param)
+
+    # Specify hyperparameters and values for cv as a Dictionary. Here we cv only varlntau (strength of smoothness prior).
+    # The resuls is a one-dimensional array. More dimensions can be added in the same way. 
+    params_cv = [Dict(
+        :varlntau => varlntau)    # strength of prior on log(tau) (smoothness). Default is 0.5^2. Smaller numbers are stronger priors.
+        for
+        varlntau in (0.25^2,0.5^1,1.0^2)
+        ]
+
+    htbcv = HTBcv(data,param,params_cv)      # cv over dictionary and internally
+    
+    # Some info about the best model 
+    bestindex = htbcv.bestindex   # params_cv[bestindex] is for best set of cv hyperparameters       
+    bestparam = htbcv.bestparam   
+
+    # predict using best model
+    yf    = HTBpredict(x_oos,htbcv.output)    
+
+# Example of use: replace HTBfit() (not recommended) by setting internal_cv=false
+
+    # Set up model and data 
+    param  = HTBparam(loss=:L2,randomizecv=false,nfold=4)  # number of folds, randomization (or block-cv) and, optionally, indexes of train and validation folds
+    data   = HTBdata(x,y,param)
+
+    # Specify hyperparameters and values for cv as a Dictionary. Here we cv depth and varlntau (strength of smoothness prior).
+    # The resuls is a two-dimensional array. More dimensions can be added in the same way. 
+    params_cv = [Dict(
+        :depth => depth,
+        :varlntau => varlntau)    # strength of prior on log(tau) (smoothness). Default is 0.5^2. Smaller numbers are stronger priors.
+        for
+        depth in (2,4,6),
+        varlntau in (0.25^2,0.5^1,1.0^2)
+        ]
+
+    htbcv = HTBcv(data,param,params_cv,internal_cv=false)       
+ 
+    # Some info about the best model 
+    bestindex = htbcv.bestindex   # params_cv[bestindex] is for best set of cv hyperparameters       
+    bestparam = htbcv.bestparam   
+    output    = htbcv.output
+
+    # predict using best model
+    yf    = HTBpredict(x_oos,htbcv.output)    
+
+
+"
+function HTBcv(data::HTBdata,param0::HTBparam,params_cv::Array{D};internal_cv=true) where D<:Dict
+
+    param = deepcopy(param0)    
+
+    if internal_cv && modality in [:compromise,:accurate] && depth in keys(params_cv[1])
+        @warn "depth is being cross-validated twice. Set internal_cv=false or delete it from params_cv"    
+    end
+    
+    internal_cv==false ? param.modality = :fast : nothing
+
+    loss_a = Vector{Float64}(undef,length(params_cv))   # loss array. length(params_cv) is the product of each dimension of params_cv (a multidimensional array) 
+    output_a = Vector{Any}(undef,length(params_cv))     
+
+    for (i,params) in enumerate(params_cv)
+
+        for (paramfield,value) in params
+            paramfield = Symbol(paramfield)  # required by R wrapper 
+            fieldvalue0 = getfield(param,paramfield)
+            value       = typeof(fieldvalue0)(value)  # convert to correct type
+            setfield!(param,paramfield,value)
+        end
+
+        output = HTBfit(data,param)
+        loss_a[i] = output.lossw          
+        output_a[i] = output
+    end
+ 
+    bestindex = argmin(loss_a)   # is the index a scalar or a tuple?
+    bestparam = output_a[bestindex].bestparam
+    output    = output_a[bestindex]
+    loss     = loss_a[bestindex]
+
+    return (bestindex=bestindex,bestparam=bestparam,output=output,loss=loss,output_a= output_a,loss_a=loss_a)
+
+end
+
+
+
 # Conditions to hybrid model, with sharp splits forced on features with high τ.
 # Only if the high τ are for features with non-trivial importance (fi), and only if user did not specify sharp_splits
 # Use: condition_sharp,force_sharp_splits = find_force_sharp_splits(HTBtrees,data,param,cv_hybrid)
@@ -770,7 +905,7 @@ end
 
 
 # HTBfit for a single model.  
-function HTBfit_single(data::HTBdata,param::HTBparam; cv_grid=[],cv_different_loss::Bool=false,cv_sharp::Bool=false,
+function HTBfit_single(data::HTBdata,param::HTBparam;cv_grid=[],cv_different_loss::Bool=false,cv_sharp::Bool=false,
         cv_sparsity=:Auto,cv_hybrid=true,cv_depthppr=:Auto,skip_full_sample=false)   # skip_full_sample enforces nofullsample even if nfold=1 (used in other functions, not by user)
     
     T,I = param.T,param.I
@@ -1580,10 +1715,12 @@ Output fitted parameters estimated from each tree, collected in matrices. Exclud
 - `μ`         (ntrees,depth) matrix of threshold points
 - `τ`         (ntrees,depth) matrix of sigmoid parameters
 - `fi2`       (ntrees,depth) matrix of feature importance, increase in R2 at each split
+- `m`         (ntrees,depth) matrix of threshold points for missing values 
+- `β`         (ntrees,2^depth) matrix of leaf coefficients (1st phase, excluding ppr)
 
 # Example of use
     output = HTBfit(data,param)
-    i,μ,τ,fi2 = HTBoutput(output.HTBtrees)
+    i,μ,τ,fi2,m,β = HTBoutput(output.HTBtrees)
 
 """
 function HTBoutput(HTBtrees::HTBoostTrees;exclude_pp = true)
@@ -1597,10 +1734,13 @@ function HTBoutput(HTBtrees::HTBoostTrees;exclude_pp = true)
     μ   = Matrix{T}(undef,ntrees,d)
     τ   = Matrix{T}(undef,ntrees,d)
     fi2 = Matrix{T}(undef,ntrees,d)
+    m   = Matrix{T}(undef,ntrees,d)
+    β   = Matrix{T}(undef,ntrees,2^HTBtrees.param.depth)  # only the first phase
 
     for j in 1:ntrees
         tree = HTBtrees.trees[j]
-        i[j,:],μ[j,:],τ[j,:],fi2[j,:] = tree.i,tree.μ,tree.τ,tree.fi2
+        i[j,:],μ[j,:],τ[j,:],fi2[j,:],m[j,:] = tree.i,tree.μ,tree.τ,tree.fi2,tree.m
+        β[j,:] = tree.β[1]   # β[1] excludes the projection pursuit regression parameters    
     end
 
     # delete the columns that refer to projection pursuit regression
@@ -1614,7 +1754,7 @@ function HTBoutput(HTBtrees::HTBoostTrees;exclude_pp = true)
         fi2 = fi2[:,1:depth]
     end  
 
-    return i,μ,τ,fi2
+    return i,μ,τ,fi2,m,β
 end
 
 

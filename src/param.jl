@@ -12,8 +12,8 @@
 # param_constraints!
 # SharedMatrixErrorRobust
 # convert_df_matrix   # converts a dataframe to a Matrix{T} 
+# effective_lambda                Potentially allows a schedule of lambda(iter)
 #
-
 
 
 
@@ -46,14 +46,15 @@ mutable struct HTBparam{T<:AbstractFloat, I<:Int,R<:Real}
     # Tree structure, priors, categorical data, missing
     depth::I
     depth1::I
-    depthppr::I        # projection pursuit depth. 0 to disactivate
+    depthppr::I        # projection pursuit depth. 0 to disactivate.
     ppr_in_vs::Symbol  # :On for projection pursuit included in feature selection stage 
     sigmoid::Symbol  # which simoid function. :sigmoidsqrt or :sigmoidlogistic or :TReLu. sqrt x/sqrt(1+x^2) 10 times faster than exp.
     meanlntau::T              # Assume a mixture of two student-t for log(tau).
     varlntau::T               #
     doflntau::T
     multiplier_stdtau::T
-    varmu::T                # Helps in preventing very large mu, which otherwise can happen in final trees. 1.0 or even 2.0
+    d_meanlntau_cat::T       # difference in intercept meanlntau for categorical features (prior that they are less smooth)
+    varmu::T                # Helps in preventing very large mu, which otherwise can happen in final trees. e.g. 2.0. No gain in accuracy though.
     dofmu::T
     meanlntau_ppr::T         # for projection pursuit 
     varlntau_ppr::T 
@@ -106,9 +107,12 @@ mutable struct HTBparam{T<:AbstractFloat, I<:Int,R<:Real}
     xtolOptim::T
     method_refineOptim::Symbol  # which method for refineOptim, e.g. pmap, @distributed, .... 
     points_refineOptim::I      # number of values of tau for refineOptim. Default 12. Other values allowed are 4,7.
-    # others
+    # number of trees
     ntrees::I   # number of trees
-    theta::T  # penalization of β: multiplies the default precision. Default 1. Higher values give tighter priors.
+    double_lambda::Union{Symbol,I}  # double λ every double_lambda trees (so lambda could quadruple etc...). In :Auto, default is 1000, and Inf if :accurate
+    # penalization of β
+    theta::T  # penalization of β: multiplies the default precision. Default 1. Higher values give tighter priors.    
+    # others
     loglikdivide::Union{Symbol,T}  # the log-likelhood is divided by this scalar. Used to improve inference when observations are correlated.
     overlap::I       # used in purged-CV and HTBloglikdivide
     multiply_pb::T
@@ -223,11 +227,12 @@ Note: all Julia symbols can be replaced by strings. e.g. :L2 can be replaced by 
 - `cat_features`            [] vector of indices of categorical features, e.g. [2,5], or vector of names in DataFrame,
                             e.g. [:wage,:age] or ["wage","age"]. If empty, categoricals are automatically detected as non-numerical features.
 
-- `cv_categoricals`     [:none] whether to run preliminary cross-validation on parameters related to categorical features.
+- `cv_categoricals`     [:default] whether to run preliminary cross-validation on parameters related to categorical features.
                         :none uses default parameters 
-                        :penalty runs a rought cv the penalty associated to the number of categories; recommended if n/n_cat if high for any feature, particularly if SNR is low                             
+                        :penalty runs a rough cv the penalty associated to the number of categories; recommended if n/n_cat if low for any feature, particularly if SNR is low                             
                         :n0 runs a rough of cv the strength of the prior shrinking categorical values to the overall mean; recommended with highly unequal number of observations in different categories
                         :both runs a rough cv or penalty and n0 
+                        :default uses :none for modality in [:fastest,:fast], :penalty for :compromise, and :both for :accurate        
 
 - `overlap:`            [0] number of overlaps in time series and panels. Typically overlap = h-1, where y(t) = Y(t+h)-Y(t). Used for purged-CV.
 
@@ -275,7 +280,7 @@ Note: all Julia symbols can be replaced by strings. e.g. :L2 can be replaced by 
 
 - `force_smooth_splits`     [] optionally, a p vector of Bool, with j-th value set to true if the j-th feature is forced to enter with a smooth split (high values of τ not allowed).
 
-- `cat_representation_dimension`  [3] 1 for mean encoding, 2 adds frequency, 3 adds variance.
+- `cat_representation_dimension`  [4 (2 for classification)] 1 for mean encoding, 2 adds frequency, 3 adds variance, 4 adds robust skewness, 5 adds robust kurtosis
 
 - `losscv`                  [:default] loss function for cross-validation (:mse,:mae,:logistic,:sign). 
 
@@ -319,14 +324,15 @@ function HTBparam(;
     # Tree structure and priors
     depth  = 5,        # 3 allows 2nd degree interaction and is fast. 4 takes almost twice as much per tree on average. 5 can be 8-10 times slower per tree. However, fewer deeper trees are required, so the actual increase in computing costs is smaller.
     depth1 = 10,
-    depthppr = 2,      # projection pursuit depth. 0 to disactive.
+    depthppr = 2,      # projection pursuit depth. 0 to disactive. 
     ppr_in_vs = :On,    # :On for projection pursuit included in variable selection phase
     sigmoid = :sigmoidsqrt,  # :sigmoidsqrt or :sigmoidlogistic or :TReLu
     meanlntau= 1.0,    # Assume a Gaussian for log(tau).
-    varlntau = 0.5^2,  # NB see loss.jl/multiplier_stdlogtau_y(). Centers toward quasi-linearity. This is the dispersion of the student-t distribution (not the variance unless dof is high).
+    varlntau = 0.5^2,  # [0.5^2]. Set to Inf to disactivate (log(p(τ)=0)).  See loss.jl/multiplier_stdlogtau_y().  This is the dispersion of the student-t distribution (not the variance unless dof is high).
     doflntau = 5.0,
     multiplier_stdtau = 5.0,
-    varmu   = 2.0^2,    # smaller number make it increasingly unlikely to have nonlinear behavior in the tails. DISPERSION, not variance
+    d_meanlntau_cat = 1.0,  # difference in intercept of meanlntau for categorical features (prior that they are less smooth)
+    varmu   = Inf,    # default Inf to disactivate (then lnpμ sets p(μ)=1.) Otherwise 1-3. Smaller number make it increasingly unlikely to have nonlinear behavior in the tails. DISPERSION, not variance
     dofmu   = 10.0,
     meanlntau_ppr = log(0.2),  # for projection pursuit regression. Center on quasi-linearity. log(0.2) ≈ -1.6.  
     varlntau_ppr = 1^2,        # one-sided 
@@ -344,12 +350,12 @@ function HTBparam(;
     cat_features_extended = Vector{I}(undef,0),
     cat_dictionary=Vector{Dict}(undef,0),       # global variable to store the dictionary mapping each category to a number
     cat_values = Vector{NamedTuple}(undef,0),
-    cat_globalstats = (mean_y=T(0),var_y=T(0),q_y=T(0),n_0=T(0)),
-    cat_representation_dimension = 3,           # dimension of the representation of categorical features
+    cat_globalstats = (mean_y=T(0),var_y=T(0),q_y=T(0),n_0=T(0),mad_y=T(0),skew_y=T(0),kurt_y=T(0)),  # global statistics for categorical features
+    cat_representation_dimension = 4,           # dimension of the representation of categorical features: mean,frequency,std,skew,kurt (robust measures)
     n0_cat = 1,                                  # leave at 1! See preliminary_cv for why (multiplier). automatically cv prior on number of observations for categorical data
                                                  # cv tries higher values but not lower than n0_cat.
     mean_encoding_penalization = 1.0,
-    cv_categoricals = :none,            
+    cv_categoricals = :default,            
     class_values = Vector{T}(undef,0),
     delete_missing = false,  
     mask_missing = false,                       # If true, adds a mask (dummy) for missing values. Does not seem required in any instance, and may worsen performance, although it may occasionally improve performance in small samples.
@@ -378,7 +384,8 @@ function HTBparam(;
     method_refineOptim = :distributed, #  :pmap, :distributed 
     points_refineOptim = 12,    # number of values of tau for refineOptim. Default 12. Other values allowed are 4,7.
     # miscel                    # becomes 7 once coarse_grid kicks in, unless ncores>12.
-    ntrees = 2000, # number of trees. 1000 is CatBoost default (with maxdepth = 6).  
+    ntrees = 2000, # number of trees. 1000 is CatBoost default (with maxdepth = 6). 
+    double_lambda = :Auto,  # double λ every so double_lambda trees. 
     theta = 1.0,   # numbers larger than 1 imply tighter penalization on β compared to default. 
     loglikdivide = :Auto,   # the log-likelhood is divided by this scalar. Used to improve inference when observations are correlated.
     overlap = 0,
@@ -431,7 +438,22 @@ function HTBparam(;
     sharevs==:Auto ? nothing : sharevs=T(sharevs)
     loglikdivide==:Auto ? nothing : loglikdivide=T(loglikdivide)
     p0==:Auto ? nothing : p0=I(p0)   # if :Auto, set in param_given_data!()
-    
+
+    if cv_categoricals==:default
+        if modality in [:fastest,:fast]
+            cv_categoricals=:none
+        elseif modality == :compromise
+            cv_categoricals=:penalty
+        else     
+            cv_categoricals=:both
+        end 
+    end     
+
+    if double_lambda==:Auto
+        double_lambda = 100_000   # disactivate 
+        #modality==:accurate ? double_lambda=100_000 : double_lambda=1000
+    end     
+
     if min_unique==:Auto
         modality in [:fast,:fastest] ? min_unique = 10 : min_unique = 5
     end     
@@ -454,14 +476,14 @@ function HTBparam(;
      
     param = HTBparam(T,I,Symbol(loss),Symbol(losscv),Symbol(modality),T.(coeff),coeff_updated,Symbol(verbose),Symbol(warnings),I(num_warnings),randomizecv,I(nfold),nofullsample,sharevalidation,indtrain_a,indtest_a,T(stderulestop),T(lambda),I(depth),I(depth1),I(depthppr),
         Symbol(ppr_in_vs),Symbol(sigmoid),
-        T(meanlntau),T(varlntau),T(doflntau),T(multiplier_stdtau),T(varmu),T(dofmu),
+        T(meanlntau),T(varlntau),T(doflntau),T(multiplier_stdtau),T(d_meanlntau_cat),T(varmu),T(dofmu),
         T(meanlntau_ppr),T(varlntau_ppr),T(doflntau_ppr),Symbol(priortype),T(max_tau_smooth),I(min_unique),mixed_dc_sharp,T(tau_threshold),force_sharp_splits,force_smooth_splits,exclude_features,augment_mugrid,cat_features,cat_features_extended,cat_dictionary,cat_values,cat_globalstats,I(cat_representation_dimension),T(n0_cat),T(mean_encoding_penalization),
         Symbol(cv_categoricals),
         class_values,Bool(delete_missing),mask_missing,missing_features,info_date,T(sparsity_penalization),p0,sharevs,refine_obs_from_vs,finalβ_obs_from_vs,
         I(n_refineOptim),T(subsampleshare_columns),Symbol(sparsevs),T(frequency_update),
         I(number_best_features),best_features,Symbol(pvs),I(p_pvs),I(min_d_pvs),I(mugridpoints),I(taugridpoints),
         I(depth_coarse_grid),I(depth_coarse_grid2),T(xtolOptim),Symbol(method_refineOptim),
-        I(points_refineOptim),I(ntrees),T(theta),loglikdivide,I(overlap),T(multiply_pb),T(varGb),I(ncores),I(seed_datacv),I(seed_subsampling),I(iter),newton_gauss_approx,
+        I(points_refineOptim),I(ntrees),I(double_lambda),T(theta),loglikdivide,I(overlap),T(multiply_pb),T(varGb),I(ncores),I(seed_datacv),I(seed_subsampling),I(iter),newton_gauss_approx,
         I(newton_max_steps),I(newton_max_steps_final),T(newton_tol),T(newton_tol_final),I(newton_max_steps_refineOptim),linesearch)
 
     param_constraints!(param) # enforces constraints across options. Must be repeated in HTBfit.
@@ -525,12 +547,16 @@ end
 # separate function enforces constraints across options.
 function param_constraints!(param::HTBparam)
 
+    # no ppr if depth=1? Probably worse performance without ppr, but half the computing cost. 
+    #param.depth==1 ? param.depthppr=param.I(0) : nothing 
+    
     if param.meanlntau==Inf; param.priortype==:sharp; end;
 
     if param.priortype==:smooth
         param.doflntau=100
     end
 
+    # no sense taking variance, skew and kurtosis of y when y is binary: the mean has the same info
     if param.loss == :logistic 
         param.cat_representation_dimension = min(2,param.cat_representation_dimension)
     end     
@@ -697,7 +723,7 @@ function HTBdata(y0::Union{AbstractVector,AbstractMatrix,AbstractDataFrame},x::U
     extended_categorical_features!(param,fnames1)   # finds categorical features needing an extensive (more than one column) representation
     xp = replace_missing_with_nan(xp)   # SharedArray do not accept missing.
 
-    if !isempty(param.cat_features) && !isempty(offset)
+    if !isempty(param.cat_features) && !isempty(offset) && param.warnings==:On
         @warn "Categorical features with more than two categories are not currently handled correctly (by the mean targeting transformation)
         with offsets. The program will run but categorical information will be used sub-optimally, particularly if the
         average offset differs across categories. If categorical features are important, it may be better
@@ -742,3 +768,20 @@ function SharedMatrixErrorRobust(x,param)
         return x
     end
 end
+
+
+# Adjusts lambda based on the number of trees and on param.double_lambda, doubling lambda every double_lambda trees,
+# capped at 1.
+# λᵢ = effective_lambda(param,iter)
+function effective_lambda(param::HTBparam,iter::Int)
+
+    T = param.T 
+    lambda = param.lambda
+
+    if param.double_lambda<100_000
+        m=param.I(floor(iter/param.double_lambda))
+        lambda = min(1,param.lambda*(2^m))
+    end 
+
+    return T(lambda)
+end     
