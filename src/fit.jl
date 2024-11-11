@@ -413,24 +413,16 @@ end
 # As a general rule, be careful with weak, nearly uninformative priors added to the posterior (or, worse, marginal). Typically best to omit them.  
 function logpdfpriors(β,μ,τ,m,d,p,pb,param,info_i,infeatures,fi,T)
 
-    if param.priortype == :disperse
-        logpdfτ,logpdfμ,logpdfm = 0,0,0
-    elseif info_i.dichotomous
-        logpdfμ,logpdfτ,logpdfm = 0,0,0
-    elseif param.priortype==:sharp
-        logpdfτ = 0
-        logpdfμ = lnpμ(μ,param.varmu,param.dofmu,info_i,d)
-        logpdfm = lnpμ(m,param.varmu,param.dofmu,info_i,d)     # prior for missing value same as for μ
+    if param.priortype == :disperse || info_i.dichotomous || param.priortype==:sharp
+        logpdfτ = T(0)
     else
         logpdfτ = lnpτ(τ,param,info_i,d)
-        logpdfμ = lnpμ(μ,param.varmu,param.dofmu,info_i,d)
-        logpdfm = lnpμ(m,param.varmu,param.dofmu,info_i,d)     # prior for missing value same as for μ
     end
 
     logpdfM   = lnpM(param,info_i,infeatures,fi,T)   # sparsity prior
     logpdfMTE = lnpMTE(param,info_i,T)               # penalization for mean target encoding features
     
-    return T(logpdfμ+logpdfm+logpdfτ+logpdfM+logpdfMTE)
+    return T(logpdfτ+logpdfM+logpdfMTE)
 
 end
 
