@@ -47,7 +47,7 @@ mutable struct HTBparam{T<:AbstractFloat, I<:Int,R<:Real}
     depth::I
     depth1::I
     depthppr::I        # projection pursuit depth. 0 to disactivate.
-    ppr_in_vs::Symbol  # :On for projection pursuit included in feature selection stage 
+    ppr_in_vs::Symbol  # :On for projection pursuit included in feature selection stage. Can occasionally go wrong. :Off is a safer default, and :On could be used for stacking. 
     sigmoid::Symbol  # which simoid function. :sigmoidsqrt or :sigmoidlogistic or :TReLu. sqrt x/sqrt(1+x^2) 10 times faster than exp.
     meanlntau::T              # Assume a mixture of two student-t for log(tau).
     varlntau::T               #
@@ -325,7 +325,7 @@ function HTBparam(;
     depth  = 5,        # 3 allows 2nd degree interaction and is fast. 4 takes almost twice as much per tree on average. 5 can be 8-10 times slower per tree. However, fewer deeper trees are required, so the actual increase in computing costs is smaller.
     depth1 = 10,
     depthppr = 2,      # projection pursuit depth. 0 to disactive. 
-    ppr_in_vs = :On,    # :On for projection pursuit included in variable selection phase
+    ppr_in_vs = :Off,    # :On for projection pursuit included in variable selection phase. Can occasionally go wrong. :Off is a safer default, and :On could be used for stacking. 
     sigmoid = :sigmoidsqrt,  # :sigmoidsqrt or :sigmoidlogistic or :TReLu
     meanlntau= 1.0,    # Assume a Gaussian for log(tau).
     varlntau = 0.5^2,  # [0.5^2]. Set to Inf to disactivate (log(p(τ)=0)).  See loss.jl/multiplier_stdlogtau_y().  This is the dispersion of the student-t distribution (not the variance unless dof is high).

@@ -989,7 +989,7 @@ function HTBfit_single(data::HTBdata,param::HTBparam;cv_grid=[],cv_different_los
 
             # If needed, fit again with force_sharp_splits. Store in 2*i
             condition_sharp,force_sharp_splits = find_force_sharp_splits(HTBtrees_a[i],data,param,cv_hybrid)
-
+ 
             if condition_sharp                 
 
                 i = length(cvgrid0) + d
@@ -1908,7 +1908,7 @@ end
 function impose_sharp_splits(HTBtrees::HTBoostTrees,param) 
 
     avgtau = mean_weighted_tau(HTBtrees)
-    force_sharp_splits = avgtau .> param.tau_threshold
+    force_sharp_splits = param.tau_threshold.< avgtau .< 35  # mean_weighted_tau() sets tau=Inf for sharp splits at 40. If most splits are already sharp, no need for a second stage.  
     
     return force_sharp_splits 
 end

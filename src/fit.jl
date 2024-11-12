@@ -365,10 +365,7 @@ function fitβ(y,w,gammafit_ensemble,r0::AbstractVector{T},h0::AbstractVector{T}
     #loss0 = -(llik0 +  logpdfpriors(β0,μ,τ,m,d,p,T(1),param,info_i,infeatures,fi,T)) # facenda: requires β0 from previous level
     β0    = zeros(T,p)
     loss0 = T(Inf)
-
     loss,β,Gβ = loss0,β0,Vector{T}(undef,n)
-
-
 
     for iter in 1:maxsteps
 
@@ -1027,6 +1024,8 @@ function refineOptim_μτ_excluding_nan(y,w,gammafit_ensemble,r::AbstractVector{
     coarse_grid = d>=min(param.depth_coarse_grid,param.depth_coarse_grid2)
     points_refineOptim = param.points_refineOptim
 
+    # NOTE: 40 <= τ < Inf should be avoided because, in mean_weighted_tau, tau is truncated at 40, so values at 40 or above cannot be distinguished from Inf.
+    # This can in turn cause problems for correctly using force_sharp_splits.
     if param.priortype==:sharp || info_i.force_sharp==true
         τgrid = T[Inf]
     else
