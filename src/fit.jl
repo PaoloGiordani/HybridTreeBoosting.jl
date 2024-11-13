@@ -1141,8 +1141,8 @@ end
 
 
 # param.best_features updated here
-function fit_one_tree_inner(y::AbstractVector{T},w,HTBtrees::HTBoostTrees,r::AbstractVector{T},h::AbstractVector{T},x::AbstractArray{T},μgrid,Info_x,τgrid,param::HTBparam;
-    depth2=0,G0::AbstractMatrix{T}=Matrix{T}(undef,0,0) ) where T<:AbstractFloat
+function fit_one_tree_inner(y::AbstractVector{T},w,HTBtrees::HTBoostTrees,r::AbstractVector{T},h::AbstractVector{T},x::AbstractArray{T},μgrid,Info_x,τgrid,param::HTBparam,iter;
+    depth2=0,G0::AbstractMatrix{T}=Matrix{T}(undef,0,0)) where T<:AbstractFloat
 
     gammafit_ensemble,infeatures,fi = HTBtrees.gammafit,HTBtrees.infeatures,HTBtrees.fi
     best_features_current = Vector{param.I}(undef,0)
@@ -1165,13 +1165,36 @@ function fit_one_tree_inner(y::AbstractVector{T},w,HTBtrees::HTBoostTrees,r::Abs
         ssi         = randperm(Random.MersenneTwister(param.seed_subsampling+ntree),n)[1:n_vs]  # subs-sample, no reimmission
     end
 
-    maxdepth=param.depth
-
     if length(ssi)<n
         xs = SharedMatrixErrorRobust(x[ssi,:],param)    # randomize once for the entire tree (SharedMatrix has a one-time cost)
         ys=y[ssi]; ws=w[ssi]; gammafit_ensembles=gammafit_ensemble[ssi]; rs=r[ssi]
         length(h)==1 ? hs=h : hs=h[ssi]
     end
+
+    maxdepth=param.depth
+
+# *****************************  Attempt to reduce maxdepth if it has not been used .... leaving a margin controlled by param.declining_depth_margin
+# look at the past J (e.g. 20 or 50) trees. Moving average of the number of unique features used.
+# e.g. when under 4, allow 5. Or when under 3, do 5. 
+# Set J to a large number to disactivate 
+#J = param.declining_depth_J    # default to 50, say
+#margin = param.declining_depth_margin # default to 1.0? since I take ceil, avg 1.01 will give depth=3. round instead of ceil? 
+# HTBoutput must change(), as it is used in several places, including to decide on force_sharp_splits  
+    margin = 1.0
+    J = 50    # replace with param.declining_depth_J
+
+    if iter>J
+        n_unique = Vector{Int}(undef,J) 
+
+        for j in 1:J
+            n_unique[j] = length(unique(HTBtrees.trees[iter-j].i[1:end-param.depthppr] ))
+        end    
+        maxdepth_proposed = param.I(ceil( mean(n_unique) + margin ))
+        maxdepth = min(maxdepth_proposed,maxdepth)
+    end
+#end     
+
+# *****************************  End attempt to reduce maxdepth if it has not been used .... 
 
     for depth in 1:maxdepth
 
@@ -1244,7 +1267,7 @@ end
 # gammafit_ensemble is from the sum of previous trees (not including current, so HTBtrees.gammafit)
 # zi = gammafit0/std(gammafit0), where gammafit0 is the fit for the current tree. A tree of depth depthpper is built with zi as the only feature.
 function fit_one_tree_ppr_final(y::AbstractVector{T},w,gammafit_ensemble,infeatures,fi,r::AbstractVector{T},
-         h::AbstractVector{T},zi::AbstractVector{T},info_x_ppr,τgrid,param::HTBparam) where T<:AbstractFloat
+         h::AbstractVector{T},zi::AbstractVector{T},info_x_ppr,τgrid,param::HTBparam,iter) where T<:AbstractFloat
   
     n   = length(zi)
     G0 = ones(T,n,1)
@@ -1348,14 +1371,14 @@ function fit_one_tree(y::AbstractVector{T},w,HTBtrees::HTBoostTrees,r::AbstractV
     I = param.I
 
     βfit = Vector{AbstractVector{T}}(undef,1)
-    gammafit0,ifit,μfit,τfit,mfit,β1,fi2=fit_one_tree_inner(y,w,HTBtrees,r,h,x,μgrid,Info_x,τgrid,param;depth2=0)     
+    gammafit0,ifit,μfit,τfit,mfit,β1,fi2=fit_one_tree_inner(y,w,HTBtrees,r,h,x,μgrid,Info_x,τgrid,param,iter;depth2=0)     
     βfit[1]=β1
 
     if param.depthppr>0
         σᵧ = max(std(gammafit0),T(1e-10))  
         zi = gammafit0/σᵧ    # standardize gammafit0 and save std 
-        gammafit0,μfit_pp,τfit_pp,β_pp,fi2_pp,loss_pp = 
-        fit_one_tree_ppr_final(y,w,HTBtrees.gammafit,HTBtrees.infeatures,HTBtrees.fi,r,h,zi,Info_x[end],τgrid,param)
+        gammafit0,μfit_pp,τfit_pp,β_pp,fi2_pp,loss_pp = fit_one_tree_ppr_final(y,w,HTBtrees.gammafit,HTBtrees.infeatures,HTBtrees.fi,r,h,zi,Info_x[end],τgrid,param,iter)
+
         ifit_pp,mfit_pp = fill(-999,param.depthppr),fill(T(NaN),param.depthppr)
         push!(βfit,β_pp); μfit=vcat(μfit,μfit_pp); τfit=vcat(τfit,τfit_pp); ifit=vcat(ifit,ifit_pp); mfit=vcat(mfit,mfit_pp); fi2=vcat(fi2,fi2_pp)
     else 

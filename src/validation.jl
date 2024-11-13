@@ -177,7 +177,7 @@ function HTBsequentialcv( data::HTBdata, param::HTBparam; indices=Vector(1:lengt
         indtrain,indtest,meanx,stdx,n_train,p,τgrid,μgrid,info_x,param = t_a[nf]
         data_nf = data_a[nf]
 
-        Gβ,trash = fit_one_tree(data_nf.y,data_nf.weights,HTBtrees_a[nf],rh_a[nf].r,rh_a[nf].h,data_nf.x,μgrid,info_x,τgrid,param_a[nf],999)
+        Gβ,trash = fit_one_tree(data_nf.y,data_nf.weights,HTBtrees_a[nf],rh_a[nf].r,rh_a[nf].h,data_nf.x,μgrid,info_x,τgrid,param_a[nf],0)
         param_a[nf] = updatecoeff(param_a[nf],data_nf.y,HTBtrees_a[nf].gammafit+Gβ,data_nf.weights,0) # +Gβ, NOT +λGβ
         trash,param_a[nf] = gradient_hessian( data_nf.y,data_nf.weights,HTBtrees_a[nf].gammafit+Gβ,param_a[nf],1)            
 
