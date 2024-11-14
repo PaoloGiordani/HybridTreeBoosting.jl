@@ -84,6 +84,8 @@ mutable struct HTBparam{T<:AbstractFloat, I<:Int,R<:Real}
     missing_features::Vector{I}
     info_date::NamedTuple              # information on date feature
     sparsity_penalization::T  # AIC penalization on (number of features - depth)
+    same_feature_penalization::T  # penalization multiplies the number of times the feature appears in different splits of the same tree. Think of it as log(prob_split_different feature/prob_split_same_feature), e.g. [0 2]
+    same_feature_penalization_start::I # the first same_feature_penalization_start appearances are not penalized. 
     p0::Union{Symbol,I}       # :Auto (then set to p) or p0 
 
     # sub-sampling and pre-selection of features
@@ -362,6 +364,8 @@ function HTBparam(;
     missing_features = Vector{I}(undef,0), 
     info_date = (date_column=0,date_first=0,date_last=0),
     sparsity_penalization = 0.3,
+    same_feature_penalization = 0.0,  # penalization multiplies the number of times the feature appears in different splits of the same tree. Think of it as log(prob_split_different feature/prob_split_same_feature), e.g. [0 2]
+    same_feature_penalization_start = 0, # the first same_feature_penalization_start appearances are not penalized.
     p0       = :Auto,
     sharevs  = 1.0,              # if <1, adds noise to vs, in vs phase takes a random subset. :Auto is 0.5 if n>=250k. ? Speed gains are surprisingly small, maybe because of the need to slices large matrices ?      
     refine_obs_from_vs = false,  # true to add randomization to (μ,τ), assuming sharevs<1
@@ -479,7 +483,8 @@ function HTBparam(;
         T(meanlntau),T(varlntau),T(doflntau),T(multiplier_stdtau),T(d_meanlntau_cat),T(varmu),T(dofmu),
         T(meanlntau_ppr),T(varlntau_ppr),T(doflntau_ppr),Symbol(priortype),T(max_tau_smooth),I(min_unique),mixed_dc_sharp,T(tau_threshold),force_sharp_splits,force_smooth_splits,exclude_features,augment_mugrid,cat_features,cat_features_extended,cat_dictionary,cat_values,cat_globalstats,I(cat_representation_dimension),T(n0_cat),T(mean_encoding_penalization),
         Symbol(cv_categoricals),
-        class_values,Bool(delete_missing),mask_missing,missing_features,info_date,T(sparsity_penalization),p0,sharevs,refine_obs_from_vs,finalβ_obs_from_vs,
+        class_values,Bool(delete_missing),mask_missing,missing_features,info_date,T(sparsity_penalization),T(same_feature_penalization),
+        I(same_feature_penalization_start),p0,sharevs,refine_obs_from_vs,finalβ_obs_from_vs,
         I(n_refineOptim),T(subsampleshare_columns),Symbol(sparsevs),T(frequency_update),
         I(number_best_features),best_features,Symbol(pvs),I(p_pvs),I(min_d_pvs),I(mugridpoints),I(taugridpoints),
         I(depth_coarse_grid),I(depth_coarse_grid2),T(xtolOptim),Symbol(method_refineOptim),

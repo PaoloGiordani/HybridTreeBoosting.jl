@@ -21,6 +21,7 @@
 #  logpdfpriors           "
 #  lnpM               sparsity prior
 #  lnpMTE             prior (minus) penalization for mean target encoding
+#  lnpSamei           minus penalization for same feature appearing multiple times in one tree        
 #  Δβ                 called in Newton optimization
 #  Gfitβ
 #  Gfitβ2
@@ -29,6 +30,8 @@
 #  add_depth          add one layer to the tree, for given i, using a rough grid search (optional: full optimization)
 #    add_depth_no_ppr
 #  loopfeatures       add_depth looped over features, to select best-fitting feature
+#       loopfeatures_distributed
+#       loopfeatures_spawn
 #  best_μτ_excluding_nan   in preliminary variable selection
 #  best_m_given_μτ         in prelminary vs; estimate for missing values at a given μ,τ
 #  refineOptim        having chosen a feature (typically via a rough grid), refines the optimization
@@ -344,7 +347,7 @@ end
 
 # fitβ: Newton optimization of log posterior for HTBoost with smooth threshold.
 function fitβ(y,w,gammafit_ensemble,r0::AbstractVector{T},h0::AbstractVector{T},G::AbstractArray{T},Gh,param::HTBparam,infeatures,fi,info_i::Info_xi,
-    μ::Union{T,Vector{T}},τ::Union{T,Vector{T}},m::T,llik0::T;finalβ="false")::Tuple{T,Vector{T},Vector{T}}  where T<:AbstractFloat
+    μ::Union{T,Vector{T}},τ::Union{T,Vector{T}},m::T,llik0::T; n_i=0,finalβ="false")::Tuple{T,Vector{T},Vector{T}}  where T<:AbstractFloat
 
     r,h = copy(r0),copy(h0)
     n,p = size(G)
@@ -362,7 +365,7 @@ function fitβ(y,w,gammafit_ensemble,r0::AbstractVector{T},h0::AbstractVector{T}
 
     maxsteps>=10 ? α=T(0.5) : α=1  # half-steps in Newton-Raphson increase the chance of convergence
 
-    #loss0 = -(llik0 +  logpdfpriors(β0,μ,τ,m,d,p,T(1),param,info_i,infeatures,fi,T)) # facenda: requires β0 from previous level
+    #loss0 = -(llik0 +  logpdfpriors(β0,μ,τ,m,d,p,T(1),param,info_i,infeatures,fi,T,n_i)) # facenda: requires β0 from previous level
     β0    = zeros(T,p)
     loss0 = T(Inf)
     loss,β,Gβ = loss0,β0,Vector{T}(undef,n)
@@ -383,7 +386,7 @@ function fitβ(y,w,gammafit_ensemble,r0::AbstractVector{T},h0::AbstractVector{T}
             llik = sum(ll)/(param.loglikdivide*mean(w))
         end
 
-        logpriors = logpdfpriors(β,μ,τ,m,d,p,pb,param,info_i,infeatures,fi,T)
+        logpriors = logpdfpriors(β,μ,τ,m,d,p,pb,param,info_i,infeatures,fi,T,n_i)
         loss      = -( llik + logpriors)
 
         if iter==maxsteps || loss0-loss<tol
@@ -408,7 +411,7 @@ end
 
 # Adding priors and penalization to the log-posterior, where not already included in the likelihood.
 # As a general rule, be careful with weak, nearly uninformative priors added to the posterior (or, worse, marginal). Typically best to omit them.  
-function logpdfpriors(β,μ,τ,m,d,p,pb,param,info_i,infeatures,fi,T)
+function logpdfpriors(β,μ,τ,m,d,p,pb,param,info_i,infeatures,fi,T,n_i)
 
     if param.priortype == :disperse || info_i.dichotomous || param.priortype==:sharp
         logpdfτ = T(0)
@@ -418,14 +421,21 @@ function logpdfpriors(β,μ,τ,m,d,p,pb,param,info_i,infeatures,fi,T)
 
     logpdfM   = lnpM(param,info_i,infeatures,fi,T)   # sparsity prior
     logpdfMTE = lnpMTE(param,info_i,T)               # penalization for mean target encoding features
-    
-    return T(logpdfτ+logpdfM+logpdfMTE)
+    logpdfSamei = lnpSamei(param,n_i,T)              # penalization for same feature appearing multiple times in one tree (n_i is the number of times it already appears)
+
+    return T(logpdfτ+logpdfM+logpdfMTE+logpdfSamei)
 
 end
 
+# log prior (minus penalization) for the same feature appearing multiple times in one tree.
+# Does not penalize the first same_feature_penalization_start appearances. 
+function lnpSamei(param,n_i,T)
+    d_n_i = max(0,n_i - param.same_feature_penalization_start)
+    return -T(param.same_feature_penalization*d_n_i)
+end
 
 
-# prior (minus) penalization for mean target encoding.
+# log prior (minus) penalization for mean target encoding.
 function lnpMTE(param,info_i,T)
 
     n_cat = info_i.n_cat
@@ -522,7 +532,7 @@ end
 
 
 
-function Gfitβ(y,w,gammafit_ensemble,r::AbstractVector{T},h::AbstractVector{T},G0::AbstractArray{T},xi::AbstractVector{T},param::HTBparam,infeatures,fi,info_i::Info_xi,μlogτm,G::AbstractMatrix{T},Gh,llik0)::T where T<:AbstractFloat
+function Gfitβ(y,w,gammafit_ensemble,r::AbstractVector{T},h::AbstractVector{T},G0::AbstractArray{T},xi::AbstractVector{T},param::HTBparam,infeatures,fi,info_i::Info_xi,μlogτm,G::AbstractMatrix{T},Gh,llik0;n_i=0)::T where T<:AbstractFloat
 
     μ = μlogτm[1]
     τ = exp(μlogτm[2])
@@ -530,7 +540,7 @@ function Gfitβ(y,w,gammafit_ensemble,r::AbstractVector{T},h::AbstractVector{T},
 
     gL  = sigmoidf(xi,μ,τ,param.sigmoid,dichotomous=info_i.dichotomous)
     updateG!(G,G0,gL)
-    loss,gammafit,β = fitβ(y,w,gammafit_ensemble,r,h,G,Gh,param,infeatures,fi,info_i,μ,τ,m,llik0)
+    loss,gammafit,β = fitβ(y,w,gammafit_ensemble,r,h,G,Gh,param,infeatures,fi,info_i,μ,τ,m,llik0,n_i=n_i)
 
     return loss
 
@@ -601,7 +611,7 @@ function add_depth(t)
         G   = Matrix{t.param.T}(undef,n,2*p)
         gL  = sigmoidf(t.xi,μ,τ,t.param.sigmoid,dichotomous=t.info_i.dichotomous)
         updateG!(G,t.G0,gL)
-        loss,gammafit0,β = fitβ(t.y,t.w,t.gammafit_ensemble,t.r,t.h,G,similar(G),t.param,t.infeatures,t.fi,t.info_i,μ,τ,m,t.param.T(Inf))   
+        loss,gammafit0,β = fitβ(t.y,t.w,t.gammafit_ensemble,t.r,t.h,G,similar(G),t.param,t.infeatures,t.fi,t.info_i,μ,τ,m,t.param.T(Inf),n_i=t.n_i)   
 
         std_gammafit0 = std(gammafit0)
 
@@ -612,12 +622,13 @@ function add_depth(t)
         zi = gammafit0/std_gammafit0         # standardize gammafit0 for ppr 
 
         # fit ppr (zi only feature), retain only loss 
-        # correct priors on μ and τ are given by info_x_ppr = Info_x[end], which however sets penalizations for sparsity and categorical to 0: add these later
+        # correct priors on μ and τ are given by info_x_ppr = Info_x[end], which however sets penalizations for sparsity and categorical to 0, so we add these later
         loss_pp = fit_one_tree_ppr_rough(t,zi)
 
         logpdfM = lnpM(t.param,t.info_i,t.infeatures,t.fi,t.param.T)
-        logpdfMTE = lnpMTE(t.param,t.info_i,t.param.T)       
-        loss_pp = loss_pp - (logpdfM + logpdfMTE )
+        logpdfMTE = lnpMTE(t.param,t.info_i,t.param.T)
+        logpdfSamei = lnpSamei(t.param,t.n_i,t.param.T)       
+        loss_pp = loss_pp - (logpdfM + logpdfMTE + logpdfSamei )
         loss  = min(loss,loss_pp)
     end     
 
@@ -632,7 +643,7 @@ end
 function best_m_given_μτ(t,μ,τ)
 
     y,w,gammafit_ensemble,r,h,G0,xi0 = t.y,t.w,t.gammafit_ensemble,t.r,t.h,t.G0,t.xi
-    param,info_i,fi,μgridi,infeatures = t.param,t.info_i,t.fi,t.μgridi,t.infeatures
+    param,info_i,fi,μgridi,infeatures,n_i = t.param,t.info_i,t.fi,t.μgridi,t.infeatures,t.n_i
     T = param.T
 
     if (param.priortype==:sharp) || (τ==Inf)  # with sharp splits, only need to evaluate left and right of μ
@@ -697,7 +708,7 @@ function best_μτ_excluding_nan(t)
         y,w,gammafit_ensemble,r,h,G0,xi = t.y,t.w,t.gammafit_ensemble,t.r,t.h,t.G0,t.xi
     end
 
-    param,info_i,fi,τgrid,μgridi,infeatures = t.param,t.info_i,t.fi,t.τgrid,t.μgridi,t.infeatures
+    param,info_i,fi,τgrid,μgridi,infeatures,n_i = t.param,t.info_i,t.fi,t.τgrid,t.μgridi,t.infeatures,t.n_i
     n,p = size(G0)
     T,I = param.T,param.I
 
@@ -727,7 +738,7 @@ function best_μτ_excluding_nan(t)
     if info_i.n_unique<2
         loss,μ,τ = T(Inf),T(0),T(1)
     elseif info_i.dichotomous==true   # no optimization needed
-        loss = Gfitβ(y,w,gammafit_ensemble,r,h,G0,xi,param,infeatures,fi,info_i,[T(0),T(0),T(0)],G,Gh,llik0)
+        loss = Gfitβ(y,w,gammafit_ensemble,r,h,G0,xi,param,infeatures,fi,info_i,[T(0),T(0),T(0)],G,Gh,llik0,n_i=n_i)
         τ,μ  = T(Inf),T(0)
     else
 
@@ -738,11 +749,9 @@ function best_μτ_excluding_nan(t)
         end
 
         for (indexμ,μ) in enumerate(μgridi)
-
             for (indexτ,τ) in enumerate(τgrid) # PG: don't break this loop since mugrid only has ten points (would be reasonable to break with extensive search on μ)
-                lossmatrix[indexτ,indexμ] = Gfitβ(y,w,gammafit_ensemble,r,h,G0,xi,param,infeatures,fi,info_i,[μ,log(τ),T(0)],G,Gh,llik0)
+                lossmatrix[indexτ,indexμ] = Gfitβ(y,w,gammafit_ensemble,r,h,G0,xi,param,infeatures,fi,info_i,[μ,log(τ),T(0)],G,Gh,llik0,n_i=n_i)
             end
-
         end
 
         minindex = argmin(lossmatrix)  # returns a Cartesian index
@@ -818,7 +827,7 @@ function loopfeatures(y,w,gammafit_ensemble,gammafit,r::AbstractVector{T},h::Abs
 end
 
 
-
+# NB: any changes here should probably also go in loopfeatures_spawn
 # Using (in place of @sync @distributed for) the structure
 # @sync for
 #    @ async begin
@@ -845,7 +854,7 @@ function loopfeatures_spawn(outputarray,n,p,ps,y,w,gammafit_ensemble,gammafit,r,
         @sync for i in ps        
             @async begin # use @async to create a task that will be scheduled to run on any available worker process    
                if Info_x[i].exclude==false  && Info_x[i].n_unique>1
-                   t   = (y=y,w=w,gammafit_ensemble=gammafit_ensemble+gammafit,r=r,h=h,G0=ones(T,n,1),xi=x[:,i],infeatures=infeatures,fi=fi,info_i=Info_x[i],info_x_ppr=Info_x[end],μgridi=μgrid[i],τgrid=τgrid,param=param)
+                   t   = (n_i=sum(i.==ifit),y=y,w=w,gammafit_ensemble=gammafit_ensemble+gammafit,r=r,h=h,G0=ones(T,n,1),xi=x[:,i],infeatures=infeatures,fi=fi,info_i=Info_x[i],info_x_ppr=Info_x[end],μgridi=μgrid[i],τgrid=τgrid,param=param)
                    future = Distributed.@spawn add_depth(t)
                    outputarray[i,:] = fetch(future)
                 end
@@ -861,7 +870,7 @@ function loopfeatures_spawn(outputarray,n,p,ps,y,w,gammafit_ensemble,gammafit,r,
     @sync for i in ps        
         @async begin # use @async to create a task that will be scheduled to run on any available worker process
             if Info_x[i].exclude==false  && Info_x[i].n_unique>1
-                t   = (y=y,w=w,gammafit_ensemble=gammafit_ensemble,r=r,h=h,G0=G0,xi=x[:,i],infeatures=infeatures,fi=fi,info_i=Info_x[i],info_x_ppr=Info_x[end],μgridi=μgrid[i],τgrid=τgrid,param=param)
+                t   = (n_i=sum(i.==ifit),y=y,w=w,gammafit_ensemble=gammafit_ensemble,r=r,h=h,G0=G0,xi=x[:,i],infeatures=infeatures,fi=fi,info_i=Info_x[i],info_x_ppr=Info_x[end],μgridi=μgrid[i],τgrid=τgrid,param=param)
                 future = Distributed.@spawn add_depth(t)
                 outputarray[i,:] = fetch(future)
             end
@@ -873,6 +882,7 @@ end
 
 
 # outputarray is SharedArray{T}(p,4)
+# NB: any changes here should probably also go in loopfeatures_spawn
 function loopfeatures_distributed(outputarray,n,p,ps,y,w,gammafit_ensemble,gammafit,r,h,G0,x,ifit,infeatures,fi,μgrid,Info_x,τgrid,param,ntree,allow_preliminaryvs)
 
     T,I = param.T,param.I
@@ -892,7 +902,7 @@ function loopfeatures_distributed(outputarray,n,p,ps,y,w,gammafit_ensemble,gamma
         @sync @distributed for i in ps
 
             if Info_x[i].exclude==false  && Info_x[i].n_unique>1
-                t   = (y=y,w=w,gammafit_ensemble=gammafit_ensemble+gammafit,r=r,h=h,G0=ones(T,n,1),xi=x[:,i],infeatures=infeatures,fi=fi,info_i=Info_x[i],info_x_ppr=Info_x[end],μgridi=μgrid[i],τgrid=τgrid,param=param)
+                t   = (n_i=sum(i.==ifit),y=y,w=w,gammafit_ensemble=gammafit_ensemble+gammafit,r=r,h=h,G0=ones(T,n,1),xi=x[:,i],infeatures=infeatures,fi=fi,info_i=Info_x[i],info_x_ppr=Info_x[end],μgridi=μgrid[i],τgrid=τgrid,param=param)
                 outputarray[i,:] = add_depth(t)     # [loss, τ, μ, m ]
             end
   
@@ -907,7 +917,7 @@ function loopfeatures_distributed(outputarray,n,p,ps,y,w,gammafit_ensemble,gamma
     @sync @distributed for i in ps
 
         if Info_x[i].exclude==false  && Info_x[i].n_unique>1
-            t   = (y=y,w=w,gammafit_ensemble=gammafit_ensemble,r=r,h=h,G0=G0,xi=x[:,i],infeatures=infeatures,fi=fi,info_i=Info_x[i],info_x_ppr=Info_x[end],μgridi=μgrid[i],τgrid=τgrid,param=param)
+            t   = (n_i=sum(i.==ifit),y=y,w=w,gammafit_ensemble=gammafit_ensemble,r=r,h=h,G0=G0,xi=x[:,i],infeatures=infeatures,fi=fi,info_i=Info_x[i],info_x_ppr=Info_x[end],μgridi=μgrid[i],τgrid=τgrid,param=param)
             outputarray[i,:] = add_depth(t)     # [loss, τ, μ, m ]
         end
   
@@ -1062,7 +1072,7 @@ function refineOptim_μτ_excluding_nan(y,w,gammafit_ensemble,r::AbstractVector{
     if param.method_refineOptim == :pmap
 
         t = (y=y,w=w,gammafit_ensemble=gammafit_ensemble,r=r,h=h,G0=G0,xi=xi,param=param,infeatures=infeatures,
-            fi=fi,info_i=info_i,τgrid=τgrid,μ0=μ0,T=T,llik0=llik0)
+            fi=fi,info_i=info_i,τgrid=τgrid,μ0=μ0,T=T,llik0=llik0,n_i=_n_i)
         curry(f,t) = i->f(i,t)
         optimize_mutau_map(i,t) = optimize_μτ(t.y,t.w,t.gammafit_ensemble,t.r,t.h,t.G0,t.xi,t.param,t.infeatures,t.fi,
             t.info_i,t.τgrid[i],t.μ0,t.T,t.llik0)
@@ -1181,7 +1191,7 @@ function fit_one_tree_inner(y::AbstractVector{T},w,HTBtrees::HTBoostTrees,r::Abs
 #margin = param.declining_depth_margin # default to 1.0? since I take ceil, avg 1.01 will give depth=3. round instead of ceil? 
 # HTBoutput must change(), as it is used in several places, including to decide on force_sharp_splits  
     margin = 1.0
-    J = 50    # replace with param.declining_depth_J
+    J = 5000    # replace with param.declining_depth_J
 
     if iter>J
         n_unique = Vector{Int}(undef,J) 
