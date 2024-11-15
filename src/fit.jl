@@ -762,6 +762,7 @@ function best_μτ_excluding_nan(t)
         # If τ==Inf, carry out a full optimization over μ (and then skip refineOptim unless subsampling)
         if τ==Inf   
             loss,τ,μ,nan_present = refineOptim_μτ_excluding_nan(y,w,gammafit_ensemble,r,h,G0,xi,infeatures,fi,info_i,μ,τ,param,[τ])
+            loss = loss - lnpSamei(param,n_i,T)
          end 
 
     end
@@ -916,7 +917,7 @@ function loopfeatures_distributed(outputarray,n,p,ps,y,w,gammafit_ensemble,gamma
     # (second stage) variable selection.
     @sync @distributed for i in ps
 
-        if Info_x[i].exclude==false  && Info_x[i].n_unique>1
+        if Info_x[i].exclude==false  && Info_x[i].n_unique>1            
             t   = (n_i=sum(i.==ifit),y=y,w=w,gammafit_ensemble=gammafit_ensemble,r=r,h=h,G0=G0,xi=x[:,i],infeatures=infeatures,fi=fi,info_i=Info_x[i],info_x_ppr=Info_x[end],μgridi=μgrid[i],τgrid=τgrid,param=param)
             outputarray[i,:] = add_depth(t)     # [loss, τ, μ, m ]
         end
