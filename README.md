@@ -12,7 +12,7 @@ Documentation:
 A Julia implementation of Hybrid Trees Boosting as described in [HTBoost paper](provide link!!) 
 
 HTBoost attempts to eliminate or mitigate some limitations of standard boosted trees in dealing with smooth and partially smooth functions. It also differs from other packages in the estimation of fixed parameters and in its ability to find sparse structures.
-HTBoost is slower than other boosting packages, but the use of hybrid trees (an evolution of the smooth trees in [SMARTboost](https://github.com/PaoloGiordani/SMARTboost.jl)) delivers superior accuracy in many situations, making them a promising tool, particularly when data is limited or very noisy. The [papers](##References), examples, and tutorials document instances in which HTBoost matches the performance of other GBMs with less than 20% of the data.  
+HTBoost is much slower than other boosting packages, but the use of hybrid trees (an evolution of the smooth trees in [SMARTboost](https://github.com/PaoloGiordani/SMARTboost.jl)) delivers superior accuracy in many situations, making them a promising tool, particularly when data is limited or very noisy.
 
 ## Installation
 Latest:
@@ -94,9 +94,8 @@ yf     = HTBpredict(x_test,output)
  
 ## Main limitations of HTBoost 
 
-- Slower training than other packages for GBMs.
-- Deep trees are particularly slow.
-- Memory intensive in the current implementation. 
+- Much slower training than other packages for GBMs.
+- Deep trees are particularly slow: The range 4-6 is recommended. 
 
 ## Recommended workflow 
 
@@ -110,10 +109,10 @@ output = HTBfit(data,param)
 ```
 
 See [speeding up HTBoost](docs/src/tutorials/Faster%20large%20n.md) for suggestions on how to handle large n if computing time becomes a constraint.
-## Help improve HTBoost 
+## Help improve HTBoost! 
 
-- If you have a dataset in which HTBoost does not outperform other GBMs (particularly if *HTBweightedtau( )* suggests it should, see [Basic use](docs/src/tutorials/Basic%20use.md)), and you have read [Outperforming other GBM](docs/src/Outperforming%20other%20GBM.md), please get in touch with me at paolo.giordani@bi.no
-- Suggestions are welcome.
+- If you have a dataset in which HTBoost does not outperform other GBMs while *HTBweightedtau( )* suggests it should (see [Basic use](docs/src/tutorials/Basic%20use.md)), and you have read [Outperforming other GBM](docs/src/Outperforming%20other%20GBM.md), please get in touch with me at paolo.giordani@bi.no
+- Suggestions are welcome. 
 
 ## 
 

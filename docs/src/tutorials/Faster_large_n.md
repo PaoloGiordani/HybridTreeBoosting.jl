@@ -3,13 +3,17 @@
 
 HTBoost is very slow in comparison with other GBMs. Here we discuss some options to speed up training when n is large. 
 
+**If HTBoost predominantly chooses hard splits, consider switching to CatBoost**
+
+If preliminary analysis (e.g. on a subsample and/or with modality=:fastest) suggests that the average value of tau is high (see [Basic use](Basic_use.md) ), HTBoost is effectively fitting symmetric trees with hard rather than smooth splits; CatBoost is then a much more efficient option to fit symmetric trees, if the other features of HTBoost (see [ReadMe](../../../ReadMe.md)) are not required. For Julia and R users, EvoTrees can also build symmetric trees (tree_type = "oblivious"). 
+
 **Some options to speed up training for HTBoost with large n**
 
 HTBoost runs much faster (particularly with large n) with multiple cores than with one, after the initial one-off cost.
 The improvements in speed are roughly linear in the number of cores, up to 8 cores, and still good up to 16 cores,
 particularly when p/#cores is large. Gains from 16 to 32 cores are modest. 
 
-**Option 1. modality = :fast, nfold = 1, nofullsample = true, disengage variable selection.** 
+**Option 1. modality = :fast, nfold = 1, nofullsample = true.** 
 
 The easiest way to speed up training is by setting nfold=1 (a single validation set), nofullsample=true, and modality=:fast or :fastest. These modalities do not perform cv. 
 :fast will typically still produces a competitive model in terms of accuracy, particularly if n/p is large.
@@ -36,7 +40,7 @@ To avoid this, run
 ```julia
 output = SMARTfit(data,param,cv_hybrid=false)
 ```
-(in combination with modality=:fast or :fastest) then cuts computing times in half. The loss of fit is typically modest, but can be substantial in some cases.
+(in combination with modality=:fast or :fastest) then cuts computing times in half. The loss of fit is modest in some cases, but can be substantial in others.
 
 **Option 4. Cross-validate on a sub-sample, then one run best model on full sample.**
 

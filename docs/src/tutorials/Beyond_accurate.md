@@ -21,5 +21,4 @@ In situations where computing time is not a factor and even the smallest increme
 ```
 In datasets where the accuracy of HTBoost is roughly comparable to that of XGBoost and LightGBM,
 a 50-50 combination (or more sophisticated stacking) of HTBoost with one of the other two is likely 
-to yield the best results.
-
+to yield the best results. (If HTBoost is mostly selecting sharp splits ---  as illustrated in [Basic use](Basic_use.md) -- it will however be much faster to combine XGBoost with CatBoost rather than with HTBoost).  

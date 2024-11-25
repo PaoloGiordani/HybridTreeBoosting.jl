@@ -1183,29 +1183,6 @@ function fit_one_tree_inner(y::AbstractVector{T},w,HTBtrees::HTBoostTrees,r::Abs
 
     maxdepth=param.depth
 
-# *****************************  Attempt to reduce maxdepth if it has not been used .... leaving a margin controlled by param.declining_depth_margin
-# look at the past J (e.g. 20 or 50) trees. Moving average of the number of unique features used.
-# e.g. when under 4, allow 5. Or when under 3, do 5. 
-# Set J to a large number to disactivate 
-#J = param.declining_depth_J    # default to 50, say
-#margin = param.declining_depth_margin # default to 1.0? since I take ceil, avg 1.01 will give depth=3. round instead of ceil? 
-# HTBoutput must change(), as it is used in several places, including to decide on force_sharp_splits  
-    margin = 1.0
-    J = 5000    # replace with param.declining_depth_J
-
-    if iter>J
-        n_unique = Vector{Int}(undef,J) 
-
-        for j in 1:J
-            n_unique[j] = length(unique(HTBtrees.trees[iter-j].i[1:end-param.depthppr] ))
-        end    
-        maxdepth_proposed = param.I(ceil( mean(n_unique) + margin ))
-        maxdepth = min(maxdepth_proposed,maxdepth)
-    end
-#end     
-
-# *****************************  End attempt to reduce maxdepth if it has not been used .... 
-
     for depth in 1:maxdepth
 
         # variable selection, optionally using a random sub-sample of the sample

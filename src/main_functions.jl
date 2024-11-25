@@ -1858,7 +1858,7 @@ function HTBweightedtau(output,data;verbose::Bool=true,best_model::Bool=false,ma
     tau ≥ max_tau ? tau = T(Inf) : tau = tau
 
     x_plot = collect(-2.0:0.01:2)
-    g_plot = sigmoidf(x_plot,T(0),tau,output.bestparam.sigmoid)
+    g_plot = sigmoidf(x_plot,T(0),T(tau),output.bestparam.sigmoid)
 
     return T(avgtau),T(gavgtau),T.(avgtau_a),df,x_plot,g_plot
 

@@ -74,7 +74,7 @@ mutable struct HTBparam{T<:AbstractFloat, I<:Int,R<:Real}
     cat_dictionary::Vector{Dict}  # each element in the vector stores the dictionary mapping each category to a number
     cat_values::Vector{NamedTuple}
     cat_globalstats::NamedTuple
-    cat_representation_dimension::I
+    cat_representation_dimension::I   # dimension of the representation of categorical features: mean,frequency,std,skew,kurt (robust measures)
     n0_cat::T                         # prior on number of observations for categorical data
     mean_encoding_penalization::T     # penalization on mean encoding
     cv_categoricals::Symbol           # whether to run a preliminary cross-validation for categorical features
@@ -111,7 +111,6 @@ mutable struct HTBparam{T<:AbstractFloat, I<:Int,R<:Real}
     points_refineOptim::I      # number of values of tau for refineOptim. Default 12. Other values allowed are 4,7.
     # number of trees
     ntrees::I   # number of trees
-    alpha_lambda::Union{T,Symbol}   # lambda increases at this rate per iter. :Auto could make it depend on :modality 
     # penalization of β
     theta::T  # penalization of β: multiplies the default precision. Default 1. Higher values give tighter priors.    
     # others
@@ -389,7 +388,6 @@ function HTBparam(;
     points_refineOptim = 12,    # number of values of tau for refineOptim. Default 12. Other values allowed are 4,7.
     # miscel                    # becomes 7 once coarse_grid kicks in, unless ncores>12.
     ntrees = 2000, # number of trees. 1000 is CatBoost default (with maxdepth = 6). 
-    alpha_lambda = T(0),    # lambda increases by this rate at each iter. e.g. 0.001 for 0.1%. 
     theta = 1.0,   # numbers larger than 1 imply tighter penalization on β compared to default. 
     loglikdivide = :Auto,   # the log-likelhood is divided by this scalar. Used to improve inference when observations are correlated.
     overlap = 0,
@@ -441,7 +439,6 @@ function HTBparam(;
 
     sharevs==:Auto ? nothing : sharevs=T(sharevs)
     loglikdivide==:Auto ? nothing : loglikdivide=T(loglikdivide)
-    alpha_lambda==:Auto ? nothing : alpha_lambda=T(alpha_lambda)
     p0==:Auto ? nothing : p0=I(p0)   # if :Auto, set in param_given_data!()
 
     if cv_categoricals==:default
@@ -484,7 +481,7 @@ function HTBparam(;
         I(n_refineOptim),T(subsampleshare_columns),Symbol(sparsevs),T(frequency_update),
         I(number_best_features),best_features,Symbol(pvs),I(p_pvs),I(min_d_pvs),I(mugridpoints),I(taugridpoints),
         I(depth_coarse_grid),I(depth_coarse_grid2),T(xtolOptim),Symbol(method_refineOptim),
-        I(points_refineOptim),I(ntrees),alpha_lambda,T(theta),loglikdivide,I(overlap),T(multiply_pb),T(varGb),I(ncores),I(seed_datacv),I(seed_subsampling),I(iter),newton_gauss_approx,
+        I(points_refineOptim),I(ntrees),T(theta),loglikdivide,I(overlap),T(multiply_pb),T(varGb),I(ncores),I(seed_datacv),I(seed_subsampling),I(iter),newton_gauss_approx,
         I(newton_max_steps),I(newton_max_steps_final),T(newton_tol),T(newton_tol_final),I(newton_max_steps_refineOptim),linesearch)
 
     param_constraints!(param) # enforces constraints across options. Must be repeated in HTBfit.
@@ -506,10 +503,6 @@ function param_given_data!(param::HTBparam,data::HTBdata)
         lld,ess = HTBloglikdivide(data.y,data.dates,overlap=param.overlap)
         param.loglikdivide = T(lld)
     end
-
-    #if param.alpha_lambda == :Auto
-        #param.modality in [:fast,:fastest] ? param.alpha_lambda = 0.001
-    #end     
 
     if param.p0==:Auto 
         param.p0=p 
@@ -775,18 +768,12 @@ function SharedMatrixErrorRobust(x,param)
 end
 
 
-# Adjusts lambda based on the number of trees and on param.alpha_lambda
-# capped at 1.
+# Possibly varying lambda.
 # λᵢ = effective_lambda(param,iter)
 function effective_lambda(param::HTBparam,iter::Int)
 
     T = param.T 
     lambda = param.lambda
 
-    if param.alpha_lambda>0
-        lambda = param.lambda*(1+param.alpha_lambda)^(iter-1)
-        lambda = min(1,lambda)
-    end 
-
-    return T(lambda)
+    return T(min(1,lambda))
 end     
