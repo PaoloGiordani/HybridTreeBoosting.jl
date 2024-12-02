@@ -262,7 +262,7 @@ Note: all Julia symbols can be replaced by strings. e.g. :L2 can be replaced by 
                             sharevs = :Auto sets the subsample size to min(n,50k*sqrt(n/50k)).
                             At high n, sharevs<1 speeds up computations, but can reduce accuracy, particularly in sparse setting with low SNR.         
 
-- `subsampleshare_columns`  [1.0] column subsampling (aka feature subsampling) by tree.
+- `subsampleshare_columns`  [1.0] column subsampling (aka feature subsampling) by level.
 
 - `min_unique`              [:default] sharp splits are imposed on features with less than min_unique values (default is 5 for modality=:compromise or :accurate, else 10)
 

@@ -759,7 +759,7 @@ function best_μτ_excluding_nan(t)
         τ        = τgrid[minindex[1]]
         μ        = μgridi[minindex[2]]
 
-        # If τ==Inf, carry out a full optimization over μ (and then skip refineOptim unless subsampling)
+        # If τ==Inf, carry out a full optimization over μ (and then skip refineOptim unless subsampling), using current best values of τ and μ as starting values.
         if τ==Inf   
             loss,τ,μ,nan_present = refineOptim_μτ_excluding_nan(y,w,gammafit_ensemble,r,h,G0,xi,infeatures,fi,info_i,μ,τ,param,[τ])
          end 
@@ -1118,7 +1118,6 @@ function optimize_μτ(y,w,gammafit_ensemble,r,h,G0,xi,param,infeatures,fi,info_
     Gh  = similar(G)
 
     x_tol = param.xtolOptim/T(1+(τ>=5)+2*(τ>=10)+4*(τ>50))
-
     res  = Optim.optimize( μ -> Gfitβ2(y,w,gammafit_ensemble,r,h,G0,xi,param,infeatures,fi,info_i,μ,τ,T(0),G,Gh,llik0),[μ0],Optim.BFGS(linesearch = LineSearches.BackTracking()), Optim.Options(iterations = 100,x_tol = x_tol  ))
 
     return res
@@ -1144,7 +1143,6 @@ function fibonacci(k,lambda,frequency_update)
 
     return v[2:end]
 end 
-
 
 
 

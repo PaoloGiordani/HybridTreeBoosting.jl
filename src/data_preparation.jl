@@ -17,6 +17,7 @@
 # The following functions are applied to each train set: 
 #
 # preparedataHTB()                     preliminary operations on data before starting boosting loop: standardize x using robust measures of dispersion.
+#     robust_mean_std()
 # preparegridsHTB()
 # gridvectorτ()
 # gridmatrixμ()
@@ -583,7 +584,7 @@ end
 # I considered three ways of selecting the candidate split points: i) quantiles(), ii) clustering, like k-means or fuzzy k-means on each column of x. (Note: If the matrix is sparse, e.g. lots of 0.0, but not dichotomous, in general k-means will NOT place a value at exactly zero (but close))
 # iii) an equally spaced grid between minimum(xi) and maximum(xi). Option iii) is fastest. Here I use i), but at most maxn (default 100_000) observations are sampled,
 # and @distributed for. Deciles are interpolated.
-# features on which sharp splits are imposed are given three times as many points in mugrid (so computing times comparable with other features, which evaluate on three values of τ)    
+# features on which sharp splits are imposed are given twice as many points in mugrid (so computing times comparable with other features, which evaluate on three values of τ)    
 # If distrib_threads = false, uses @distributed and SharedArray. SharedArray can occasionally produce an error in Windows (not in Linux).
 # If this happens, the code switches to distrib_threads = true 
 # If distrib_threads = true, uses Threads.@threads. 
@@ -596,7 +597,9 @@ function gridmatrixμ(data::HTBdata,param::HTBparam,meanx,stdx;maxn::Int = 100_0
     npoints  = npoints0 + 1
     n,p      = size(data.x)
 
-    # if forcing sharp splits, triple the number of grid points for μ
+    # if forcing sharp splits, consider double or triple the number of grid points for μ
+    # npoints_mugrid0 will be the number of points for sharp splits, and npoints for smooth splits (handled in fill_vectors_mugridmatrix!)
+    # This may no longer be necessary since a full refineOptim is carried out if tau=Inf. 
     if isempty(param.force_sharp_splits)
         npoints_mugrid0 = npoints
         sharp_splits = fill(false,p)
@@ -605,7 +608,7 @@ function gridmatrixμ(data::HTBdata,param::HTBparam,meanx,stdx;maxn::Int = 100_0
         sharp_splits = param.force_sharp_splits
     end     
 
-    @assert(npoints_mugrid0<n,"npoints cannot be larger than n")
+    @assert(npoints_mugrid0<n,"mugridpoints cannot be larger than n")
 
     # grid for mu and information on feature x[:,i]    
 
@@ -650,7 +653,7 @@ function gridmatrixμ(data::HTBdata,param::HTBparam,meanx,stdx;maxn::Int = 100_0
         sharp_splits[i]==true ? npoints_i=npoints_mugrid0 : npoints_i=npoints  # if not sharp splits, keep only the first npoints values
         m = sort(unique(mugrid0[1:npoints_i,i]))
 
-        if length(m) < npoints_i  # can only happens if number(unique)<npoints; then we don't want to interpolate and lose one point
+        if length(m) < npoints_i  # if number(unique)<npoints; then we don't want to interpolate and lose one point
             mugrid[i]=m
         else
             m_int = Vector{T}(undef,length(m)-1)
@@ -659,7 +662,6 @@ function gridmatrixμ(data::HTBdata,param::HTBparam,meanx,stdx;maxn::Int = 100_0
             end
             mugrid[i] = m_int
         end
-
     end
 
     # If augment_mugrid is not empty, add these points to mugrid[i], unless i is dichotomous 
