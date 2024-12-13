@@ -31,6 +31,8 @@ HTBpartialplot
 HTBmarginaleffect
 HTBoutput
 HTBweightedtau
+HTBplot_tau
+HTBplot_ppr
 ```
 
 
