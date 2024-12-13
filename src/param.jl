@@ -88,7 +88,7 @@ mutable struct HTBparam{T<:AbstractFloat, I<:Int,R<:Real}
     same_feature_penalization_start::I # the first same_feature_penalization_start appearances are not penalized. 
     p0::Union{Symbol,I}       # :Auto (then set to p) or p0 
 
-    # sub-sampling and pre-selection of features
+    # row and column sub-sampling and two schemes to deal with large p: sparsevs and pvs
     sharevs::Union{Symbol,T}  # if <1, adds noise to vs, in vs phase takes a random subset of observations
     refine_obs_from_vs::Bool  # true to add randomization to (μ,τ), assuming sharevs<1
     finalβ_obs_from_vs::Bool
@@ -195,13 +195,14 @@ Note: all Julia symbols can be replaced by strings. e.g. :L2 can be replaced by 
 - See the examples for uses of each loss function. Fixed coefficients (such as shape for :gamma, dispersion and dof for :t, and overdispersion for :gammaPoisson) are computed internally by maximum likelihood. Inspect them using *HTBcoeff()*. In *HTBpredict()*, predictions are for E(y) if predict=:Ey (default), while predict=:Egamma forecasts the fitted parameter ( E(logit(prob) for :logistic, log(E(y)) for :gamma etc ... )
 
 - `modality`         [:compromise] Options are: :accurate, :compromise (default), :fast, :fastest.
+                     These options are meant to replace the need for the user to cross-validate parameters. Advanced users with a big computational budget can still do so.
                      :fast and :fastest run only one model, while :compromise and :accurate cross-validate the most important parameters.
                      :fast runs only one model (only cv number of trees) at values defined in param = HTBparam(). 
                      :fastest runs only one model, setting lambda=0.2, nfold=1 and nofullsample=true (does not re-estimate on the full sample after cv).
                       Recommended for faster preliminary analysis only.
                       In most cases, :fast and :fastest also use the quadratic approximation to the loss for large samples.
-                      :accurate cross-validates several models at the most important parameters (see HTBfit() for details),
-                      then stacks all the cv models. :compromise also cross-validates, but sets λ=0.2 except for the best model, where λ=0.1.
+                      :compromise and :accurate cross-validates several models at the most important parameters (see HTBfit() for details),
+                      then stack all the cv models.
                                         
 - `priortype`               [:hybrid] :hybrid encourages smoothness, but allows both smooth and sharp splits, :smooth forces smooth splits,
                             :disperse is :hybrid but with no penalization encouraging smooth functions (not recommended).
@@ -373,9 +374,9 @@ function HTBparam(;
     subsampleshare_columns = 1.0,  # if <1.0, only a random share of features is used at each split (re-drawn at each split)
     sparsevs = :Auto,           # :Auto switches it :On if sparsity_penalization>0, else :Off 
     frequency_update = 1.0,       # when sparsevs, 1 for Fibonacci, 2 to update at 2*Fibonacci etc...               
-    number_best_features = 10,    # number of best feature in each node to store into best_features    
+    number_best_features = 10,    # number of best feature in each node (level) to store into best_features    
     best_features = Vector{I}(undef,0),
-    pvs = :Off,         # :On, :Off, :Auto. Preliminary vs fitting a stomp (added to current fit). Experiments suggests modest speed gains when sparsevs=:On, but could speed up with very large p and depth > 5, at some loss of fit.   
+    pvs = :Off,         # :On, :Off, :Auto. Preliminary vs fitting a stomp (added to current fit). Experiments suggests modest speed gains when sparsevs=:On, but could speed up with very large p and depth > 5, at some loss of fit. Could be useful in exploratory phase. 
     p_pvs = 100,        # number of features taken to second stage (i.e. when actual G0 is used). 100 chosen by experimentation. No gains to set it lower. 
     min_d_pvs = 4,      # minimum depth at which to start preliminary vs. >=2. 
     # grid and optimization parameters
@@ -394,7 +395,7 @@ function HTBparam(;
     multiply_pb = 1.0,
     varGb   = NaN,      # Relevant only for first tree
     seed_datacv = 1,       # sets random seed if randomizecv=true
-    seed_subsampling = 2,  # sets random seed used on subsampling iterations (will be seed=seed_subsampling + iter)
+    seed_subsampling = 1,  # sets random seed used on subsampling iterations (will be seed=seed_subsampling + iter)
     iter = 0,
     # Newton optimization: good default is one step in preliminary phase, and evaluate actual log-lik, and iterate to convergence for final β
     newton_gauss_approx = :Auto, # true has large speed gains for logistic for large n (loss=...exp.()). If true, and if newton_max_steps=1 (hence not in final) evaluates the Gaussian approximation to the log-likelihood rather than the likelihood itself except in final phase (given i,mu,tau)

@@ -75,13 +75,8 @@ function preliminary_cv_categoricals!(param,data,indices)
 
             param.n0_cat = param.n0_cat*n0
             param.mean_encoding_penalization = mep
-            #output = HTBfit(data,param)
-            #loss_a[i,j] = output.loss
-            # loss = output.loss 
             ntrees,loss,meanloss,stdeloss,HTBtrees1st,indtest,gammafit_test,y_test,problems = HTBsequentialcv(data,param,indices=indices)
             loss_a[i,j] = loss 
-            #t = HTBsequentialcv(data,param,indices=indices)
-            #loss_a[i,j] = t.loss 
 
 
             if loss < loss0

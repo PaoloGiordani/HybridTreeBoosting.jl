@@ -52,17 +52,18 @@ Basic information about the main functions in HTBoost (see help on each function
 - `HTBdata`            y,x and, optionally, dates, weights, and names of features
 
 # Fitting and forecasting 
-- `HTBfit`             fits HTBoost with cv (or validation/early stopping) of number of trees and, optionally, depth or other parameter
+- `HTBfit`             fits HTBoost with cv (or validation/early stopping) of number of trees and, optionally, other parameters;
+                       pre-determined options for more or less extensive cross-validation are controlled by :modality in HTBparam
 - `HTBpredict`         predictions for y or natural parameter
 - `HTBcv`              user-controlled cross-validation. (Note that the recommended process is to use :modality in HTBfit rather than HTBcv.)            
 
 #  POST-ESTIMATION ANALYSIS
 - `HTBcoeff`           provides information on constant coefficients, e.g. dispersion and dof for loss=:t
 - `HTBrelevance`       computes feature importance (Breiman et al 1984 relevance)
-- `HTBpartialplot`     partial dependence plots (keeping all other features fixed, not integrating out)
-- `HTBmarginaleffect`  Numerical computation of marginal effects.
 - `HTBoutput`          collects fitted parameters in matrices
 - `HTBweightedtau`     computes weighted smoothing parameter to help assess function smoothness
+- `HTBpartialplot`     partial dependence plots (keeping all other features fixed, not integrating out)
+- `HTBmarginaleffect`  Numerical computation of marginal effects.
 - `HTBplot_tau`        plotting sigmoid for a given tau 
 - `HTBplot_ppr`        provides tau and plot for projection pursuit for a single tree
 
@@ -97,7 +98,7 @@ end
 #=
     HTBloglikdivide(df,y_symbol,date_symbol;overlap=0)
 
-loglikdivide is computed internally, so the user does not need to call this function for HTBoost.
+loglikdivide is computed internally, so users do not need to call this function for HTBoost (they did for SMARTboost)
 loglikdivide can be found in output = HTBfit()
 
 The only effect of loglikdivide in HTBoost is to calibrate the strength of the prior in relation to the likelihood evidence.
@@ -134,10 +135,10 @@ function HTBloglikdivide(df::DataFrame,y_symbol,date_symbol;overlap = 0)
 
     if loglikdivide<0.9
       @warn "loglikdivide is calculated to be $loglikdivide (excluding any overlap). Numbers smaller than one imply negative cross-correlation, perhaps induced by output transformation (e.g. from y to rank(y)).
-      loglikvidide WILL BE SET TO 1.0 by default. If the negative cross-correlation is genuine, the original value of $loglikdivide can be used, which would imply weaker priors."
+      loglikvidide WILL BE SET TO 1.0 by default. If the negative cross-correlation is genuine, the original value of $loglikdivide can be imposed, which would imply weaker priors.
+      To impose a value, set param = HTBparam(loglikdivide=...)"
       loglikdivide = 1.0
     end
-
     loglikdivide  = loglikdivide*( 1 + overlap/2 ) # roughly accounts for auto-correlation induced by overlapping, e.g. y(t) = p(t+h) - p(t)
     effective_sample_size = length(y)/loglikdivide
 
@@ -161,9 +162,9 @@ function HTBloglikdivide(y::AbstractVector{T},dates_all;overlap=0) where T<:Real
     loglikdivide  = ssc/sum(y.^2)   # roughly accounts for cross-correlation as in clustered standard errors.
 
     if loglikdivide<0.9
-      @warn "loglikdivide is calculated to be $loglikdivide (excluding any overlap). Numbers smaller than one imply negative cross-correlation, perhaps induced by output transformation (e.g. from y to rank(y)).
-      loglikvidide WILL BE SET TO 1.0 by default. If the negative cross-correlation is genuine, the original value of $loglikdivide can be used, which would imply weaker priors."
-      loglikdivide = 1.0
+        @warn "loglikdivide is calculated to be $loglikdivide (excluding any overlap). Numbers smaller than one imply negative cross-correlation, perhaps induced by output transformation (e.g. from y to rank(y)).
+        loglikvidide WILL BE SET TO 1.0 by default. If the negative cross-correlation is genuine, the original value of $loglikdivide can be imposed, which would imply weaker priors.
+        To impose a value, set param = HTBparam(loglikdivide=...)"
     end
 
     loglikdivide  = loglikdivide*( 1 + overlap/2 ) # roughly accounts for auto-correlation induced by overlapping, e.g. y(t) = p(t+h) - p(t)
@@ -658,11 +659,14 @@ forced on features with high average values of τ. For param.modality=:accurate 
 may then cross-validate the following hyperparamters:
 
 1) Parameters for categorical features, if any.
-2) depth in the range 1-6.
-3) A penalization to encourage sparsity (fewer relevant features), unless n/p is large.
+2) depth in the range 1-6 (1-7 for :accurate) (starts with 3 and 5, then moves up or down based on results, breaking the loop as soon as the cv loss increases)
+3) A penalization to encourage sparsity (fewer relevant features). Whether this is performed or not depends on the effective sample size (n and signal-to-noise ratio).
 4) A model without projection pursuit nonlinear expansion of trees (only if modality=:accurate). 
+5) One or two models with column subsampling and slightly lower learning rate. One in :compromise, two in :accurate if the first reduced the cv loss. 
 
-The default range can be replaced by providing a vector cv_grid, e.g. 
+A maximum of 10 models are fitted in modality = :accurate, and of 7 in :compromise.
+
+The default range for depth can be replaced by providing a vector cv_grid, e.g. 
   
     HTBfit(data,param,cv_grid = [2,4,6])
 
@@ -689,6 +693,7 @@ Unless modality=:accurate, this stacking will typically be equivalent to the bes
                             In :Auto, whether the cv is performed or not depends on :modality and on the n/p ratio. (Not implemented yet: it should ideally also depend on the signal-to-noise ratio). 
 - `cv_depthppr`             true to cv whether to remove projection pursuit regression. Default is true for modality in [:compromise,:accurate], else false.
 
+- `cv_col_subsample`        Default:Auto. If true, fits one or two models with column subsampling. 
 
 # Output (named tuple, or vector of named tuple for hurdle models)
 
@@ -727,18 +732,18 @@ Unless modality=:accurate, this stacking will typically be equivalent to the bes
     ntrees_not0 = output[2].ntrees   # number of trees for gamma or L2 loss
 
 """
-function HTBfit(data::HTBdata, param::HTBparam; cv_grid=[],cv_different_loss::Bool=false,cv_sharp::Bool=false,
+function HTBfit(data::HTBdata, param::HTBparam; cv_grid=[],cv_different_loss::Bool=false,cv_sharp::Bool=false,cv_col_subsample=:Auto,
     cv_sparsity=:Auto,cv_hybrid=true,cv_depthppr=:Auto,skip_full_sample=false)   # skip_full_sample enforces nofullsample even if nfold=1 (used in other functions, not by user)
 
     if param.loss in [:hurdleGamma,:hurdleL2loglink,:hurdleL2]
         output = HTBfit_hurdle(data,param,cv_grid=cv_grid,cv_different_loss=cv_different_loss,cv_sharp=cv_sharp,cv_sparsity=cv_sparsity,
-                                cv_hybrid=cv_hybrid,cv_depthppr=cv_depthppr,skip_full_sample=skip_full_sample)
+                                cv_hybrid=cv_hybrid,cv_depthppr=cv_depthppr,skip_full_sample=skip_full_sample,cv_col_subsample=cv_col_subsample)
     elseif param.loss == :multiclass
         output = HTBfit_multiclass(data,param,cv_grid=cv_grid,cv_different_loss=cv_different_loss,cv_sharp=cv_sharp,cv_sparsity=cv_sparsity,
-                                cv_hybrid=cv_hybrid,cv_depthppr=cv_depthppr,skip_full_sample=skip_full_sample)
+                                cv_hybrid=cv_hybrid,cv_depthppr=cv_depthppr,skip_full_sample=skip_full_samplec,v_col_subsample=cv_col_subsample)
     else 
         output = HTBfit_single(data,param,cv_grid=cv_grid,cv_different_loss=cv_different_loss,cv_sharp=cv_sharp,cv_sparsity=cv_sparsity,
-                       cv_hybrid=cv_hybrid,cv_depthppr=cv_depthppr,skip_full_sample=skip_full_sample)
+                       cv_hybrid=cv_hybrid,cv_depthppr=cv_depthppr,skip_full_sample=skip_full_sample,cv_col_subsample=cv_col_subsample)
     end 
 
     return output 
@@ -751,14 +756,13 @@ end
 
 User's controlled cross-validation for HTBoost.
 
-The recommended process for HTBoost is to use *modality* (:fast, :compromise, :accurate) in HTBfit() rather than HTBcv().
+The recommended process for HTBoost is to use *modality* (:fastest, :fast, :compromise, :accurate) in HTBfit() rather than HTBcv().
 The various modalities in HTBfit() internally control the most important hyperparameters, being as parsimonious as possible due 
 to the high computational costs of HTB. HTBfit() also stacks the models, which is not done here.
 All modalities use early stopping to determine the number of trees, so ntrees should not be cv. 
 
 The function HTBcv() is provided for advanced users who want to fully control the cross-validation process and can incur the costs.
-In most cases HTBcv() will be less accurate and efficient than HTBfit(), unless internal_cv=true, in
-which case cv is also performed internally (at increase cost).
+HTBcv() has the option to set internal_cv=true, in which case cv is also performed internally (at increase cost).
     
 A good use of HTBcv() is to cv a parameter that is not included in the modality (e.g. the strength of the smoothness prior),
 in conjunction with internal_cv = true. (At increase computational cost.)
@@ -906,11 +910,11 @@ end
 
 # HTBfit for a single model.  
 function HTBfit_single(data::HTBdata,param::HTBparam;cv_grid=[],cv_different_loss::Bool=false,cv_sharp::Bool=false,
-        cv_sparsity=:Auto,cv_hybrid=true,cv_depthppr=:Auto,skip_full_sample=false)   # skip_full_sample enforces nofullsample even if nfold=1 (used in other functions, not by user)
+        cv_sparsity=:Auto,cv_col_subsample=:Auto,cv_hybrid=true,cv_depthppr=:Auto,skip_full_sample=false)   # skip_full_sample enforces nofullsample even if nfold=1 (used in other functions, not by user)
     
     T,I = param.T,param.I
 
-    n_additional_models  = 6   # Excluding hybrid with force_sharp_splits. After going through cv_grid, possibly twice(cv_hybrid), selects best value and potentially fits: depthppr=0, sparse (up to 3), sharp, different distribution
+    n_additional_models  = 8   # Excluding hybrid with force_sharp_splits. After going through cv_grid, possibly twice(cv_hybrid), selects best value and potentially fits: depthppr=0, sparse (up to 3), sharp, column_subsampling 1, column_subsampling 2, different distribution
 
     modality              = param.modality
     param0                = deepcopy(param)
@@ -924,12 +928,6 @@ function HTBfit_single(data::HTBdata,param::HTBparam;cv_grid=[],cv_different_los
             @warn "setting param.depth higher than 6, perhaps 7, typically results in very high computing costs."
         end
     end     
-
-    lambda0 = param0.lambda
-
-    if modality == :compromise
-        param0.lambda = max(param0.lambda,param0.T(0.2))
-    end 
 
     if modality in [:fast,:fastest] 
 
@@ -1016,7 +1014,8 @@ function HTBfit_single(data::HTBdata,param::HTBparam;cv_grid=[],cv_different_los
 
     if user_provided_grid==false
  
-        modality==:compromise ? i_a = [3,5] : i_a = [3,4,5]   
+        #modality==:compromise ? i_a = [3,5] : i_a = [3,4,5]   
+        i_a = [3,5]
 
         for _ in 1:2
             for d in i_a 
@@ -1052,6 +1051,11 @@ function HTBfit_single(data::HTBdata,param::HTBparam;cv_grid=[],cv_different_los
                  
                 end     
 
+                # don't try depth = 7 unless 6 is the best, even in :accurate mode
+                if param.depth==6 && argmin(lossgrid)∉[6,length(cvgrid0)+6]
+                    break
+                end     
+
             end     
 
             if argmin(lossgrid) in [3,length(cvgrid0)+3]   #  depth = 3, either original tree or force_sharp_splits
@@ -1059,8 +1063,7 @@ function HTBfit_single(data::HTBdata,param::HTBparam;cv_grid=[],cv_different_los
             elseif argmin(lossgrid) in [4,length(cvgrid0)+4]
                 break
             else
-               i_a = [6]
-               # modality==:accurate ? i_a = [6,7] : i_a = [6]  # 7 can be very slow              
+               modality==:accurate ? i_a = [6,7] : i_a = [6]               
             end     
  
         end 
@@ -1076,7 +1079,7 @@ function HTBfit_single(data::HTBdata,param::HTBparam;cv_grid=[],cv_different_los
 
     if cv_sparsity == :Auto      
 
-        yfit = HTBpredict(data.x,HTBtrees_a[best_i],predict=:Ey)    
+        yfit = HTBpredict(data.x,HTBtrees_a[best_i],predict=:Ey)   # use R2 regardless of loss 
         R2   = var(yfit)/var(data.y)
         ess50 = (n/param.loglikdivide)*(R2/(1-R2))       # approximate effective sample size corresponding to R2 at 50%.
         np_ratio = ess50/p 
@@ -1118,7 +1121,7 @@ function HTBfit_single(data::HTBdata,param::HTBparam;cv_grid=[],cv_different_los
             HTBtrees_a[i],gammafit_test_a[i]                      = HTBtrees1st, gammafit_test
             problems_somewhere = problems_somewhere + problems
 
-            #If either 0.7 or 1.1 is better than 0.3, continue to 1.5. If neither is better, try 0.0.  
+            #If either 0.7 or 1.1 is better than 0.3, continue to 1.5. If neither is better, try 0.0 
             if j>1 && min(lossgrid[i],lossgrid[i-1]) > lossgrid[best_i] # break (no need for more sparsity)
  
                 param.sparsity_penalization = T(0)
@@ -1143,9 +1146,9 @@ function HTBfit_single(data::HTBdata,param::HTBparam;cv_grid=[],cv_different_los
     end 
 
 
-    # Additional model: no projection pursuit regression
+    # Additional model: no projection pursuit regression (:accurate only)
     if cv_depthppr==:Auto
-        modality in [:compromise,:accurate] ? cv_depthppr = true : cv_depthppr = false 
+        modality in [:accurate] ? cv_depthppr = true : cv_depthppr = false 
     end     
  
     if cv_depthppr 
@@ -1165,8 +1168,7 @@ function HTBfit_single(data::HTBdata,param::HTBparam;cv_grid=[],cv_different_los
 
 
     # Additional model: :sharptree, at previous best values of sparsity and depth.
-    # VERY INEFFICIENT IMPLEMENTATION! 
-    
+    # VERY INEFFICIENT IMPLEMENTATION!     
     if param.priortype==:hybrid && cv_sharp 
 
         best_i      = argmin(lossgrid)
@@ -1180,6 +1182,51 @@ function HTBfit_single(data::HTBdata,param::HTBparam;cv_grid=[],cv_different_los
         HTBtrees_a[i],gammafit_test_a[i]                    = HTBtrees1st,gammafit_test
         problems_somewhere = problems_somewhere + problems
 
+    end 
+
+    # Additional model: column subsampling, rate 2/3. Set depth = depth + 1 (unless depth=7) and decrease lambda to lambda*0.7
+    if cv_col_subsample==:Auto
+        modality in [:compromise,:accurate] ? cv_col_subsample = true : cv_col_subsample = false 
+    end
+
+    if cv_col_subsample
+ 
+        best_i      = argmin(lossgrid)
+        param = deepcopy(HTBtrees_a[best_i].param)
+        i = 2*length(cvgrid0)+length(sparsity_grid) + 3
+        best_depth = cvgrid[best_i]
+        cvgrid[i]  = min(best_depth+1,7)         
+  
+        param.depth = cvgrid[i]        
+        param.subsampleshare_columns = param.T(0.67)
+        param.lambda = T(param.lambda*0.7)   
+
+        ntrees,loss,meanloss,stdeloss,HTBtrees1st,indtest,gammafit_test,y_test,problems = HTBsequentialcv(data,param,indices=indices)
+        treesize[i],lossgrid[i],meanloss_a[i],stdeloss_a[i]   = ntrees,loss,meanloss,stdeloss
+        HTBtrees_a[i],gammafit_test_a[i]                    = HTBtrees1st,gammafit_test
+        problems_somewhere = problems_somewhere + problems
+
+    end 
+
+    # Additional model: more aggressive column subsampling and a bit of row subsampling (in feature selection phase only)
+    # Only in :accurate and if column subsampling is the best model)
+    i = 2*length(cvgrid0)+length(sparsity_grid) + 4
+
+    if cv_col_subsample && modality==:accurate && argmin(lossgrid)==i-1
+
+        best_i  = argmin(lossgrid)
+        param = deepcopy(HTBtrees_a[best_i].param)
+        cvgrid[i]  = cvgrid[best_i]          
+  
+        param.subsampleshare_columns = param.T(0.5)
+        param.sharevs = param.T(0.8)
+        param.seed_subsampling = 0 
+
+        ntrees,loss,meanloss,stdeloss,HTBtrees1st,indtest,gammafit_test,y_test,problems = HTBsequentialcv(data,param,indices=indices)
+        treesize[i],lossgrid[i],meanloss_a[i],stdeloss_a[i]   = ntrees,loss,meanloss,stdeloss
+        HTBtrees_a[i],gammafit_test_a[i]                    = HTBtrees1st,gammafit_test
+        problems_somewhere = problems_somewhere + problems
+       
     end 
 
     # Before trying a different distribution, store param from the best solution. This will be used in 
@@ -1212,7 +1259,7 @@ function HTBfit_single(data::HTBdata,param::HTBparam;cv_grid=[],cv_different_los
 
         ntrees,loss,meanloss,stdeloss,HTBtrees1st,indtest,gammafit_test,y_test,problems = HTBsequentialcv(data,param,indices=indices)
 
-        i = 2*length(cvgrid0)+length(sparsity_grid) + 3
+        i = 2*length(cvgrid0)+length(sparsity_grid) + 5
         cvgrid[i]   = cvgrid[best_i]
         lossgrid[i],meanloss_a[i], stdeloss_a[i] = loss,meanloss,stdeloss  # The loss is NOT comparable. 
         treesize[i]     = ntrees
@@ -1221,7 +1268,9 @@ function HTBfit_single(data::HTBdata,param::HTBparam;cv_grid=[],cv_different_los
     
     end    
 
-    # if modality==:compromise, fits the best model with param0.lambda at original value and replaces it.
+#=
+    # if modality==:accurate, fits the best model with param0.lambda at 0.05 and replaces it.
+    # Alternative use: if modality==:compromise, run all previous models with lambda=0.2, then run the best model with lambda=0.01
     # If model with lowest loss does not have the user-specified distribution, takes the model with the highest stacking weight 
     best_i = argmin(lossgrid)
 
@@ -1232,9 +1281,9 @@ function HTBfit_single(data::HTBdata,param::HTBparam;cv_grid=[],cv_different_los
     
     param       = deepcopy(HTBtrees_a[best_i].param)
                
-    if modality==:compromise
+    if modality==:accurate && param.lambda>0.06
         
-        param.lambda = lambda0
+        param.lambda = T(min(0.05,param.lambda))
 
         param_given_data!(param,data)
         param_constraints!(param)
@@ -1252,7 +1301,7 @@ function HTBfit_single(data::HTBdata,param::HTBparam;cv_grid=[],cv_different_los
         end     
 
     end 
-
+=#
     # If there is a NaN in lossgrid, Julia takes it as the minimum, hence...
     if isnan(minimum(lossgrid))
         @warn "In HTBfit, some output is NaN. "
@@ -1371,7 +1420,7 @@ function HTBfit_hurdle(data::HTBdata, param::HTBparam; cv_grid=[],cv_different_l
 end 
 
 
-function HTBfit_multiclass(data::HTBdata, param::HTBparam; cv_grid=[],cv_different_loss::Bool=false,cv_sharp::Bool=false,
+function HTBfit_multiclass(data::HTBdata, param::HTBparam; cv_grid=[],cv_different_loss::Bool=false,cv_sharp::Bool=false,cv_col_subsample=:Auto,
     cv_sparsity=true,cv_hybrid=true,cv_depthppr=false,skip_full_sample=false)   # skip_full_sample enforces nofullsample even if nfold=1 (used in other functions, not by user)
 
     num_classes  = length(param.class_values)
@@ -1387,7 +1436,7 @@ function HTBfit_multiclass(data::HTBdata, param::HTBparam; cv_grid=[],cv_differe
         new_class_value = T(i-1)          # original class values converted to 0,1,2...
         @. data.y = y0 == new_class_value    
         output[i] = HTBfit_single(data,param_i,cv_grid=cv_grid,cv_different_loss=cv_different_loss,cv_sharp=cv_sharp,cv_sparsity=cv_sparsity,
-                         cv_hybrid=cv_hybrid,cv_depthppr=cv_depthppr,skip_full_sample=skip_full_sample)      
+                         cv_hybrid=cv_hybrid,cv_depthppr=cv_depthppr,skip_full_sample=skip_full_sample,cv_col_subsample=cv_col_subsample)      
     end 
  
     @. data.y = y0  
@@ -1849,7 +1898,7 @@ function HTBweightedtau(output,data;verbose::Bool=true,best_model::Bool=false,ma
         display(df)
         println("\n Average smoothing parameter τ is $(round(gavgtau,digits=1)).")
         println("\n In sufficiently large samples, and if modality=:compromise or :accurate")
-        println("\n - Values above 20-25 suggest little smoothness in important features. HTBoost's performance may slightly outperform or slightly underperform other gradient boosting machines.")
+        println("\n - Values above 20-25 suggest very little smoothness in important features. HTBoost's performance may slightly outperform or slightly underperform other gradient boosting machines.")
         println(" - At 10-15 or lower, HTBoost should outperform other gradient boosting machines, or at least be worth including in an ensemble.")
         println(" - At 5-7 or lower, HTBoost should strongly outperform other gradient boosting machines.")
     end 

@@ -25,7 +25,10 @@
 # :logistic
 # :Huber          (gradient only) default calibration of psi is 1.34*stdr, a robust measure of std. Could be CV. Asymptotically, psi should go to infinity to recover the conditional mean in asymmetric distributions
 # :t              student t with dispersion and dof estimated by MLE for each iteration.
-#
+# :gamma 
+# :L2loglink      L2 loss with log-link function.
+# :Poisson
+# :gammaPoisson
 #
 # Note: the notation gammafit is used instead of yfit because for general loss functions/likelihoods, gamma is the natural parameter on
 # gamma(i) = sum of trees. e.g. log-odds for logit.

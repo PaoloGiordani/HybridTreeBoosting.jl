@@ -1,5 +1,6 @@
 # Documenter creates html files in build directory. 
 # To generate the documentation: navigate (set working directory) to the docs directory, then run make.jl with Julia.
+# Navigate using a browser
 
 push!(LOAD_PATH, "../src/")   # for API
 
@@ -12,7 +13,6 @@ pages=[
     "API" => "JuliaAPI.md",
     "Tutorials" => "Tutorials.md",
     "Examples (julia scripts)" => "Examples.md",
-    #"Table of Contents" => "toc.md",
 ]
 
 makedocs(
@@ -90,8 +90,5 @@ makedocs(
 
 
 The @contents macro will automatically generate a TOC based on the headers in your markdown files. The TOC will include links to each section, allowing readers to easily navigate your documentation.
-
-
-
 
 =#

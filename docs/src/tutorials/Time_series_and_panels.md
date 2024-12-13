@@ -5,7 +5,7 @@
 The user only needs to provide features and, optionally, a vector of dates in *HTBdata( )* and, if there is overlapping, the overlap parameter in *HTBparam()*.
   Example:
 ```julia 
-param  = HTBparam(overlap=20)        
+param  = HTBparam(overlap=20)         
 data   = HTBdata(y,x,param,dates,fnames = fnames)
 ```
 where *y*,*x* and *dates* can be regular vectors and matrices or dataframes, e.g.
@@ -23,7 +23,7 @@ Overlap defaults to 0. Typically overlap = h-1, where y(t) = Y(t+h)-Y(t) (e.g. Y
 
 By default, HTBoost uses block-cv, which is suitable for time series and longitudinal data. 
 Another good alternative for times series and panels is expanding window cross-validation, which requires the user to provide indtrain_a and indtest_a in *HTBparam( )*.
-The function *HTBindexes_from_dates()* can assist in building these indexes.
+The function *HTBindexes_from_dates()* can assist in building indtrain_a and indtest_a.
 Example:
 
 ```julia 

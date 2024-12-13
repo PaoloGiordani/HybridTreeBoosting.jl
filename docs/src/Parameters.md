@@ -27,8 +27,8 @@ In *HTBpredict()*, predictions are for E(*y*) if predict=:Ey (default), while pr
                      :fastest runs only one model, setting lambda=0.2, nfold=1 and nofullsample=true (does not re-estimate on the full sample after cv).
                       Recommended for faster preliminary analysis only.
                       In most cases, :fast and :fastest also use the quadratic approximation to the loss for large samples.
-                      :accurate cross-validates several models at the most important parameters (see HTBfit() for details),
-                      then stacks all the cv models. :compromise also cross-validates, but sets λ=0.2 except for the best model, where λ=0.1.
+                      :accurate cross-validates 7-10 models (at the most important parameters (see HTBfit() for details),
+                      then stacks all the cv models. :compromise cv 4-7 models.  
                                         
 - `randomizecv`       [false] default is block-cv (aka purged cv); a time series or panel structure is automatically detected (see *HTBdata()*)
                             if a date column is provided. Set to true for standard cv.
@@ -66,8 +66,8 @@ In *HTBpredict()*, predictions are for E(*y*) if predict=:Ey (default), while pr
                             Set to :smooth if you want to force derivatives to be defined everywhere, but note that this disengages hybrid trees and can lead to substantial loss of accuracy if the function is not smooth everywhere. 
 
 - `lambda`           [0.1 or 0.2] Learning rate. 0.1 for (nearly) best performance. 0.2 can be almost as accurate, particularly if the function is smooth and p is small.
-                     The default is 0.1, except in modality = :fastest, where it's 0.2. Modality = :compromise carries out the cv at lambda=0.2 and then fits the best model at 0.1.
-                     Consider 0.05 if tiny improvements in accuracy are important and computing time is not a concern.
+                     The default is 0.1, except in modality = :fastest, where it's 0.2.
+                     Consider 0.05 if tiny improvements in accuracy are important and computing time is not a concern (and possibly increase ntrees to 4000)
 
 - `depth`              [5] tree depth. Unless modality = :fast or :fastest, this is over-written as depth is cross-validated. See *HTBfit()* for more options.
 

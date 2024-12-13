@@ -1,12 +1,9 @@
 #= 
-Short description:
 
-- Explore how preliminary variables (feature) selection affects speed and accuracy.
-
-Extensive description: 
+Explore how preliminary variables (feature) selection affects speed and accuracy.
 
 The preliminary phase picks 100 features as follows: for d>=min_d_pvs, instead of adding a level,
-it adds a stump. The idea is that features that interact well should also leave an additive trace. 
+it adds a stomp. The idea is that features that interact well should also leave an additive trace. 
 Preliminary experiments show no loss of fit in the simple dgp simulated below, and modest loss
 of fit on real data. Noticeable speed gains seen only for depth >= 6.
 The speed gains are 50-60% without sparsevs, but more like 25-30% with sparsevs, and smaller if depth < 6. 
@@ -46,7 +43,7 @@ depth           = 6
 
 pvs              = :On
 p_pvs            = 100
-min_d_pvs        = 4    # !!!! If I set too low, more trees may be needed .... 
+min_d_pvs        = 4    # If I set too low, more trees may be needed .... 
 
 sparsevs         = :On      # when :On, pvs will have no impact except in very dense settings
 

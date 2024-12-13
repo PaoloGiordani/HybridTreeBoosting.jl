@@ -6,7 +6,7 @@ LightGBM and XGBoost offer a Huber and pseudo-Huber loss respectively. The mae (
 
 We assume that the user's objective is to recover the conditional mean E(*y*|*x*), and a Huber or mae loss is employed in the hope of improving inference when the errors ε = *y* - E(*y*|*x*), as proxied by the residuals, show signs of being leptokurtik (fat-tailed).
 
-There are two main problems with these losses (or with their implementations), which are fully corrected in HTBoost:
+There are two main problems with these losses (or with their implementations) in GBM packages, which are fully corrected in HTBoost:
 
 1) Unless the errors ε are perfectly symmetric, the GBM will make biased forecasts (forecasts with the wrong conditional and unconditional mean), even if trained on large samples. This problem is bigger for mae (which recovers the conditional median) and if the SNR (signal-to-noise ratio) is low.
 
@@ -14,9 +14,9 @@ There are two main problems with these losses (or with their implementations), w
 
 HTBoost fixes these two problems by correcting for the bias, and recalibrating the robustness parameter ψ after each tree. HTBoost also introduces (in the context of GBMs) a student-t loss (loss = :t), where the dispersion and degrees-of-freedom parameters are estimated internally by maximum likelihood after each tree, hence solving problem 2.
 
-**The student-t loss is recommended in HTBoost. The Huber loss is available but not recommended.**
+**The student-t loss is recommended in HTBoost. The Huber loss is available but not recommended in general (a possible exception is the original motivation for the Huber loss: y is contaminated by measurement errors).**
 
-As a result, the :t loss in HTBoost is, unlike the Huber loss in XGBoost and LightGBM, more accurate than the :L2 loss when residuals are leptokurtik (fat-tailed) or strongly skewed, *as long as errors are iid*. If errors are heteroskedastic (i.e. if var(ε) depends on *x*) neither the Huber nor the t distributions will in general recover the true E(*y*|*x*) asymptotically.
+As a result, the :t loss in HTBoost is, unlike the Huber loss in XGBoost and LightGBM, more accurate than the :L2 loss when residuals are leptokurtik (fat-tailed) or strongly skewed, *as long as errors are iid*. If errors are heteroskedastic (i.e. if var(ε) depends on *x*) neither the Huber nor the t distributions will in general recover the true E(*y*|*x*) asymptotically. 
 
 See the examples [Huber and t unbiased](../examples/Huber_and_t_unbiased.md) and [student t](../examples/t.md) for a slightly more detailed presentation. I intend to discuss these results more extensively in a paper in the near future.
 

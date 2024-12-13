@@ -1,6 +1,7 @@
+## Paolo Giordani
 # HTBoost
 
-**Logo here !!!!**
+
 
 [![Build Status](https://github.com/PaoloGiordani/HTBoost.jl/workflows/CI/badge.svg)](https://github.com/PaoloGiordani/HTBoost.jl/actions)
 

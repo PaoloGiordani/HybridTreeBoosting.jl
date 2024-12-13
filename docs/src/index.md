@@ -1,12 +1,12 @@
 # HTBoost
 
-**Logo here !!!!**
+! LOGO ! 
 
 ## Data efficient boosting with hybrid trees 
 
-A Julia implementation of Hybrid Trees Boosting as described in [LINK TO HTBoost paper!!!!!] 
+A Julia implementation of Hybrid Trees Boosting as described in [HTBoost][! LINK TO HTBoost paper!] 
 
-HTBoost is slower than other boosting packages, but the use of hybrid trees (an evolution of the smooth trees in [SMARTboost](https://github.com/PaoloGiordani/SMARTboost.jl)) delivers superior accuracy in most situations, making them a promising tool when data is limited or very noisy. The papers, examples, and tutorials document instances in which HTBoost matches the performance of other GBMs with less than 20% of the data.  
+HTBoost is slower than other boosting packages, but the use of hybrid trees (an evolution of the smooth trees in [SMARTboost](https://github.com/PaoloGiordani/SMARTboost.jl)) delivers superior accuracy in many situations, making HTBoost a promising tool, particularly when data is limited or very noisy. 
 
 ## Installation
 Latest:
@@ -84,8 +84,8 @@ yf     = HTBpredict(x_test,output)
 - Very efficient at dealing with missing values internally.
 - Ideal for time series and longitudinal data (aka panel data).
 - Improved inference for Huber and t loss. 
-- Available loss functions cover most cases for regression, classification (binary and multi), count data, zero-inflated data.
- 
+- Available loss functions cover most cases for regression, classification (binary and multi), count data, zero-inflated data. Ranking can be performed with a regression approach, where appropriate (see [L2loglink and ranking](tutorials/L2loglink_and_rank.md))
+  
 ## Main limitations of HTBoost 
 
 - Slower training than other packages for GBMs.

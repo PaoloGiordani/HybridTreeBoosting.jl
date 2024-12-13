@@ -8,9 +8,10 @@
 
 **Main points** 
 
-- default loss is :L2. Other options for continuous y are :Huber, :t (recommended in place of :Huber), :gamma,
+- default loss is :L2. Other options for continuous y are :Huber, :t (recommended in place of :Huber), :gamma, :gammaPoisson,
   :L2loglink. For zero-inflated continuous y, options are :hurdleGamma, :hurdleL2loglink, :hurdleL2   
-- default is block cross-validation: use randomizecv = true to scramble the data.
+- default is block cross-validation with nfolds=4: use randomizecv = true to scramble the data. See [Global Equity Panel](../examples/Global_Equity_Panel.md) for further options on cross-validation (e.g. sequential cv, or generally controlling the training and validation sets).
+ 
 - fit, with automatic hyperparameter tuning if modality is :compromise or :accurate
 - save fitted model (upload fitted model)
 - average τ (smoothness parameter), which is also plotted. (Smoother functions ==> larger gains compared to other GBM)
@@ -42,12 +43,12 @@ using JLD2
 **Options for HTBparam( ).**  
 
 I prefer to specify parameter settings separately (here at the top of the script) rather than directly in HTBparam( ), which is of course also possible.  
-modality is the key parameter: automatic hyperparameter tuning if modality is :compromise or :accurate, no tuning (except of #trees) is :fast or :fastest.    
+modality is the key parameter: automatic hyperparameter tuning if modality is :compromise or :accurate, no tuning (except of #trees) if :fast or :fastest.    
 In HTBoost, it is not recommended that the user performs 
 hyperparameter tuning by cross-validation, because this process is done automatically if modality is
 :compromise or :accurate. The recommended process is to first run in modality=:fast or :fastest,
 for exploratory analysis and to gauge computing time, and then switch to :compromise (default)
-or :accurate.
+or :accurate. For a tutorial on user-controlled cross-validation, see [User's controlled cross-validation.](User_controlled_cv.md)
 
 ```julia
 
@@ -57,7 +58,7 @@ Random.seed!(1)
 loss      = :L2            # :L2 is default. Other options for regression are :L2loglink (if y≥0), :t, :Huber
 modality  = :fastest        # :accurate, :compromise (default), :fast, :fastest 
 priortype = :hybrid       # :hybrid (default) or :smooth to force smoothness (typically not recommended)
-nfold     = 1             # number of cv folds. 
+nfold     = 1             # number of cv folds (default 4) 
 nofullsample = true       # if true and nfold=1, no re-fitting on the full sample after validation
 
 verbose     = :Off
@@ -69,7 +70,7 @@ warnings    = :On
 While the default in other GBM is to randomize the allocation to train and validation sets,
 the default in HTBoost is block cv, which is suitable for time series and panels.
 Set randomizecv=true to bypass this default. 
-See [Global Equity Panel](../examples/Global_Equity_Panel.md) for further options on cross-validation (e.g. sequential cv).
+See [Global Equity Panel](../examples/Global_Equity_Panel.md) for further options on cross-validation (e.g. sequential cv, or generally controlling the training and validation sets).
 
 ```julia
 randomizecv = false       # false (default) to use block-cv. 
@@ -123,7 +124,7 @@ yf     = HTBpredict(x_test,output)
 
 Feature importance and average smoothing parameter for each feature.  
 
-tau is the smoothness parameter; lower values give smoother functions, while tau=Inf is a sharp split (tau is trancated at 40 for this function).  
+tau is the smoothness parameter; lower values give smoother functions, while tau=Inf is a sharp split (tau is truncated at 40 for this function).  
 avgtau is a summary of the smoothness of f(x), with features weighted by their importance.
 avgtau_a is a vector array with the importance weighted tau for each feature.  
 
@@ -176,7 +177,7 @@ println(" out-of-sample RMSE from truth ", sqrt(sum((yf - f_test).^2)/n_test) )
 
 **Hybrid trees outperform both smooth and standard trees**
 
-Here is the output for n=10k (nfold=1, nofullsample=true) 
+Here is the output for n=10k (nfold=1, nofullsample=true). 
 Hybrid trees strongly outperform both smooth trees and standard symmetric (aka oblivious) trees. (Note: modality = :sharp is a very inefficient way to run a symmetric tree; use CatBoost instead!)
 
 ```markdown

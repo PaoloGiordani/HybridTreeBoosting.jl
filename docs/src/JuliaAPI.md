@@ -19,6 +19,7 @@ HTBindexes_from_dates
 ```@docs
 HTBfit
 HTBpredict
+HTBcv
 ```
 
 ## Post-estimation analysis 
