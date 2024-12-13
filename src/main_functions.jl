@@ -41,7 +41,7 @@
 # impose_sharp_splits  
 
 
-"
+"""
     HTBinfo()
 Basic information about the main functions in HTBoost (see help on each function for more details)
 
@@ -86,7 +86,7 @@ Example of basic use of HTBoost functions with iid data and default settings
     yf     = HTBpredict(x_test,output)  
 
 See the examples and tutorials for illustrations of use. 
-"
+"""
 function HTBinfo()
 
     println("Documentation: $(Base.doc(HTBinfo))")
@@ -751,7 +751,7 @@ end
 
 
 
-"
+"""
     HTBcv(data,param,params_cv;internal_cv=true)
 
 User's controlled cross-validation for HTBoost.
@@ -838,7 +838,7 @@ in conjunction with internal_cv = true. (At increase computational cost.)
     yf    = HTBpredict(x_oos,htbcv.output)    
 
 
-"
+"""
 function HTBcv(data::HTBdata,param0::HTBparam,params_cv::Array{D};internal_cv=true) where D<:Dict
 
     param = deepcopy(param0)    
