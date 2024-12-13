@@ -1,5 +1,5 @@
 # Documenter creates html files in build directory. 
-# To generate the documentation: navigate to the docs directory, then run make.jl with Julia.
+# To generate the documentation: navigate (set working directory) to the docs directory, then run make.jl with Julia.
 
 push!(LOAD_PATH, "../src/")   # for API
 
@@ -30,10 +30,6 @@ makedocs(
 
 # format = ... (,assets = ["assets/styles.css"]  # if you have a css file in the assets directory (style)
 # logo = "assets/logo.png"       # if you have a logo in the assets directory
-
-# Idea for symbol ..... 
-# https://www.theirishroadtrip.com/celtic-tree-of-life-symbol/
-# https://www.pinterest.com/pin/tree-of-life--89368373833333877/
 
 # NB: The following code cannot run on my local machine. It has to be on 
 # GitHub Actions, where you set up a CI service to automatically run your make.jl script whenever you push changes to your repository
