@@ -5,7 +5,7 @@ HTBoost is very slow in comparison with other GBMs. Here we discuss some options
 
 **If HTBoost predominantly chooses hard splits, consider switching to CatBoost**
 
-If preliminary analysis (e.g. on a subsample and/or with modality=:fastest) suggests that the average value of tau is high (higher than 15-20, see [Basic use](Basic_use.md)), HTBoost is effectively fitting symmetric trees with hard rather than smooth splits; CatBoost is then a much more efficient option to fit symmetric trees, if the other features of HTBoost (see [ReadMe](../../../ReadMe.md)) are not required. For Julia and R users, EvoTrees can also build symmetric trees (tree_type = "oblivious"). 
+If preliminary analysis (e.g. on a subsample and/or with modality=:fastest) suggests that the average value of tau is high (higher than 15-20, see [Basic use](Basic_use.md)), HTBoost is effectively fitting symmetric trees with hard rather than smooth splits; CatBoost is then a much more efficient option to fit symmetric trees, if the other features of HTBoost (see [index](../index.md)) are not required. For Julia and R users, EvoTrees can also build symmetric trees (tree_type = "oblivious"). 
 
 **Some options to speed up training for HTBoost with large n**
 
