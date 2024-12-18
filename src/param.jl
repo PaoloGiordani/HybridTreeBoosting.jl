@@ -98,14 +98,12 @@ mutable struct HTBparam{T<:AbstractFloat, I<:Int,R<:Real}
     frequency_update::T 
     number_best_features::I 
     best_features::Vector{I}
-    pvs::Symbol              # :On, :Off, :Auto  
-    p_pvs::I    # number of features taken to second stage (i.e. when actual G0 is used).
-    min_d_pvs::I    # minimum depth at which to start preliminaryvs. 2 as a minimum. 
     # grid and optimization parameters
     mugridpoints::I  # points at which to evaluate μ during variable selection. 5 is sufficient on simulated data, but actual data can benefit from more (due to with highly non-Gaussian (and non-uniform))
     taugridpoints::I  # points at which to evaluate τ during variable selection. 1-5 are supported. If less than 3, refinement is then on a grid with more points
     depth_coarse_grid::I # at this depth and higher, vs uses every second point in mugrid. 
     depth_coarse_grid2::I # at this depth and higher, vs uses only τ=5 and every third point in mugrid. 
+    depth_coarse_grid3::I # at this depth and higher, vs uses only τ=5 and only one point (central) in mugrid. 
     xtolOptim::T
     method_refineOptim::Symbol  # which method for refineOptim, e.g. pmap, @distributed, .... 
     points_refineOptim::I      # number of values of tau for refineOptim. Default 12. Other values allowed are 4,7.
@@ -372,18 +370,16 @@ function HTBparam(;
     finalβ_obs_from_vs  = false,  # true to add randomization to final β
     n_refineOptim = 10_000_000,   # Subsample size for refineOptim. beta is always computed on the full sample.
     subsampleshare_columns = 1.0,  # if <1.0, only a random share of features is used at each split (re-drawn at each split)
-    sparsevs = :Auto,           # :Auto switches it :On if sparsity_penalization>0, else :Off 
+    sparsevs = :Auto,           # 
     frequency_update = 1.0,       # when sparsevs, 1 for Fibonacci, 2 to update at 2*Fibonacci etc...               
     number_best_features = 10,    # number of best feature in each node (level) to store into best_features    
     best_features = Vector{I}(undef,0),
-    pvs = :Off,         # :On, :Off, :Auto. Preliminary vs fitting a stomp (added to current fit). Experiments suggests modest speed gains when sparsevs=:On, but could speed up with very large p and depth > 5, at some loss of fit. Could be useful in exploratory phase. 
-    p_pvs = 100,        # number of features taken to second stage (i.e. when actual G0 is used). 100 chosen by experimentation. No gains to set it lower. 
-    min_d_pvs = 4,      # minimum depth at which to start preliminary vs. >=2. 
     # grid and optimization parameters
     mugridpoints = 11,  # points at which to evaluate μ during variable selection. 5 is sufficient on simulated data, but actual data can benefit from more (due to with highly non-Gaussian features. 11 so that at d>=depth_coarse_grid, it takes [2,4,6,8,10] so symmetric.
     taugridpoints = 2,  # points at which to evaluate τ during variable selection. 1-5 are supported. If less than 3, refinement is then on a grid with more points
     depth_coarse_grid = 5, # at this depth and higher, vs uses only τ=5 and every other second point in mugrid. 
-    depth_coarse_grid2 = 7, # at this depth and higher, vs uses only τ=5 and every third second point in mugrid. 
+    depth_coarse_grid2 = 8, # at this depth and higher, vs uses only τ=5 and every third second point in mugrid. 
+    depth_coarse_grid3 = 10, # at this depth and higher, vs uses only τ=5 and only one point in mugrid. 
     xtolOptim = 0.01,  # tolerance in the optimization e.g. 0.01 (measured in dμ). It is automatically reduced if tau is large 
     method_refineOptim = :distributed, #  :pmap, :distributed 
     points_refineOptim = 12,    # number of values of tau for refineOptim. Default 12. Other values allowed are 4,7.
@@ -420,8 +416,8 @@ function HTBparam(;
     @assert(doflntau>T(2), " doflntau must be greater than 2.0 (for variance to be defined) ")
     @assert(T(1e-20) < xtolOptim, "xtolOptim must be positive ")
 
-    if depth>7 && warnings==:On
-        @warn "setting param.depth higher than 6, perhaps 7, typically results in very high computing costs."
+    if depth>8 && warnings==:On
+        @warn "Setting param.depth higher than 7-8 may result in very high computing costs and potential numerical instability (ill-defined matrix inverse), which the algorithm should be able to handle but with a further increase in computing time. "
     end
 
     ncores = nprocs()-1
@@ -480,8 +476,8 @@ function HTBparam(;
         class_values,Bool(delete_missing),mask_missing,missing_features,info_date,T(sparsity_penalization),T(same_feature_penalization),
         I(same_feature_penalization_start),p0,sharevs,refine_obs_from_vs,finalβ_obs_from_vs,
         I(n_refineOptim),T(subsampleshare_columns),Symbol(sparsevs),T(frequency_update),
-        I(number_best_features),best_features,Symbol(pvs),I(p_pvs),I(min_d_pvs),I(mugridpoints),I(taugridpoints),
-        I(depth_coarse_grid),I(depth_coarse_grid2),T(xtolOptim),Symbol(method_refineOptim),
+        I(number_best_features),best_features,I(mugridpoints),I(taugridpoints),
+        I(depth_coarse_grid),I(depth_coarse_grid2),I(depth_coarse_grid3),T(xtolOptim),Symbol(method_refineOptim),
         I(points_refineOptim),I(ntrees),T(theta),loglikdivide,I(overlap),T(multiply_pb),T(varGb),I(ncores),I(seed_datacv),I(seed_subsampling),I(iter),newton_gauss_approx,
         I(newton_max_steps),I(newton_max_steps_final),T(newton_tol),T(newton_tol_final),I(newton_max_steps_refineOptim),linesearch)
 
@@ -509,19 +505,16 @@ function param_given_data!(param::HTBparam,data::HTBdata)
         param.p0=p 
     end
 
-    if param.sparsevs==:Auto
-        param.sparsity_penalization>0 ? param.sparsevs=:On : param.sparsevs=:Off
-    end 
+    #:Auto switches it :On if sparsity_penalization >=0, else :Off. Not active as computing times with large p can be very large without sparsevs.  
+    #if param.sparsevs==:Auto
+    #    param.sparsity_penalization>0 ? param.sparsevs=:On : param.sparsevs=:Off
+    #end 
 
     if param.sharevs==:Auto
         n = 0.75*n        # assuming n i train+sample
         α = T(min(1,sqrt(50_000/n)))
         α>0.75 ? α=T(1) : nothing
         param.sharevs = α
-    end 
-
-    if param.pvs==:Auto
-        p>10*param.p_pvs && param.depth>5 ? param.pvs=:On : param.pvs=:Off
     end 
     
     if param.newton_gauss_approx == :Auto
@@ -543,8 +536,12 @@ end
 
 
 
-# separate function enforces constraints across options.
+# separate function enforces constraints across options. (Some warnings and constrains may be duplicated from HTBparam() because HTBfit() modified param.)
 function param_constraints!(param::HTBparam)
+
+    if param.depth>8 && param.warnings==:On  
+        @warn "Setting param.depth higher than 7-8 may result in very high computing costs and potential numerical instability (ill-defined matrix inverse), which the algorithm should be able to handle but with a further increase in computing time. "
+    end
 
     # no ppr if depth=1? Probably worse performance without ppr, but half the computing cost. 
     #param.depth==1 ? param.depthppr=param.I(0) : nothing 
@@ -554,6 +551,20 @@ function param_constraints!(param::HTBparam)
     if param.priortype==:smooth
         param.doflntau=100
     end
+
+    if param.priortype==:disperse
+        param.varlntau=Inf
+    end
+
+    if param.depth_coarse_grid2 < param.depth_coarse_grid
+        @error "param.depth_coarse_grid2 must be greater than or equal to param.depth_coarse_grid. Setting it equal"
+        param.depth_coarse_grid2 = param.depth_coarse_grid
+    end 
+
+    if param.depth_coarse_grid3 < param.depth_coarse_grid2
+        @error "param.depth_coarse_grid3 must be greater than or equal to param.depth_coarse_grid2. Setting it equal."
+        param.depth_coarse_grid3 = param.depth_coarse_grid2
+    end 
 
     # no sense taking variance, skew and kurtosis of y when y is binary: the mean has the same info
     if param.loss == :logistic 

@@ -1,6 +1,7 @@
 # Documenter creates html files in build directory. 
 # To generate the documentation: navigate (set working directory) to the docs directory, then run make.jl with Julia.
 # Navigate using a browser
+# NB: the repo cannot be private. If it is private, a need to generate a GitHub Token  
 
 push!(LOAD_PATH, "../src/")   # for API
 
@@ -15,6 +16,8 @@ pages=[
     "Examples (julia scripts)" => "Examples.md",
 ]
 
+
+# Actual HTBoost.jl
 makedocs(
     sitename="HTBoost.jl",
     authors = "Paolo Giordani",

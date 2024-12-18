@@ -921,11 +921,11 @@ function HTBfit_single(data::HTBdata,param::HTBparam;cv_grid=[],cv_different_los
 
     if isempty(cv_grid)
         user_provided_grid = false
-        cv_grid = [1,2,3,4,5,6,7]     # NB: later code assumes this grid when cv depth
+        cv_grid = collect(1:8)      
     else     
         user_provided_grid = true
-        if maximum(cv_grid)>7 && param0.warnings==:On
-            @warn "setting param.depth higher than 6, perhaps 7, typically results in very high computing costs."
+        if maximum(cv_grid)>8 && param0.warnings==:On
+            @warn "setting param.depth higher than 7, perhaps 8, typically results in very high computing costs."
         end
     end     
 
@@ -1184,7 +1184,7 @@ function HTBfit_single(data::HTBdata,param::HTBparam;cv_grid=[],cv_different_los
 
     end 
 
-    # Additional model: column subsampling, rate 2/3. Set depth = depth + 1 (unless depth=7) and decrease lambda to lambda*0.7
+    # Additional model: column subsampling, rate 2/3. Set depth = depth + 1 (so depth=8 is possible in :accurate) and decrease lambda to lambda*0.7
     if cv_col_subsample==:Auto
         modality in [:compromise,:accurate] ? cv_col_subsample = true : cv_col_subsample = false 
     end
@@ -1195,7 +1195,7 @@ function HTBfit_single(data::HTBdata,param::HTBparam;cv_grid=[],cv_different_los
         param = deepcopy(HTBtrees_a[best_i].param)
         i = 2*length(cvgrid0)+length(sparsity_grid) + 3
         best_depth = cvgrid[best_i]
-        cvgrid[i]  = min(best_depth+1,7)         
+        cvgrid[i]  = best_depth+1         
   
         param.depth = cvgrid[i]        
         param.subsampleshare_columns = param.T(0.67)
@@ -1208,8 +1208,8 @@ function HTBfit_single(data::HTBdata,param::HTBparam;cv_grid=[],cv_different_los
 
     end 
 
-    # Additional model: more aggressive column subsampling and a bit of row subsampling (in feature selection phase only)
-    # Only in :accurate and if column subsampling is the best model)
+    # Additional model: more aggressive column subsampling and some row subsampling (in feature selection phase only)
+    # Only in :accurate and if column subsampling is the best model.
     i = 2*length(cvgrid0)+length(sparsity_grid) + 4
 
     if cv_col_subsample && modality==:accurate && argmin(lossgrid)==i-1
