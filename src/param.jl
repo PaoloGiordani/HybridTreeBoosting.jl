@@ -176,16 +176,16 @@ Note: all Julia symbols can be replaced by strings. e.g. :L2 can be replaced by 
 # Parameters that are most likely to be modified by user (all inputs are keywords with default values)
 
 - `loss`             [:L2] Supported distributions:
-    - :L2 (Gaussian)
-    - logistic (binary classification)
+    - :L2 (Gaussian), aliases :l2,:mse,:Gaussian,:normal
+    - :logistic, aliases :binary (binary classification)
     - :multiclass (multiclass classification)
-    - :t (student-t, robust alternative to :L2)
-    - :Huber 
+    - :t, aliases :student (student-t, robust alternative to :L2)
+    - :Huber, aliases :huber 
     - :gamma
-    - :lognormal 
+    - :lognormal, aliases :logL2, :logl2 (positive continuous data) 
     - :Poisson (count data)
-    - :gammaPoisson (aka negative binomial, count data)
-    - :L2loglink (alternative to :L2 if y≥0)
+    - :gammaPoisson, aliases :gamma_Poisson,:gamma_poisson,:negbin,:negative_binomial (aka negative binomial, count data)
+    - :L2loglink, aliases :l2loglink (alternative to :L2 if y≥0)
     - :hurdleGamma (zero-inflated y)
     - :hurdleL2loglink (zero-inflated y)
     - :hurdleL2 (zero-inflated y)
@@ -531,6 +531,24 @@ function param_given_data!(param::HTBparam,data::HTBdata)
         end     
 
     end  
+
+    # change aliases for loss functions to default denomination
+    loss = param.loss 
+    if loss in [:l2,:mse,:Gaussian,:normal] 
+        param.loss = :L2
+    elseif loss in [:logL2, :logl2]
+        param.loss = :lognormal
+    elseif loss in [:binary]
+        param.loss = :logistic
+    elseif loss in [:student]
+        param.loss = :t
+    elseif loss in [:huber]
+        param.loss = :Huber
+    elseif loss in [:gamma_Poisson,:gamma_poisson,:negbin,:negative_binomial]
+        param.loss = :gammaPoisson
+    elseif loss in [:l2loglink]
+        param.loss = :L2loglink                         
+    end     
 
 end         
 
