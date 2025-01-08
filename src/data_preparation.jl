@@ -4,27 +4,31 @@
 #
 # The following functions are applied once, on the first HTBdata() 
 #  
-# store_class_values!()
-# replace_nan_with_missing()
-# replace_missing_with_nan()
-# convert_dates_to_real!()                          
-# categorical_features!()
-# missing_features!
-# missing_features_extend_x()                          
-# map_cat_convert_to_float!()              
-# check_admissible_data()                check if data is admissable given param
+#  store_class_values!()
+#  replace_nan_with_missing()
+#  replace_missing_with_nan()
+#  convert_dates_to_real!()                          
+#  categorical_features!()
+#  missing_features!
+#  missing_features_extend_x()                          
+#  map_cat_convert_to_float!()              
+#  check_admissible_data()                check if data is admissable given param
 #
-# The following functions are applied to each train set: 
+# The following functions are applied to each train set (see categorical.jl for more functions applied to each train set; main are target_encoding_values!() and target_encoding() ) 
 #
-# preparedataHTB()                     preliminary operations on data before starting boosting loop: standardize x using robust measures of dispersion.
+#  preparedataHTB()                     preliminary operations on data before starting boosting loop: standardize x using robust measures of dispersion.
 #     robust_mean_std()
-# preparegridsHTB()
-# gridvectorτ()
-# gridmatrixμ()
+#  preparegridsHTB()
+#  gridvectorτ()
+#  gridmatrixμ()
 #   fill_vectors_mugridmatrix!()
 #   standardize_y_for_kantorovic()
-# kantorovic_distance()                   rough approximate distance between the empirical distribution of xi and y, or between xi and a Gaussian, using deciles
+#  kantorovic_distance()                   rough approximate distance between the empirical distribution of xi and y, or between xi and a Gaussian, using deciles
 #
+# The following functions are applied to each validation set 
+#
+#   preparedataHTB_test()
+
 
 # in HTBdata(), if loss=:multiclass, stores unique values of y as param.class_values, and then replaces y by 0,1,2... Leaves missing as missing
 function store_class_values!(param,y)

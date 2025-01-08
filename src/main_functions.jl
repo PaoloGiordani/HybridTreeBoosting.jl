@@ -546,7 +546,7 @@ end
 
 
 # Prepare the data, which may come as a DataFrame and have missing and categorical, with the
-# Same transformations as in HTBdata() and preparedataHTBfor convenient data manipulation
+# Same transformations as in HTBdata() and preparedataHTB for convenient data manipulation
 function preparedata_predict(x0::Union{AbstractDataFrame,AbstractArray},HTBtrees::HTBoostTrees)
 
     param = HTBtrees.param

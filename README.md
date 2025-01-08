@@ -100,8 +100,8 @@ yf     = HTBpredict(x_test,output)
 
 ## Recommended workflow 
 
-Start exploratory analysis with modality = :fast (or even :fastest unless the sample is very small),
-then switch to modality = :compromise (default) or :accurate for best accuracy. 
+Start exploratory analysis with modality = :fast (or even :fastest unless the sample is small),
+then switch to modality = :compromise (default) or :accurate for best accuracy. See the tutorials for more tips.
 
 ```
 param  = HTBparam(modality=:fastest)       
@@ -113,14 +113,8 @@ See [speeding up HTBoost](docs/src/tutorials/Faster%20large%20n.md) for suggesti
 ## Help improve HTBoost! 
 
 - If you have a dataset in which HTBoost does not outperform other GBMs while *HTBweightedtau( )* suggests it should (see [Basic use](docs/src/tutorials/Basic%20use.md)), and you have read [Outperforming other GBM](docs/src/Outperforming%20other%20GBM.md), please get in touch with me at paolo.giordani@bi.no
-- Suggestions are welcome. 
-
-## 
+- Suggestions and bug reports are welcome. Do keep in mind that HTBoost is currently a one-person project, so I may not be able to promptly address all issues.  
 
 ## References
 
-
-## Licence Apache 2 for CatBoost, EvoTrees and H2O, MIT for LightGBM
-
-© Paolo Giordani, 2024. Licensed under the Apache License, Version 2.0. See LICENSE file for more details.
-
+[Paolo Giordani, 2025, "HTBoost: Data Efficient Learning via Boosting of Hybrid Trees"]()
