@@ -322,13 +322,13 @@ end
 function robust_mean_std(x::AbstractMatrix{T}) where T <: AbstractFloat # where x = data.x
 
     p = size(x,2)
-    meanx,stdx = Matrix{T}(undef,1,p),Matrix{T}(undef,1,p)
+    meanx,stdx = Vector{T}(undef,p),Vector{T}(undef,p)
 
     for i in 1:p
         meanx[i],stdx[i] = robust_mean_std(x[:,i])
     end
 
-    return meanx,stdx
+    return meanx,stdx   
 
 end
 
@@ -387,7 +387,7 @@ function preparedataHTB(data::HTBdata,param0::HTBparam)
                                         # NB: Expands x if some categorical features require an extensive (>1 column) representation
     meanx,stdx = robust_mean_std(x)     # meanx,stdx computed using target encoding values      
 
-    data_standardized = HTBdata_sharedarray( data.y,(x .- meanx)./stdx,param,data.dates,data.weights,data.fnames,data.offset) # standardize
+    data_standardized = HTBdata_sharedarray( data.y,(x .- meanx')./stdx',param,data.dates,data.weights,data.fnames,data.offset) # standardize
 
     param_given_data!(param,data_standardized)    # sets additional parameters that require data. 
 
@@ -443,7 +443,7 @@ function preparedataHTB_test(x,param,meanx,stdx)   # x = data.x[indtest,:]
         end
     end
     
-    x_test = (x_test .- meanx)./stdx
+    x_test = (x_test .- meanx')./stdx'
 
     return x_test
 

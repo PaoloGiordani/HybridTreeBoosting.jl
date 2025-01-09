@@ -569,7 +569,7 @@ function preparedata_predict(x0::Union{AbstractDataFrame,AbstractArray},HTBtrees
     
     x = prepares_categorical_predict(x,param)  # categoricals are mapped to target encoding values; new categories allowed 
                                                # columns are added if param.cat_representation_dimension>1
-    x = (x .- HTBtrees.meanx)./HTBtrees.stdx
+    x = (x .- HTBtrees.meanx')./HTBtrees.stdx'
     x = convert_df_matrix(x,param.T)
 
     return x
