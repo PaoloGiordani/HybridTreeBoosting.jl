@@ -1555,6 +1555,8 @@ For feature i, computes gamma(x_i) - gamma(x_i=mean(x_i)) for x_i between q1st a
 """
 function HTBpartialplot(data::HTBdata,output,features;best_model=false,other_xs::Vector =[],q1st=0.01,npoints = 1000,predict=:Egamma)
 
+    features = Int.(features)
+
     if output.bestparam.loss in [:hurdleGamma, :hurdleL2loglink, :hurdleL2]
         @error "HTBpartialplot not yet supported for hurdle models"
     end     
@@ -1674,6 +1676,8 @@ APPROXIMATE Computation of marginal effects using NUMERICAL derivatives (default
 
 """
 function HTBmarginaleffect(data::HTBdata,output,features;best_model=false,other_xs::Vector =[],q1st=0.01,npoints = 50,epsilon=0.02,predict=:Egamma)
+
+    features = Int.(features)
 
     if output.bestparam.loss in [:hurdleGamma, :hurdleL2loglink, :hurdleL2]
         @error "marginal effects not yet supported for hurdle models"
