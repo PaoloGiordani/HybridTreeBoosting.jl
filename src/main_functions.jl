@@ -118,6 +118,11 @@ by overlapping observation when y(t) = Y(t+horizon) - Y(t).
 # Example of use
     lld,ess =  HTBloglikdivide(df,:excessret,:date,overlap=h-1)
 
+    or as a named tuple 
+
+    t       = HTBloglikdivide(df,:excessret,:date,overlap=h-1)
+    print("effective sample size is ", t.ess)
+
 =# 
 function HTBloglikdivide(df::DataFrame,y_symbol,date_symbol;overlap = 0)
 
@@ -142,7 +147,7 @@ function HTBloglikdivide(df::DataFrame,y_symbol,date_symbol;overlap = 0)
     loglikdivide  = loglikdivide*( 1 + overlap/2 ) # roughly accounts for auto-correlation induced by overlapping, e.g. y(t) = p(t+h) - p(t)
     effective_sample_size = length(y)/loglikdivide
 
-   return loglikdivide,effective_sample_size
+   return (lld=loglikdivide,ess=effective_sample_size)
 
 end
 
@@ -170,7 +175,7 @@ function HTBloglikdivide(y::AbstractVector{T},dates_all;overlap=0) where T<:Real
     loglikdivide  = loglikdivide*( 1 + overlap/2 ) # roughly accounts for auto-correlation induced by overlapping, e.g. y(t) = p(t+h) - p(t)
     effective_sample_size = length(y)/loglikdivide
 
-   return loglikdivide,effective_sample_size
+   return (lld=loglikdivide,ess=effective_sample_size)
 
 end
 
@@ -194,6 +199,10 @@ Computes indexes of training set and test set for cumulative CV and pseudo-real-
 
     first_date = Date("2017-12-31", Dates.DateFormat("y-m-d"))
     indtrain_a,indtest_a = HTBindexes_from_dates(df,:date,first_date,12)
+
+    or as a named tuple with elements indtrain_a,indtest_a)
+
+    t = HTBindexes_from_dates(df,:date,first_date,12)
 
 * NOTES
 
@@ -236,7 +245,7 @@ function HTBindexes_from_dates(df::DataFrame,datesymbol::Symbol,first_date,n_ree
 
     end
 
-    return indtrain_a,indtest_a
+    return (indtrain_a=indtrain_a,indtest_a=indtest_a)
 
 end
 
@@ -393,8 +402,8 @@ Forecasts from HTBoost, for y or the natural parameter.
     yf     = HTBpredict(x_oos,output,best_model=true)
     yf     = HTBpredict(x_oos,output,offset = log.(exposure) )
 
-    yf,prob0,yf_not0 = HTBpredict(x_oos,output)  # for hurdle models 
-    yf,class_value,ymax = HTBpredict(x_oos,output)  # for multiclass 
+    yf,prob0,yf_not0 = HTBpredict(x_oos,output)  # for hurdle models. Or as a tuple t = HTBpredict(x_oos,output) 
+    yf,class_value,ymax = HTBpredict(x_oos,output)  # for multiclass. Or as a tuple t = HTBpredict(x_oos,output) 
 
 """
 function HTBpredict(x0::Union{AbstractDataFrame,AbstractArray},output::NamedTuple;best_model=false,cutoff_parallel=20_000,predict=:Ey,offset=[])
@@ -420,7 +429,7 @@ function HTBpredict(x0::Union{AbstractDataFrame,AbstractArray},output::NamedTupl
 end 
 
 
-# HTBpredict when output is not NamedTuple (will typically be a vector of NamedTuple)
+# HTBpredict when output is not NamedTuple (will typically be a vector of NamedTuple for multiclass or hurdle models)
 function HTBpredict(x::Union{AbstractDataFrame,AbstractArray},output;best_model=false,cutoff_parallel=20_000,predict=:Ey,offset=[])
 
     # output saves the loss functions of the component models: find the original loss
@@ -436,11 +445,11 @@ function HTBpredict(x::Union{AbstractDataFrame,AbstractArray},output;best_model=
 
         if predict==:Egamma; @error " prediction with hurdle models require predict=:Ey"; end 
         yf,prob0,yf_not0 = HTBpredict_hurdle(x,output,best_model,cutoff_parallel,predict,offset)
-        return (yf,prob0,yf_not0)
+        return (yf=yf,prob0=prob0,yf_not0=yf_not0)
     
     elseif loss == :multiclass 
         yf,class_values,ymax = HTBpredict_multiclass(x,output,best_model,cutoff_parallel,predict,offset)
-        return yf,class_values,ymax 
+        return (yf=yf,class_values=class_values,ymax=ymax) 
     end 
     
 end 
@@ -457,7 +466,7 @@ function HTBpredict_hurdle(x,output,best_model,cutoff_parallel,predict,offset)
     yf    = @. yf_0 * yf_not0    # E(y|x)
     prob0  = @. 1 - yf_0          # prob(y=0)
 
-    return yf,prob0,yf_not0 
+    return (yf=yf,prob0=prob0,yf_not0=yf_not0) 
 
 end 
 
@@ -484,7 +493,7 @@ function HTBpredict_multiclass(x,output,best_model,cutoff_parallel,predict,offse
         ymax[i] = class_values[argmax(prob[i,:])]
     end     
 
-    return prob,class_values,ymax 
+    return (prob=prob,class_values=class_values,ymax=ymax) 
 
 end 
 
@@ -740,7 +749,7 @@ function HTBfit(data::HTBdata, param::HTBparam; cv_grid=[],cv_different_loss::Bo
                                 cv_hybrid=cv_hybrid,cv_depthppr=cv_depthppr,skip_full_sample=skip_full_sample,cv_col_subsample=cv_col_subsample)
     elseif param.loss == :multiclass
         output = HTBfit_multiclass(data,param,cv_grid=cv_grid,cv_different_loss=cv_different_loss,cv_sharp=cv_sharp,cv_sparsity=cv_sparsity,
-                                cv_hybrid=cv_hybrid,cv_depthppr=cv_depthppr,skip_full_sample=skip_full_samplec,v_col_subsample=cv_col_subsample)
+                                cv_hybrid=cv_hybrid,cv_depthppr=cv_depthppr,skip_full_sample=skip_full_sample,cv_col_subsample=cv_col_subsample)
     else 
         output = HTBfit_single(data,param,cv_grid=cv_grid,cv_different_loss=cv_different_loss,cv_sharp=cv_sharp,cv_sparsity=cv_sparsity,
                        cv_hybrid=cv_hybrid,cv_depthppr=cv_depthppr,skip_full_sample=skip_full_sample,cv_col_subsample=cv_col_subsample)
@@ -1384,7 +1393,7 @@ end
 # The two models can be fit separately with no loss since the continuous distribution has zero mass at 0. 
 # The cv is completely independent for the two models. 
 function HTBfit_hurdle(data::HTBdata, param::HTBparam; cv_grid=[],cv_different_loss::Bool=false,cv_sharp::Bool=false,
-    cv_sparsity=true,cv_hybrid=true,cv_depthppr=false,skip_full_sample=false)   # skip_full_sample enforces nofullsample even if nfold=1 (used in other functions, not by user)
+    cv_sparsity=true,cv_hybrid=true,cv_col_subsample=:Auto,cv_depthppr=false,skip_full_sample=false)   # skip_full_sample enforces nofullsample even if nfold=1 (used in other functions, not by user)
 
     if param.loss == :hurdleGamma
         loss_not0 = :gamma
@@ -1403,7 +1412,7 @@ function HTBfit_hurdle(data::HTBdata, param::HTBparam; cv_grid=[],cv_different_l
     param_0      = deepcopy(param)
     param_0.loss = :logistic
     output_0 = HTBfit_single(data_0,param_0,cv_grid=cv_grid,cv_different_loss=cv_different_loss,cv_sharp=cv_sharp,cv_sparsity=cv_sparsity,
-                            cv_hybrid=cv_hybrid,skip_full_sample=skip_full_sample) 
+                            cv_hybrid=cv_hybrid,skip_full_sample=skip_full_sample,cv_col_subsample=cv_col_subsample) 
     data_0 = 0  # free memory 
 
     # y /=0  
@@ -1481,6 +1490,10 @@ best_model=true for single model with lowest CV loss, best_model= false for weig
     fnames,fi,fnames_sorted,fi_sorted,sortedindx = HTBrelevance(output,data,verbose = false)
     fnames,fi,fnames_sorted,fi_sorted,sortedindx = HTBrelevance(output,data,best_model=true)
 
+    or as a named tuple 
+
+    t = HTBrelevance(output,data,verbose = false)
+
 """
 function HTBrelevance(output,data::HTBdata;verbose=true,best_model=false )
 
@@ -1521,7 +1534,7 @@ function HTBrelevance(output,data::HTBdata;verbose=true,best_model=false )
         printmat(m)                          # Paul Soderlind's printmat()
     end
 
-    return fnames,fi,fnames[sortedindx],fi[sortedindx],sortedindx
+    return (fnames=fnames,fi=fi,fnames_sorted=fnames[sortedindx],fi_sorted=fi[sortedindx],sortedindx=sortedindx)
 end
 
 
@@ -1552,6 +1565,11 @@ For feature i, computes gamma(x_i) - gamma(x_i=mean(x_i)) for x_i between q1st a
 # Example of use 
     output = HTBfit(data,param)
     q,pdp  = HTBpartialplot(data,output.HTBtrees,sortedindx[1,2],q1st=0.001)
+
+    or as a named tuple 
+
+    t      = HTBpartialplot(data,output.HTBtrees,sortedindx[1,2],q1st=0.001)
+
 """
 function HTBpartialplot(data::HTBdata,output,features;best_model=false,other_xs::Vector =[],q1st=0.01,npoints = 1000,predict=:Egamma)
 
@@ -1582,7 +1600,7 @@ function HTBpartialplot(data::HTBdata,output,features;best_model=false,other_xs:
     meanx,stdx = output.HTBtrees.meanx,output.HTBtrees.stdx
     q = q.*stdx[features]' .+ meanx[features]'      # convert back to original scale
 
-    return q,pdp
+    return (q=q,pdp=pdp)
 end
 
 
@@ -1614,7 +1632,7 @@ function HTBpartialplot(x::AbstractArray,HTBtrees::HTBoostTrees,features,predict
         pdp[:,i] = HTBpredict_internal(h,HTBtrees,predict) - HTBpredict_internal(h0,HTBtrees,predict)
     end
 
-    return q,pdp
+    return (q=q,pdp=pdp)
 end
 
 
@@ -1665,6 +1683,7 @@ APPROXIMATE Computation of marginal effects using NUMERICAL derivatives (default
 # Example
     output = HTBfit(data,param)
     q,m    = HTBmarginaleffect(data,output.HTBtrees,[1,3])
+    t      = HTBmarginaleffect(data,output.HTBtrees,[1,3])   # as named tuple 
 
 # Example
     q,m  = HTBmarginaleffect(data,output.HTBtrees,[1,2,3,4],other_xs = zeros(p),npoints = 1)
@@ -1707,7 +1726,7 @@ function HTBmarginaleffect(data::HTBdata,output,features;best_model=false,other_
     meanx,stdx = output.HTBtrees.meanx,output.HTBtrees.stdx
     q = q.*stdx[features]' .+ meanx[features]'      # convert back to original scale
 
-    return q,m
+    return (q=q,m=m)
 end
 
 
@@ -1774,7 +1793,8 @@ Output fitted parameters estimated from each tree, collected in matrices. Exclud
 # Example of use
     output = HTBfit(data,param)
     i,μ,τ,fi2,m,β = HTBoutput(output.HTBtrees)
-
+    t = HTBoutput(output.HTBtrees)  # named tuple 
+    
 """
 function HTBoutput(HTBtrees::HTBoostTrees;exclude_pp = true)
 
@@ -1807,7 +1827,7 @@ function HTBoutput(HTBtrees::HTBoostTrees;exclude_pp = true)
         fi2 = fi2[:,1:depth]
     end  
 
-    return i,μ,τ,fi2,m,β
+    return (i=i,μ=μ,τ=τ,fi2=fi2,m=m,β=β)
 end
 
 
@@ -1864,9 +1884,16 @@ best_model=true for single model with lowest CV loss, best_model= false for weig
     output = HTBfit(data,param)
     avgtau,gavgtau,avgtau_a,dftau,x_plot,g_plot = HTBweightedtau(output,data)
     avgtau,gavgtau,avgtau_a,dftau,x_plot,g_plot = HTBweightedtau(output,data,verbose=false,plot_tau=false,best_model=true)
-
+ 
     using Plots
-    plot(x_plot,g_plot,title="avg smoothness of splits",xlabel="standardized x",label=:none,legend=:bottomright)
+    plot(x_plot,g_plot,title="avg smoothness of splits",xlabel="standardized x",label=:none,legend=:bottomright)    
+ 
+    Or as a named tuple 
+
+    t = HTBweightedtau(output,data)
+    plot(t.x_plot,t.g_plot,title="avg smoothness of splits",xlabel="standardized x",label=:none,legend=:bottomright)    
+
+
 """
 function HTBweightedtau(output,data;verbose::Bool=true,best_model::Bool=false,max_tau=40.0)
 
@@ -1913,7 +1940,7 @@ function HTBweightedtau(output,data;verbose::Bool=true,best_model::Bool=false,ma
     x_plot = collect(-2.0:0.01:2)
     g_plot = sigmoidf(x_plot,T(0),T(tau),output.bestparam.sigmoid)
 
-    return T(avgtau),T(gavgtau),T.(avgtau_a),df,x_plot,g_plot
+    return (avgtau=T(avgtau),gavgtau=T(gavgtau),avgtau_a=T.(avgtau_a),df=df,x_plot=x_plot,g_plot=g_plot)
 
 end 
 
@@ -1952,7 +1979,7 @@ function HTBplot_ppr(output;which_tree=1)
 
     β =  t.β[end]
 
-    return G*β,xi,t.τ
+    return (yf1=G*β,yf0=xi,tau=t.τ)
 end 
 
 
@@ -1997,6 +2024,13 @@ Produces x and y to plot sigmoid function for a given τ (typically the average 
     x_plot,g_plot = HTBplot_tau(avgtau[1])     # tau of first feature
     using Plots
     plot(x_plot,g_plot,title="avg tau of feature 1",xlabel="standardized x",label=:none,legend=:bottomright)
+
+    or as a named tuple
+
+    t = HTBplot_tau(avgtau[1])     # tau of first feature
+    plot(t.x_plot,t.g_plot,title="avg tau of feature 1",xlabel="standardized x",label=:none,legend=:bottomright)
+   
+
 """
 function HTBplot_tau(tau;sigmoid=:sigmoidsqrt,mu=0,range=2,max_tau=40.0)
 
