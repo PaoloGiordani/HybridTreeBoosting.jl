@@ -1,4 +1,4 @@
-## User's controlled cross-validation 
+## User's controlled cross-validation of parameters
 
 **Summary**
 
@@ -40,7 +40,7 @@ params_cv = [Dict(
     varlntau in (0.25^2,0.5^1,1.0)
     ]
 
-htbcv = HTBcv(data,param,params_cv)      # cv over dictionary and internally
+htbcv = HTBcv(data,param,params_cv)      # cv over dictionary AND internally
     
 # Some info about the best model 
 bestindex = htbcv.bestindex   # params_cv[bestindex] is for best set of cv hyperparameters       

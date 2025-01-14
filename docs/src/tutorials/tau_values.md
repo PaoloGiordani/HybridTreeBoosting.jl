@@ -106,7 +106,8 @@ for (i,dgp) in enumerate(dgp_a)
     y,x,f             = simulatedata(n,stde,rndseed=rndseed,dgp=dgp)
     y_test,x_test,f_test = simulatedata(100_000,stde,rndseed=rndseed,dgp=dgp)
 
-    param  = HTBparam(loss=loss,priortype=priortype,randomizecv=randomizecv,nfold=nfold,verbose=verbose,warnings=warnings,modality=modality,nofullsample=nofullsample)
+    param  = HTBparam(loss=loss,priortype=priortype,randomizecv=randomizecv,nfold=nfold,verbose=verbose,warnings=warnings,
+                modality=modality,nofullsample=nofullsample)
 
     data   = HTBdata(y,x,param)
     output = HTBfit(data,param)

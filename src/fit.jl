@@ -330,17 +330,19 @@ function lnpτ(τ0::T,param::HTBparam,info_i,d;τmax=T(50) )::T where T<:Abstrac
 end
 
 
-# Increase the probability that GGh is invertible (alternative I did not exlore: use a pseudo-inverse, see Δβ)
+# Ensure (almost) that GGh is invertible (alternative I did not exlore: use a pseudo-inverse, see Δβ)
+# Effectively tightens the prior for empty and near-empty leaves, up to a max of one phantom obs added to empty leaves.
+# This has no impact on coeff if the leaf is empty, and tiny if near-empty. 
 function robustify_GGh!(GGh::Matrix,p,T)
     maxdiagGGh = maximum(diag(GGh))
-    [GGh[i,i]  = maximum([GGh[i,i],maxdiagGGh*T(0.00001)])  for i in 1:p]  # nearly ensures invertible G'G, effectively tightening the prior for empty and near-empty leafs
+    α          = min(maxdiagGGh*T(0.0001),T(1)) 
+    [GGh[i,i]  = max(GGh[i,i],α) for i in 1:p]  # should ensure invertible G'G, effectively tightening the prior for empty and near-empty leaves
 end
-
-
 
 function robustify_GGh!(GGh::Vector,p,T)
     maxdiagGGh = maximum(GGh)
-    [GGh[i]  = maximum([GGh[i],maxdiagGGh*T(0.00001)])  for i in 1:p]  # nearly ensures invertible G'G, effectively tightening the prior for empty and near-empty leafs
+    α          = min(maxdiagGGh*T(0.0001),T(1)) 
+    [GGh[i]  = max(GGh[i,i],α) for i in 1:p]  # should ensure invertible G'G, effectively tightening the prior for empty and near-empty leaves
 end
 
 
@@ -491,7 +493,7 @@ end
 
 # There are three steps taken to reduce the risk of SingularException errors: 1) In fitβ, if a leaf is near-empty, the diagonal of GGh is increased very slightly,
 # as     [GGh[i,i] = maximum([GGh[i,i],maxdiagGGh*T(0.00001)])  for i in 1:p], effectively tightening the prior for empty and near-empty leafs
-# try ... catch, and 2) increase the diagonal of Pb and 3) switch to Float64.
+# try ... catch, and 2) increase the diagonal of Pb and 
 # To reduce the danger of near-singularity associated with empty leaves, bound elements on the diagonal of GGh, here at 0.001% of the largest element.
 function Δβ(GGh,Gr,d,Pb,param,n,p,T)
 
@@ -518,7 +520,7 @@ function Δβ(GGh,Gr,d,Pb,param,n,p,T)
            while isa(err,SingularException) || isa(err,PosDefException)
             try
                   err         = "no error"
-                  Pb          = Pb*Float64(10)  # switch to Float64 if there are invertibility problems.
+                  Pb          = Pb + I(p) 
                   Δβ = T.((GGh + param.multiply_pb*param.loglikdivide*Pb )\Gr)
                 catch err
               end
@@ -714,12 +716,17 @@ function best_μτ_excluding_nan(t)
 
     # If d >= depth_coarse_grid, μgridi takes every other element.
     # If d >= depth_coarse_grid2, τgrid = [5] (unless it already had just one element) and every third element.   
+    # If d >= depth_coarse_grid3, τgrid = [5] (unless it already had just one element) and only one value of μ (central value)   
+
     d = 1 + I(round(log(p)/log(2)))  # current depth (for G)
 
     (d >= param.depth_coarse_grid2 && length(τgrid)>1) ? τgrid = T.([2]) : nothing
 
-    if d >= param.depth_coarse_grid
-        l = length(μgridi)
+    l = length(μgridi)
+
+    if d ≥ param.depth_coarse_grid3
+        μgridi = μgridi[Int(ceil(l/2))]
+    elseif d ≥ param.depth_coarse_grid      
         if l>=8
             d>= param.depth_coarse_grid2 ? s = 3 : s = 2
             v = [s*i for i in 1:Int(floor(l/s))]
@@ -759,7 +766,7 @@ function best_μτ_excluding_nan(t)
         τ        = τgrid[minindex[1]]
         μ        = μgridi[minindex[2]]
 
-        # If τ==Inf, carry out a full optimization over μ (and then skip refineOptim unless subsampling)
+        # If τ==Inf, carry out a full optimization over μ (and then skip refineOptim unless subsampling), using current best values of τ and μ as starting values.
         if τ==Inf   
             loss,τ,μ,nan_present = refineOptim_μτ_excluding_nan(y,w,gammafit_ensemble,r,h,G0,xi,infeatures,fi,info_i,μ,τ,param,[τ])
             loss = loss - lnpSamei(param,n_i,T)
@@ -846,27 +853,11 @@ function loopfeatures_spawn(outputarray,n,p,ps,y,w,gammafit_ensemble,gammafit,r,
         ps     = ps[randperm(Random.MersenneTwister(param.seed_subsampling+2*ntree),p)[1:psmall]]                  # subs-sample, no reimmission
     end
 
-    d = I(round(log(2*size(G0,2))/log(2)))  # current tree dpeth
-
-    # preliminary variable selection (experimental feature, optional)
-    if param.pvs == :On && d >= param.min_d_pvs && length(ps)>2*param.p_pvs    
-
-        # By setting gammafit_ensemble=gammafit_ensemble+gammafit, and G0=1, I fit a smooth stomp. 
-        @sync for i in ps        
-            @async begin # use @async to create a task that will be scheduled to run on any available worker process    
-               if Info_x[i].exclude==false  && Info_x[i].n_unique>1
-                   t   = (n_i=sum(i.==ifit),y=y,w=w,gammafit_ensemble=gammafit_ensemble+gammafit,r=r,h=h,G0=ones(T,n,1),xi=x[:,i],infeatures=infeatures,fi=fi,info_i=Info_x[i],info_x_ppr=Info_x[end],μgridi=μgrid[i],τgrid=τgrid,param=param)
-                   future = Distributed.@spawn add_depth(t)
-                   outputarray[i,:] = fetch(future)
-                end
-            end     
-        end
-
-        ps = sortperm(outputarray[:,1])[1:param.p_pvs]    # redefine ps
-        outputarray[:,1] = fill(T(Inf),p)
-
-    end 
-
+    # skip variable selection if there is only one feature in the 1st phase. 
+    if length(ps)==1
+        return(Array(outputarray))
+    end  
+   
     # (second stage) variable selection.
     @sync for i in ps        
         @async begin # use @async to create a task that will be scheduled to run on any available worker process
@@ -894,25 +885,10 @@ function loopfeatures_distributed(outputarray,n,p,ps,y,w,gammafit_ensemble,gamma
         ps     = ps[randperm(Random.MersenneTwister(param.seed_subsampling+2*ntree),p)[1:psmall]]                  # subs-sample, no reimmission
     end
 
-    # preliminary variable selection
-    d = I(round(log(2*size(G0,2))/log(2))) 
-
-    if param.pvs == :On && d >= param.min_d_pvs && length(ps)>2*param.p_pvs     
-
-        # By setting gammafit_ensemble=gammafit_ensemble+gammafit, and G0=1, I fit a smooth stomp. 
-        @sync @distributed for i in ps
-
-            if Info_x[i].exclude==false  && Info_x[i].n_unique>1
-                t   = (n_i=sum(i.==ifit),y=y,w=w,gammafit_ensemble=gammafit_ensemble+gammafit,r=r,h=h,G0=ones(T,n,1),xi=x[:,i],infeatures=infeatures,fi=fi,info_i=Info_x[i],info_x_ppr=Info_x[end],μgridi=μgrid[i],τgrid=τgrid,param=param)
-                outputarray[i,:] = add_depth(t)     # [loss, τ, μ, m ]
-            end
-  
-        end
- 
-        ps = sortperm(outputarray[:,1])[1:param.p_pvs]    # redefine ps
-        outputarray[:,1] = fill(T(Inf),p)
-
-    end 
+    # skip variable selection if there is only one feature in the 1st phase. 
+    if length(ps)==1
+        return(Array(outputarray))
+    end  
 
     # (second stage) variable selection.
     @sync @distributed for i in ps
@@ -1119,7 +1095,6 @@ function optimize_μτ(y,w,gammafit_ensemble,r,h,G0,xi,param,infeatures,fi,info_
     Gh  = similar(G)
 
     x_tol = param.xtolOptim/T(1+(τ>=5)+2*(τ>=10)+4*(τ>50))
-
     res  = Optim.optimize( μ -> Gfitβ2(y,w,gammafit_ensemble,r,h,G0,xi,param,infeatures,fi,info_i,μ,τ,T(0),G,Gh,llik0),[μ0],Optim.BFGS(linesearch = LineSearches.BackTracking()), Optim.Options(iterations = 100,x_tol = x_tol  ))
 
     return res
@@ -1145,7 +1120,6 @@ function fibonacci(k,lambda,frequency_update)
 
     return v[2:end]
 end 
-
 
 
 
@@ -1184,29 +1158,6 @@ function fit_one_tree_inner(y::AbstractVector{T},w,HTBtrees::HTBoostTrees,r::Abs
 
     maxdepth=param.depth
 
-# *****************************  Attempt to reduce maxdepth if it has not been used .... leaving a margin controlled by param.declining_depth_margin
-# look at the past J (e.g. 20 or 50) trees. Moving average of the number of unique features used.
-# e.g. when under 4, allow 5. Or when under 3, do 5. 
-# Set J to a large number to disactivate 
-#J = param.declining_depth_J    # default to 50, say
-#margin = param.declining_depth_margin # default to 1.0? since I take ceil, avg 1.01 will give depth=3. round instead of ceil? 
-# HTBoutput must change(), as it is used in several places, including to decide on force_sharp_splits  
-    margin = 1.0
-    J = 5000    # replace with param.declining_depth_J
-
-    if iter>J
-        n_unique = Vector{Int}(undef,J) 
-
-        for j in 1:J
-            n_unique[j] = length(unique(HTBtrees.trees[iter-j].i[1:end-param.depthppr] ))
-        end    
-        maxdepth_proposed = param.I(ceil( mean(n_unique) + margin ))
-        maxdepth = min(maxdepth_proposed,maxdepth)
-    end
-#end     
-
-# *****************************  End attempt to reduce maxdepth if it has not been used .... 
-
     for depth in 1:maxdepth
 
         # variable selection, optionally using a random sub-sample of the sample
@@ -1224,7 +1175,7 @@ function fit_one_tree_inner(y::AbstractVector{T},w,HTBtrees::HTBoostTrees,r::Abs
         if length(ssi)<n && param.refine_obs_from_vs
             loss,τ,μ,m = refineOptim(ys,ws,gammafit_ensembles,rs,hs,G0[ssi,:],x[ssi,i],infeatures,fi,Info_x[i],μ0,τ0,m0,param,τgrid)
         elseif param.n_refineOptim>=n
-            if τ0==Inf                                 # assumes a full optimization carried out in vs   
+            if τ0==Inf && size(outputarray,1)>1  # assumes a full optimization carried out in vs if τ0==Inf; this is only true if there was more than one feature  
                 loss,τ,μ,m = loss0,τ0,μ0,m0
             else
                 loss,τ,μ,m = refineOptim(y,w,gammafit_ensemble,r,h,G0,x[:,i],infeatures,fi,Info_x[i],μ0,τ0,m0,param,τgrid)

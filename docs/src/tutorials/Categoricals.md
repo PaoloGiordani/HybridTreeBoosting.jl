@@ -1,6 +1,6 @@
 ## Categoricals features
 
-HTBoost is promising for categorical features, particularly if high-dimensionals.  
+HTBoost is promising for categorical features, particularly if high dimensionals.  
 This tutorials shows:
 - How to inform HTBoost about categorical features
 - Comparison with LightGBM and CatBoost, with discussion.  
@@ -9,7 +9,7 @@ This tutorials shows:
 
 - If cat_features is not specified, non-numerical features (e.g. String or CategoricalValue) are treated as categorical
 - If cat_features is specified, it can be a vector of Integers (positions), a vector of Strings (corresponding to 
-  data.fnames, which must be provided) or a vector of Symbols (the features' names in the dataframe).
+  data.fnames, which must be provided) or a vector of Symbols (the features' names in the dataframe). Notice that if cat_features is specified, it must include all features to be treated as categorical (no automatic detection).
 
 **Example of use: all categorical features are non-numerical**
 ``` 
@@ -31,11 +31,11 @@ data = HTBdata(y,x) #  where x is DataFrame
 param = HTBparam(cat_features=[:country,:industry])         
 ```
 
-See [Categoricals](../examples/Categoricals.md) for a discussion of how HTBoost treats categoricals under the hood. Key points:
+See [examples/Categoricals](../examples/Categoricals.md) for a discussion of how HTBoost treats categoricals under the hood. Key points:
 - Missing values are assigned to a new category.
 - If there are only 2 categories, a 0-1 dummy is created. For anything more than two categories, it uses a variation of target encoding.
-- The categories are encoded by their mean, frequency and variance. (For financial variables, the variance may be more informative than the mean.)
-- One-hot-encoding with more than 2 categories is not supported, but is easily implemented as data preprocessing.
+- The categories are encoded by 4 values in default mode: mean, frequency, variance (robust) and skew(robust). (For financial variables, the variance and skew may be more informative than the mean.) Set cat_representation_dimension = 1 to encode by mean only.
+- One-hot-encoding with more than 2 categories is not supported, but can of course be implemented as data preprocessing.
 
 ## Cross-validation of categorical parameters 
 
@@ -45,18 +45,21 @@ See [Categoricals](../examples/Categoricals.md) for a discussion of how HTBoost 
  - `cv_categoricals = :n0` runs a rough of cv the strength of the prior shrinking categorical values to the overall mean; recommended with highly unequal number of observations in different categories.
 - `cv_categoricals = :both` runs a rough cv of penalty and n0 
 
+The default is :none if :modality in [:fastest,:fast], :penalty if :compromise, and :both if :accurate. 
+
+
 ### Comparison to LightGBM and CatBoost
 
 Different packages differ substantially in their treatment of categorical features.  
-LightGBM does not use target encoding, and can completely break down (very poor in-sample and oos fit) when the number of categories is high in relation to n (e.g. n=10k, #cat=1k). (The LightGBM manual suggests
-treating high dimensional categorical features as numerical or embedding them in a lower-dimensional space.) It can, however, perform very well in lower-dimensional cases.
+LightGBM does not use target encoding, and can completely break down (very poor in-sample and oos fit) when the number of categories is high in relation to n (e.g. n=10k, #cat=1k). The LightGBM manual suggests
+treating high dimensional categorical features as numerical or embedding them in a lower-dimensional space. LightGBM can, however, perform very well in lower-dimensional cases.
 
 CatBoost, in contrast, adopts mean target encoding as default, can handle very high dimensionality and
 has a sophisticated approach to avoiding data leakage which HTBoost is missing. (HTBoost resorts to a penalization on categorical features instead.) CatBoost also interacts categorical features, while HTBoost does not.
 In spite of the less sophisticated treatment of categoricals, in this simple simulation set-up HTBoost substantially outperforms CatBoost if n_cat is high and the categorical feature interacts with the continuous feature,
-presumably because target encoding generates smooth functions in this setting.
+presumably because target encoding generates smooth functions  by construction in this setting.
 
-It seems reasonable to assume that target encoding, by its very nature, will generate smooth functions in many settings, making 
+It seems reasonable to assume that high dimensional target encoding, by its very nature, will generate smooth functions in many settings, making 
 HTBoost a promising tool for high dimensional categorical features. The current treatment of categorical features is however quite
 crude compared to CatBoost, so some of these gains are not yet realized. 
 
@@ -301,8 +304,8 @@ LightGBM default, ignore_cat_lightgbm = true
 ```
 
 In LightGBM, the bottlenecks seems to be n/n_cat rather than n_cat per se:
-here we set n=100k, n_cat=10k and its performance is again satisfactory.
-The difference in R2 may seem small, but in this example LightGBM would require a sample of n > 1_000_000 (with n_cat=10k) to match HTBoost with n = 100_000. 
+here we set n=100k, n_cat=1k and its performance is again satisfactory.
+The difference in R2 may seem small, but in this example LightGBM would require a sample of n > 1_000_000 to match HTBoost with n = 100_000. 
 (Because of the extremely smooth function used to simulate the data.)
 
 ```markdown

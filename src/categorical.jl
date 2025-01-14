@@ -23,22 +23,22 @@
 #
 # The following components of param store information with categoricals
 #
-# - param.cat_features        can be provided by the user or automatically detected by categorical_features!() 
-# - param.cat_dictionary      mapping between original value of the category and 0,1,...
+#  - param.cat_features        can be provided by the user or automatically detected by categorical_features!() 
+#  - param.cat_dictionary      mapping between original value of the category and 0,1,...
 #                             needed to convert test data to the same format as training data
-# - param.cat_values          Vector{NamedTuple} of dimension length(param.cat_features), each element is for a categorical feature
+#  - param.cat_values          Vector{NamedTuple} of dimension length(param.cat_features), each element is for a categorical feature
 #                             NamedTuple is a collection of matrices
 #
 # The functions below are applied ex-novo to each training set, and to each test set.
-# Note for PG: these functions could be simplied... they were written for a Bayesian approach, drawing encoding values from their posterior
+#   Note for PG: these functions could be simplied... they were written for a Bayesian approach, drawing encoding values from their posterior
 #
-# - global_stats()                  computes mean,variance,skew,....,quantile (if :quantile) etc... for all data in a training set
+#  - global_stats()                  computes mean,variance,skew,....,quantile (if :quantile) etc... for all data in a training set
 #    auxiliary functions: mad_skewness(),mad_kurtosis()
-# -f_posteriors_list()               Creates a vector of functions, each computing the posterior mean of a representation dimension for target encoding (e.g. mean,frequency)
-# -f_priors_list()                   Creates a vector of functions, each computing the prior mean (for forecasting) of a representation dimension for target encoding (e.g. mean,frequency)
+#  -f_posteriors_list()               Creates a vector of functions, each computing the posterior mean of a representation dimension for target encoding (e.g. mean,frequency)
+#  -f_priors_list()                   Creates a vector of functions, each computing the prior mean (for forecasting) of a representation dimension for target encoding (e.g. mean,frequency)
 #                                    Not all representation are always used: how many depends on param.cat_representation_dimension
 #                                    Priors are used in forecasting. 
-# - target_encoding_values!()         Computes target encoding values for categorical features, stores them in param.cat_values Done once for each training set. 
+#  - target_encoding_values!()         Computes target encoding values for categorical features, stores them in param.cat_values Done once for each training set. 
 #   - draw_categoricals               Currently a misnomer, and I dropped randomness in favor of deterministic target encoding.
 #     - f_posterior_m                 function to compute the appropriate mean target encoding (first moment) depending on loss 
 #       cat_posterior_L2,cat_posterior_logistic,cat_posterior_quantile,cat_posterior_logvar,....
@@ -48,7 +48,12 @@
 #   - f_prior_m
 #   - f_prior_ni
 #   - f_prior_s
-# - target_encoding                 Replace categoricals column with target encoding values stored in param.cat_values
+#  - target_encoding()                Replace categoricals column with target encoding values stored in param.cat_values
+#
+# The functions below are used for forecasting
+#
+#  - prepares_categorical_predict()   Maps categorical features to their target encoding values, allowing for new categories.
+#                                     Inefficient! Could be speeded up.
 
 # measure of skewenss based on MAD. Equivalent to Groeneveld and Meeden. If mad is not defined (x has 1 unique value), returns 0.
 function mad_skewness(x::Vector{T}) where T<:Real 

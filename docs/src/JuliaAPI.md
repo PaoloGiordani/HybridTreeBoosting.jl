@@ -19,6 +19,7 @@ HTBindexes_from_dates
 ```@docs
 HTBfit
 HTBpredict
+HTBcv
 ```
 
 ## Post-estimation analysis 
@@ -30,6 +31,8 @@ HTBpartialplot
 HTBmarginaleffect
 HTBoutput
 HTBweightedtau
+HTBplot_tau
+HTBplot_ppr
 ```
 
 

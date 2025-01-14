@@ -14,7 +14,7 @@ There are two main problems with these losses (or with their implementations), w
 
 HTBoost fixes these two problems by correcting for the bias, and recalibrating the robustness parameter ψ after each tree. HTBoost also introduces (in the context of GBMs) a student-t loss (loss = :t), where the dispersion and degrees-of-freedom parameters are estimated internally by maximum likelihood after each tree, hence solving problem 2.
 
-**The student-t loss is recommended in HTBoost. The Huber loss is available but not recommended.**
+**The student-t loss is recommended in HTBoost. The Huber loss is available but not recommended in general (a possible exception is the original motivation for the Huber loss: y is contaminated by measurement errors).**
 
 As a result, the :t loss in HTBoost is, unlike the Huber loss in XGBoost and LightGBM, typically more accurate than the :L2 loss when residuals are leptokurtik (fat-tailed) or strongly skewed, *as long as errors are iid*. If errors are heteroskedastic (i.e. if var(ε) depends on *x*) neither the Huber nor the t distributions will in general recover the true E(*y*|*x*) asymptotically.
 

@@ -4,26 +4,31 @@
 #
 # The following functions are applied once, on the first HTBdata() 
 #  
-# store_class_values!()
-# replace_nan_with_missing()
-# replace_missing_with_nan()
-# convert_dates_to_real!()                          
-# categorical_features!()
-# missing_features!
-# missing_features_extend_x()                          
-# map_cat_convert_to_float!()              
-# check_admissible_data()                check if data is admissable given param
+#  store_class_values!()
+#  replace_nan_with_missing()
+#  replace_missing_with_nan()
+#  convert_dates_to_real!()                          
+#  categorical_features!()
+#  missing_features!
+#  missing_features_extend_x()                          
+#  map_cat_convert_to_float!()              
+#  check_admissible_data()                check if data is admissable given param
 #
-# The following functions are applied to each train set: 
+# The following functions are applied to each train set (see categorical.jl for more functions applied to each train set; main are target_encoding_values!() and target_encoding() ) 
 #
-# preparedataHTB()                     preliminary operations on data before starting boosting loop: standardize x using robust measures of dispersion.
-# preparegridsHTB()
-# gridvectorτ()
-# gridmatrixμ()
+#  preparedataHTB()                     preliminary operations on data before starting boosting loop: standardize x using robust measures of dispersion.
+#     robust_mean_std()
+#  preparegridsHTB()
+#  gridvectorτ()
+#  gridmatrixμ()
 #   fill_vectors_mugridmatrix!()
 #   standardize_y_for_kantorovic()
-# kantorovic_distance()                   rough approximate distance between the empirical distribution of xi and y, or between xi and a Gaussian, using deciles
+#  kantorovic_distance()                   rough approximate distance between the empirical distribution of xi and y, or between xi and a Gaussian, using deciles
 #
+# The following functions are applied to each validation set 
+#
+#   preparedataHTB_test()
+
 
 # in HTBdata(), if loss=:multiclass, stores unique values of y as param.class_values, and then replaces y by 0,1,2... Leaves missing as missing
 function store_class_values!(param,y)
@@ -317,13 +322,13 @@ end
 function robust_mean_std(x::AbstractMatrix{T}) where T <: AbstractFloat # where x = data.x
 
     p = size(x,2)
-    meanx,stdx = Matrix{T}(undef,1,p),Matrix{T}(undef,1,p)
+    meanx,stdx = Vector{T}(undef,p),Vector{T}(undef,p)
 
     for i in 1:p
         meanx[i],stdx[i] = robust_mean_std(x[:,i])
     end
 
-    return meanx,stdx
+    return meanx,stdx   
 
 end
 
@@ -382,7 +387,7 @@ function preparedataHTB(data::HTBdata,param0::HTBparam)
                                         # NB: Expands x if some categorical features require an extensive (>1 column) representation
     meanx,stdx = robust_mean_std(x)     # meanx,stdx computed using target encoding values      
 
-    data_standardized = HTBdata_sharedarray( data.y,(x .- meanx)./stdx,param,data.dates,data.weights,data.fnames,data.offset) # standardize
+    data_standardized = HTBdata_sharedarray( data.y,(x .- meanx')./stdx',param,data.dates,data.weights,data.fnames,data.offset) # standardize
 
     param_given_data!(param,data_standardized)    # sets additional parameters that require data. 
 
@@ -438,7 +443,7 @@ function preparedataHTB_test(x,param,meanx,stdx)   # x = data.x[indtest,:]
         end
     end
     
-    x_test = (x_test .- meanx)./stdx
+    x_test = (x_test .- meanx')./stdx'
 
     return x_test
 
@@ -583,7 +588,7 @@ end
 # I considered three ways of selecting the candidate split points: i) quantiles(), ii) clustering, like k-means or fuzzy k-means on each column of x. (Note: If the matrix is sparse, e.g. lots of 0.0, but not dichotomous, in general k-means will NOT place a value at exactly zero (but close))
 # iii) an equally spaced grid between minimum(xi) and maximum(xi). Option iii) is fastest. Here I use i), but at most maxn (default 100_000) observations are sampled,
 # and @distributed for. Deciles are interpolated.
-# features on which sharp splits are imposed are given three times as many points in mugrid (so computing times comparable with other features, which evaluate on three values of τ)    
+# features on which sharp splits are imposed are given twice as many points in mugrid (so computing times comparable with other features, which evaluate on three values of τ)    
 # If distrib_threads = false, uses @distributed and SharedArray. SharedArray can occasionally produce an error in Windows (not in Linux).
 # If this happens, the code switches to distrib_threads = true 
 # If distrib_threads = true, uses Threads.@threads. 
@@ -596,7 +601,9 @@ function gridmatrixμ(data::HTBdata,param::HTBparam,meanx,stdx;maxn::Int = 100_0
     npoints  = npoints0 + 1
     n,p      = size(data.x)
 
-    # if forcing sharp splits, triple the number of grid points for μ
+    # if forcing sharp splits, consider double or triple the number of grid points for μ
+    # npoints_mugrid0 will be the number of points for sharp splits, and npoints for smooth splits (handled in fill_vectors_mugridmatrix!)
+    # This may no longer be necessary since a full refineOptim is carried out if tau=Inf. 
     if isempty(param.force_sharp_splits)
         npoints_mugrid0 = npoints
         sharp_splits = fill(false,p)
@@ -605,7 +612,7 @@ function gridmatrixμ(data::HTBdata,param::HTBparam,meanx,stdx;maxn::Int = 100_0
         sharp_splits = param.force_sharp_splits
     end     
 
-    @assert(npoints_mugrid0<n,"npoints cannot be larger than n")
+    @assert(npoints_mugrid0<n,"mugridpoints cannot be larger than n")
 
     # grid for mu and information on feature x[:,i]    
 
@@ -650,7 +657,7 @@ function gridmatrixμ(data::HTBdata,param::HTBparam,meanx,stdx;maxn::Int = 100_0
         sharp_splits[i]==true ? npoints_i=npoints_mugrid0 : npoints_i=npoints  # if not sharp splits, keep only the first npoints values
         m = sort(unique(mugrid0[1:npoints_i,i]))
 
-        if length(m) < npoints_i  # can only happens if number(unique)<npoints; then we don't want to interpolate and lose one point
+        if length(m) < npoints_i  # if number(unique)<npoints; then we don't want to interpolate and lose one point
             mugrid[i]=m
         else
             m_int = Vector{T}(undef,length(m)-1)
@@ -659,7 +666,6 @@ function gridmatrixμ(data::HTBdata,param::HTBparam,meanx,stdx;maxn::Int = 100_0
             end
             mugrid[i] = m_int
         end
-
     end
 
     # If augment_mugrid is not empty, add these points to mugrid[i], unless i is dichotomous 
