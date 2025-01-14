@@ -15,11 +15,11 @@ The [examples](Examples.md) provide more cases of different loss functions as we
 
 ### Other distributions (loss functions)
 
-  * [Really robust regression](tutorials/t.md) (student-t and Huber, done right; comparison with LightGBM)
   * [Multiclass](tutorials/Multiclass.md) (multiclass classification; comparison with LightGBM)
   * [Zero inflated y](tutorials/Zero_inflated_y.md) (loss functions for zero-inflated *y*; comparison with LightGBM)
   * [Poisson and GammaPoisson](tutorials/GammaPoisson.md) (aka negative binomial for count data; comparison with LightGBM)  
   * [L2loglink and rank](tutorials/L2loglink_and_rank.md) (a new option if min(y)≥0, whether continuous, count, or rank)
+  * [Robust regression](tutorials/t.md) (student-t and Huber; comparison with LightGBM)
 
 ### Others
 

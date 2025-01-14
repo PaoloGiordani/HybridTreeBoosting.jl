@@ -6,7 +6,8 @@
 - Generates synthetic data with t-distributed errors.
 - Show how to use the option loss = :t for leptokurtic (fat tailed) data, which is recommended over 
   the Huber loss since the degrees of freedom of the t distribution are estimated internally, thus
-  providing the "right" amount of robustness (in the sense of maximizing the likelihood.)
+  providing the "right" amount of robustness (in the sense of maximizing the t-likelihood, not necessarily
+  the L2 loss).
 - IF the errors are IID, the :t loss will generally outperform the :L2 loss. However, errors
   are often not IID, and then the :L2 loss can outperform the :t or :Huber loss even with
   leptokurtic errors. 

@@ -10,9 +10,7 @@
 - Correcting the bias improves the mse of lightGBM predictions compared to the original version, but
   the rmse is often inferior to L2 loss. 
 - The impact of the bias is stronger if signal-to-noise is low. 
-- With high signal-to-noise, the lightGBM Huber loss gives, after de-biasing, nearly identical results to the L2 loss, because the 
-  robustness parameter is calibrated once on the unconditional data. In contrast, HTBoost re-estimates all parameters
-  after each tree, so that the t loss outperforms the L2 loss for any signal-to-noise (with IID errors). 
+- HTBoost re-estimates all parameters (dispersion and dof for a t) after each tree.  
 
 Note:
 
