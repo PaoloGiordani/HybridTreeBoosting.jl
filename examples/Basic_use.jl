@@ -51,7 +51,7 @@ Random.seed!(1)
 loss      = :L2            # :L2 is default. Other options for regression are :L2loglink (if y≥0), :t, :Huber
 modality  = :fastest       # :accurate, :compromise (default), :fast, :fastest 
 
-priortype = :hybrid       # :hybrid (default) or :smooth to force smoothness 
+priortype = :sharp       # :hybrid (default) or :smooth to force smoothness 
 nfold     = 1             # number of cv folds. 1 faster (single validation sets), default 4 is slower, but more accurate.
 nofullsample = true       # if nfold=1 and nofullsample=true, the model is not re-fitted on the full sample after validation of the number of trees
 randomizecv = false       # false (default) to use block-cv. 

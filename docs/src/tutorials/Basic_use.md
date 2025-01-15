@@ -169,7 +169,7 @@ On simulated data, we can evaluate the RMSE from the true f(x), exluding noise:
 
 ```julia
 
-println(" \n modality = $(param.modality), nfold = $nfold ")
+println(" \n modality = $(param.modality), nfold = $nfold , priortype = $(param.priortype)")
 println(" depth = $(output.bestvalue), number of trees = $(output.ntrees), gavgtau $gavgtau ")
 println(" out-of-sample RMSE from truth ", sqrt(sum((yf - f_test).^2)/n_test) )
 ```
@@ -177,20 +177,20 @@ println(" out-of-sample RMSE from truth ", sqrt(sum((yf - f_test).^2)/n_test) )
 **Hybrid trees outperform both smooth and standard trees**
 
 Here is the output for n=10k (nfold=1, nofullsample=true). 
-Hybrid trees strongly outperform both smooth trees and standard symmetric (aka oblivious) trees. (Note: modality = :sharp is a very inefficient way to run a symmetric tree; use CatBoost instead!)
+Hybrid trees strongly outperform both smooth trees and standard symmetric (aka oblivious) trees. (Note: modality = :sharp is a very inefficient way to run a symmetric tree; use CatBoost or EvoTrees instead!)
 
 ```markdown
-  modality = fastest, nfold = 1
+  modality = fastest, nfold = 1, priortype = hybrid
  depth = 5, number of trees = 141, gavgtau 7.3
  out-of-sample RMSE from truth 0.3136
 
-modality = fastest, nfold = 1
+modality = fastest, nfold = 1, priortype = smooth 
  depth = 5, number of trees = 121, gavgtau 4.5
  out-of-sample RMSE from truth 0.5751
 
- modality = fastest, priortype = :sharp
-depth = 5, number of trees = 324, avgtau 40.0
- out-of-sample RMSE from truth 0.4951
+ modality = fastest, priortype = sharp
+depth = 5, number of trees = 183, avgtau 40.0
+ out-of-sample RMSE from truth 0.5320
 ```
 
 **Feature importance and partial dependence plots**
