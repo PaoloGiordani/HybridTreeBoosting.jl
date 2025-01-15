@@ -95,7 +95,7 @@ avgtau,gavgtau,avgtau_a,dftau,x_plot,g_plot = HTBweightedtau(output,data,verbose
 plot(x_plot,g_plot,title="avg smoothness of splits",xlabel="standardized x",label=:none)
 
 println(" \n modality = $(param.modality), nfold = $nfold ")
-println(" depth = $(output.bestvalue), number of trees = $(output.ntrees), avgtau $avgtau ")
+println(" depth = $(output.bestvalue), number of trees = $(output.ntrees), avgtau $gavgtau ")
 println(" out-of-sample RMSE from truth ", sqrt(sum((yf - f_test).^2)/n_test) )
 
 # save (load) fitted model

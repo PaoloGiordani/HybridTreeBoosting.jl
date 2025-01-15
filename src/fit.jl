@@ -341,8 +341,8 @@ end
 
 function robustify_GGh!(GGh::Vector,p,T)
     maxdiagGGh = maximum(GGh)
-    α          = min(maxdiagGGh*T(0.0001),T(1)) 
-    [GGh[i]  = max(GGh[i,i],α) for i in 1:p]  # should ensure invertible G'G, effectively tightening the prior for empty and near-empty leaves
+    α          = min(maxdiagGGh*T(0.00001),T(1)) 
+    [GGh[i]  = max(GGh[i],α) for i in 1:p]  
 end
 
 

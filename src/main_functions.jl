@@ -1870,7 +1870,7 @@ best_model=true for single model with lowest CV loss, best_model= false for weig
 - `verbose`   [true]  prints out the results to screen as DataFrame
 - `max_tau`   [40]    values of τ at or above this are set to Inf (hard splits) for plotting purposes
 
-# Output
+# Output. Named tuple with the following fields
 - `avgtau`         scalar, average importance weighted τ over all features (also weighted by variance importance) 
 - `gavgtau`        scalar, geometric average of importance weighted log τ over all features (also weighted by variance importance).
                    NB: Default in printed output and plot. (Arguably the more informative measure.) 
@@ -1878,6 +1878,11 @@ best_model=true for single model with lowest CV loss, best_model= false for weig
 - `df`             dataframe collecting avgtau_a information (only if verbose=true)
 - `x_plot`         x-axis to plot sigmoid for gavgtau, in range [-2 2] for standardized feature 
 - `g_plot`         y-axis to plot sigmoid for gavgtau 
+- `fnames`         feature names
+- `fi`             feature importance, summing to 100
+- `fnames_sorted`  sorted feature names, from highest to lowest importance
+- `fi_sorted`      sorted feature importance
+- `sortedindx`     sorted feature indices
 
 # Example of use
 
@@ -1940,7 +1945,8 @@ function HTBweightedtau(output,data;verbose::Bool=true,best_model::Bool=false,ma
     x_plot = collect(-2.0:0.01:2)
     g_plot = sigmoidf(x_plot,T(0),T(tau),output.bestparam.sigmoid)
 
-    return (avgtau=T(avgtau),gavgtau=T(gavgtau),avgtau_a=T.(avgtau_a),df=df,x_plot=x_plot,g_plot=g_plot)
+    return (avgtau=T(avgtau),gavgtau=T(gavgtau),avgtau_a=T.(avgtau_a),df=df,x_plot=x_plot,g_plot=g_plot,fnames=fnames,fi=T.(fi),
+            fnames_sorted=fnames_sorted,fi_sorted=T.(fi_sorted),sortedindx=sortedindx)
 
 end 
 

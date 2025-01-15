@@ -57,7 +57,7 @@ Random.seed!(1)
 # Options for HTBparam()
 loss      = :L2            # :L2 is default. Other options for regression are :L2loglink (if y≥0), :t, :Huber
 modality  = :fastest        # :accurate, :compromise (default), :fast, :fastest 
-priortype = :hybrid       # :hybrid (default) or :smooth to force smoothness (typically not recommended)
+priortype = :sharp       # :hybrid (default) or :smooth to force smoothness (typically not recommended)
 nfold     = 1             # number of cv folds (default 4) 
 nofullsample = true       # if true and nfold=1, no re-fitting on the full sample after validation
 
@@ -142,22 +142,21 @@ The plot gives an idea of the average (importance weighted) smoothness across al
 ... which in this case is a mix of very different values across features: approximate linearity for x1, smooth functions for x3 and x5, and essentially sharp splits for x2, x4, and x6:
 
 ```markdown
-
-Row │ feature  importance  avgtau     sorted_feature  sorted_importance  sorted_avgtau 
-     │ String   Float32     Float64    String          Float32            Float64       
+ Row │ feature  importance  avgtau     sorted_feature  sorted_importance  sorted_avgtau 
+     │ String   Float32     Float64    String          Float32            Float64
 ─────┼──────────────────────────────────────────────────────────────────────────────────
-   1 │ x1          13.9858   0.462013  x5                        18.7333       4.24193
-   2 │ x2          13.3082  32.6656    x6                        18.6076      39.6472
-   3 │ x3          17.9436   4.15393   x3                        17.9436       4.15393
-   4 │ x4          17.4214  39.7877    x4                        17.4214      39.7877
-   5 │ x5          18.7333   4.24193   x1                        13.9858       0.462013
-   6 │ x6          18.6076  39.6472    x2                        13.3082      32.6656
+   1 │ x1          14.5666   0.458996  x3                        19.0633       3.30638
+   2 │ x2          12.9643  19.6719    x5                        18.6942       3.72146
+   3 │ x3          19.0633   3.30638   x6                        17.9862      35.1852
+   4 │ x4          16.7254  36.0846    x4                        16.7254      36.0846
+   5 │ x5          18.6942   3.72146   x1                        14.5666       0.458996
+   6 │ x6          17.9862  35.1852    x2                        12.9643      19.6719
 
-Average smoothing parameter τ is 8.8.
+ Average smoothing parameter τ is 7.3.
 
-In sufficiently large samples, and if modality=:compromise or :accurate
+ In sufficiently large samples, and if modality=:compromise or :accurate
 
- - Values above 20-25 suggest little smoothness in important features. HTBoost's performance may slightly outperform or slightly underperform other gradient boosting machines.
+ - Values above 20-25 suggest very little smoothness in important features. HTBoost's performance may slightly outperform or slightly underperform other gradient boosting machines.
  - At 10-15 or lower, HTBoost should outperform other gradient boosting machines, or at least be worth including in an ensemble.
  - At 5-7 or lower, HTBoost should strongly outperform other gradient boosting machines.
 ```
@@ -171,7 +170,7 @@ On simulated data, we can evaluate the RMSE from the true f(x), exluding noise:
 ```julia
 
 println(" \n modality = $(param.modality), nfold = $nfold ")
-println(" depth = $(output.bestvalue), number of trees = $(output.ntrees), avgtau $avgtau ")
+println(" depth = $(output.bestvalue), number of trees = $(output.ntrees), gavgtau $gavgtau ")
 println(" out-of-sample RMSE from truth ", sqrt(sum((yf - f_test).^2)/n_test) )
 ```
 
@@ -181,13 +180,13 @@ Here is the output for n=10k (nfold=1, nofullsample=true).
 Hybrid trees strongly outperform both smooth trees and standard symmetric (aka oblivious) trees. (Note: modality = :sharp is a very inefficient way to run a symmetric tree; use CatBoost instead!)
 
 ```markdown
- modality = fastest, priortype = :hybrid
- depth = 5, number of trees = 102, avgtau 18.6
- out-of-sample RMSE from truth 0.3262
+  modality = fastest, nfold = 1
+ depth = 5, number of trees = 141, gavgtau 7.3
+ out-of-sample RMSE from truth 0.3136
 
- modality = fastest, priortype = :smooth
- depth = 5, number of trees = 83, avgtau 8.0
- out-of-sample RMSE from truth 0.6097
+modality = fastest, nfold = 1
+ depth = 5, number of trees = 121, gavgtau 4.5
+ out-of-sample RMSE from truth 0.5751
 
  modality = fastest, priortype = :sharp
 depth = 5, number of trees = 324, avgtau 40.0
