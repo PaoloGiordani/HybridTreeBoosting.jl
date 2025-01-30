@@ -96,8 +96,8 @@ function simul_logistic(n,p,nsimul,modality,dgp)
     data   = HTBdata(y,x,param)
 
     output = HTBfit(data,param)
-    yf     = HTBpredict(x_test,output,predict=:Egamma)  # predict the natural parameter
-    MSE1[simul]    = sum((yf - ftrue_test).^2)/n_test
+   yf     = HTBpredict(x_test,output,predict=:Egamma)  # predict the natural parameter (only with simulated data; typically we'll want to predict=:Ey (default))
+   MSE1[simul]    = sum((yf - ftrue_test).^2)/n_test
 
     # lightGBM
     y       = Float64.(y)                 

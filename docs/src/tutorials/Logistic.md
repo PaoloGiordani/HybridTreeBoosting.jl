@@ -127,7 +127,7 @@ y = (exp.(ftrue)./(1.0 .+ exp.(ftrue))).>rand(n)
 # HTBoost
 data   = HTBdata(y,x,param)
 output = HTBfit(data,param)
-yf     = HTBpredict(x_test,output,predict=:Egamma)  
+yf     = HTBpredict(x_test,output,predict=:Egamma)  # NOTE: on real data we'll want to predict = :Ey (the default)   
 MSE_HTB = sum((yf - ftrue_test).^2)/n_test
 
 ```
