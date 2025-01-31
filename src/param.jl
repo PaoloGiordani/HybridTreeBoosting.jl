@@ -224,7 +224,7 @@ Note: all Julia symbols can be replaced by strings. e.g. :L2 can be replaced by 
                             Useful for very large datasets, in preliminary analysis, in simulations, and when instructions specify a train/validation
                             split with no re-estimation on full sample. Activated by default when modality=:fastest.     
 
-- `cat_features`            [] vector of indices of categorical features, e.g. [2,5], or vector of names in DataFrame,
+- `cat_features`            [] vector of indices of categorical features, e.g. [2] or [2,5], or vector of names in DataFrame,
                             e.g. [:wage,:age] or ["wage","age"]. If empty, categoricals are automatically detected as non-numerical features.
 
 - `cv_categoricals`     [:default] whether to run preliminary cross-validation on parameters related to categorical features.
@@ -430,6 +430,10 @@ function HTBparam(;
         sharevalidation = T(sharevalidation)
     end
 
+    if !isa(cat_features,AbstractVector)  # ensure cat_features is a vector (required for R wrapper)
+        cat_features = [cat_features]
+    end 
+    
     if eltype(cat_features) <: Real 
         cat_features = I.(cat_features)
     end
