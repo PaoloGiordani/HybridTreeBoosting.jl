@@ -928,6 +928,10 @@ function HTBfit_single(data::HTBdata,param::HTBparam;cv_grid=[],cv_different_los
     modality              = param.modality
     param0                = deepcopy(param)
 
+    if !isa(cv_grid,AbstractVector)  # cv_grid is a vector (required for R wrapper)
+        cv_grid = [cv_grid]
+    end 
+
     if isempty(cv_grid)
         user_provided_grid = false
         cv_grid = collect(1:8)      
