@@ -430,7 +430,7 @@ function HTBparam(;
         sharevalidation = T(sharevalidation)
     end
 
-    if !isa(cat_features,AbstractVector)  # ensure cat_features is a vector (required for R wrapper)
+    if !isa(cat_features,AbstractVector)  # ensure cat_features is a vector 
         cat_features = [cat_features]
     end 
     

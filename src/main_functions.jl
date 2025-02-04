@@ -184,11 +184,13 @@ end
 """
 HTBindexes_from_dates(df::DataFrame,datesymbol::Symbol,first_date::Date,n_reestimate::Int)
 
-Computes indexes of training set and test set for cumulative CV and pseudo-real-time forecasting exercises
+Computes indexes of training set and test set for cumulative CV and pseudo-real-time forecasting exercises in
+time series and panel data. The function is inefficient for large datasets, but does not require the data to be sorted.
 
 * INPUTS
 
-- datesymbol            symbol name of the date
+- df                    DataFrame with dates and other variables
+- datesymbol            symbol (or string) name of the date
 - first_date            when the first training set ENDS (end date of the first training set)
 - n_reestimate          every how many periods to re-estimate (update the training set)
 
@@ -209,7 +211,9 @@ Computes indexes of training set and test set for cumulative CV and pseudo-real-
 - Inefficient for large datasets
 
 """
-function HTBindexes_from_dates(df::DataFrame,datesymbol::Symbol,first_date,n_reestimate)
+function HTBindexes_from_dates(df::DataFrame,datesymbol::Union{Symbol,String},first_date,n_reestimate)
+
+    datesymbol = Symbol(datesymbol)    
 
     n_reestimate = Int(n_reestimate)
 
@@ -217,7 +221,7 @@ function HTBindexes_from_dates(df::DataFrame,datesymbol::Symbol,first_date,n_ree
     indtest_a  = Vector{Int}[]
 
     dates   = df[:,datesymbol]
-    datesu  = sort(unique(dates))   # must sort
+    datesu  = sort(unique(dates))   
     date1   = first_date    # end date of training set
 
     N       = length(datesu)
@@ -928,7 +932,7 @@ function HTBfit_single(data::HTBdata,param::HTBparam;cv_grid=[],cv_different_los
     modality              = param.modality
     param0                = deepcopy(param)
 
-    if !isa(cv_grid,AbstractVector)  # cv_grid is a vector (required for R wrapper)
+    if !isa(cv_grid,AbstractVector)  
         cv_grid = [cv_grid]
     end 
 

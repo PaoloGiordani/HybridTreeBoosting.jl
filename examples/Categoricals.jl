@@ -197,5 +197,3 @@ yf_gbm_default = LightGBM.predict(estimator,x_test)[:,1]
 println("\n LightGBM default, ignore_cat_lightgbm = $ignore_cat_lightgbm  " )
 println("\n in-sample R2      ", 1 - mean((yhat_gbm_default - y).^2)/var(y)  )
 println(" out-of-sample R2  ", 1 - mean((yf_gbm_default - y_test).^2)/var(y_test) )
-
-
