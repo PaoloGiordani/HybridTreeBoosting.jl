@@ -10,7 +10,7 @@
 
 - default loss is :L2. Other options for continuous y are :Huber, :t (recommended in place of :Huber), :gamma, :gammaPoisson,
   :L2loglink. For zero-inflated continuous y, options are :hurdleGamma, :hurdleL2loglink, :hurdleL2   
-- default is block cross-validation with nfolds=4: use randomizecv = true to scramble the data. See [Global Equity Panel](../examples/Global_Equity_Panel.md) for further options on cross-validation (e.g. sequential cv, or generally controlling the training and validation sets).
+- default is block cross-validation with nfolds=4: use randomizecv = true to scramble the data. See [Time series and panels](Time_series_and_panels.md) and [Global Equity Panel](../examples/Global_Equity_Panel.md) for further options on cross-validation (e.g. sequential cv, or generally controlling the training and validation sets).
  
 - fit, with automatic hyperparameter tuning if modality is :compromise or :accurate
 - save fitted model (upload fitted model)

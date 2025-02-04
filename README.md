@@ -96,7 +96,7 @@ yf     = HTBpredict(x_test,output)
 ## Main limitations of HTBoost 
 
 - Much slower training than other packages for GBMs.
-- Deep trees are particularly slow: The range 4-6 is recommended. 
+- Deep trees are particularly slow: default depth is 5, and 8 currently probably a maximum. 
 
 ## Recommended workflow 
 
