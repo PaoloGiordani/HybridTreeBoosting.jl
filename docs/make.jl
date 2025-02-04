@@ -12,8 +12,9 @@ pages=[
     "Introduction" => "index.md",           
     "Parameters" => "Parameters.md",                          
     "API" => "JuliaAPI.md",
-    "Tutorials" => "Tutorials.md",
-    "Examples (julia scripts)" => "Examples.md",
+    "Tutorials (Julia)" => "Tutorials.md",
+    "Examples (Julia)" => "Examples.md",
+    "Tutorials (R)" => "Tutorials_R.md",
 ]
 
 
@@ -75,6 +76,8 @@ You might name it toc.md.
 
 
 3. **Add your TOC file to your documentation**: In your `make.jl` file, add your `toc.md` file to the `pages` argument of the `makedocs` function. Here's an example:
+
+RIVEDI !!!! 
 
 ```julia
 makedocs(

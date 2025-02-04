@@ -18,7 +18,9 @@ HTBoost is much slower than other boosting packages, but the use of hybrid trees
 
 ## For R 
 
-For installation and tutorials, see 
+For R installation and tutorials
+
+- [Installation and use in R](docs/src/tutorials_R/Installation_and_use_in_R.md)
 - [Tutorials](docs/src/Tutorials_R.md) 
 
 
