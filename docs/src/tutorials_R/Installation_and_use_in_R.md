@@ -129,9 +129,9 @@ data   = HTBoost$HTBdata(y,x,param)
 output = HTBoost$HTBfit(data,param)
 ```
 
-This will work even if there are missing data (NA) (see POINT TO TUTORIAL MISSING!),e.g.
+This will work even if there are missing data (*NA* in R, *NaN* or *missing* in Julia) (see [Missing data](tutorials/Missing.md)) for how HTBoost deals with missing data internally, delivering superior accuracy if the underlying function is at least partially smooth.  
 
-When y and/or x contain strings, we must translate our R dataframe into a Julia DataFrame, which is then fed to HTBdata(), e.g. (continuing from the previous example)
+When y and/or x contain strings (categorical features), we must translate our R dataframe into a Julia DataFrame, which is then fed to HTBdata(), e.g. (continuing from the previous example)
 
 ```r
 x_string =  sample(c("v1", "v2", "v3"), n, replace = TRUE)   # create a categorical with 3 values
@@ -154,11 +154,3 @@ data  = HTBoost$HTBdata(y,x,param,fnames=colnames(df))    # passing the column n
 
 ```
 
-
-## POINT TO TUTORIALS, EXAMPLES ... WHICH NOW CAN BE IN JULIA, BUT MAKE SURE THAT THE MAIN FUNCTIONALITIES WORK !!!!  
-
-- Categoricals. OK
-- Global_Equity_Panel and data. Check that it works ...  
-- Multiclass and zero_inflated try.  # may also want to annotate that e.g. yf,prob0,yf_not0=HTBpredict ... can be list = ...
-- Speeding_up_with_large_n see if strategy works.  
-  

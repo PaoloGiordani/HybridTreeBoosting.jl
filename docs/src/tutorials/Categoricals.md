@@ -3,6 +3,7 @@
 HTBoost is promising for categorical features, particularly if high dimensionals.  
 This tutorials shows:
 - How to inform HTBoost about categorical features
+- Parameters related to categorical features, and their default values.
 - Comparison with LightGBM and CatBoost, with discussion.  
 
 ### How to inform HTBoost about categorical features

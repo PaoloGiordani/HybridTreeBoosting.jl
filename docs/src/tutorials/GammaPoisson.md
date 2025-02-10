@@ -11,7 +11,7 @@ HTBoost estimates α internally by maximum likelihood after each tree. The final
 param  = HTBparam(loss=:gammaPoisson)
 data   = HTBdata(y,x,param)
 output = HTBfit(data,param)
-HTBcoeff(output)
+coeff  = HTBcoeff(output,verbose=false)
 
 ```
 
