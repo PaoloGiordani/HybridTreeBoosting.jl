@@ -82,10 +82,6 @@ t      = HTBoost$HTBweightedtau(output,data)  # variable importance and smoothne
 t      = HTBoost$HTBpartialplot(data,output,c(1,2))  # partial dependence plots, here for the first two features  
 ```
 
-PROVIDE LINK!!! Example and/or tutorial
-See Basic_use.R for an example, and tutorials (LINK!). 
-DISTINGUISH TUTORIALS IN R, WHERE NEEDED. AND TUTORIALS IN JULIA.
-
 ## Further notes on using HTBoost in R
 
 ### To translate the Julia tutorials in R 
@@ -104,7 +100,7 @@ DISTINGUISH TUTORIALS IN R, WHERE NEEDED. AND TUTORIALS IN JULIA.
   list = juliaGet(output)
   ntrees = list$ntrees  
 ```
-- In the tutorials the output of a function is sometimes given by several variables, e.g. (see Zero_inflated_y.md ADD LINK) in Julia 
+- In the tutorials the output of a function is sometimes given by several variables, e.g. (see Zero_inflated_y.md) in Julia 
 ```julia 
     yf,prob0,yf_not0     = HTBpredict(x_test,output)
 ```
@@ -124,7 +120,7 @@ p      = 2
 x      = matrix(rnorm(n*p),nrow = n,ncol = p)
 y      = x[,1] + rnorm(n)
 
-data   = HTBoost$HTBparam(modality="accurate")  
+param   = HTBoost$HTBparam(modality="accurate")  
 data   = HTBoost$HTBdata(y,x,param)
 output = HTBoost$HTBfit(data,param)
 ```

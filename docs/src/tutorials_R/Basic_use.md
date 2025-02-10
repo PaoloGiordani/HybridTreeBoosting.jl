@@ -56,7 +56,7 @@ DataFrames = juliaImport("DataFrames")
 #### Set the desired number of workers (cores) to be used in parallel.
 
 This step is not required by other GMBs, which rely on shared parallelization.  
-The time to first plot increases with the number of cores.
+Note: the first run of HTBoost (or any julia script) includes compile time, which increases in the number of workers and can be quite high. It is 80'' for 8 workers on my machine.
 HTBoost parallelizes well up to 8 cores, and quite well up to 16 if p/#cores is sufficiently high. 
 
 ```r
@@ -69,6 +69,8 @@ juliaEval('
 ```
 
 ### End of preliminary steps (required in all scripts). Now we generate data. 
+
+y is the sum of six additive nonlinear functions, plus Gaussian noise.
 
 ```r
 
@@ -148,59 +150,13 @@ randomizecv = FALSE       # false (default) to use block-cv.
 
 ```
 
-**Options to generate data.**
-
-y is the sum of six additive nonlinear functions, plus Gaussian noise.
-
-```r
-n      = 10000
-p      = 6
-stde   = 1.0
-n_test = 100000
-
-f_1 = function(x,b)  b*x + 1 
-f_2 = function(x,b)  2*sin(2.5*b*x)  
-f_3 = function(x,b)  b*x^3
-f_4 = function(x,b)  b*(x < 0.5) 
-f_5 = function(x,b)  b/(1.0 + (exp(4.0*x )))
-f_6 = function(x, b) {b * (x > -0.25 & x < 0.25)}
-
-b1  = 1.5
-b2  = 2.0
-b3  = 0.5
-b4  = 4.0
-b5  = 5.0
-b6  = 5.0
-
-```
-
-End of user's options.  
-
-```r
-x      = matrix(rnorm(n*p),nrow = n,ncol = p)
-x_test = matrix(rnorm(n_test*p),nrow = n_test,ncol = p)
-f      = f_1(x[,1],b1) + f_2(x[,2],b2) + f_3(x[,3],b3) + f_4(x[,4],b4) + f_5(x[,5],b5) + f_6(x[,6],b6)
-f_test = f_1(x_test[,1],b1) + f_2(x_test[,2],b2) + f_3(x_test[,3],b3) + f_4(x_test[,4],b4) + f_5(x_test[,5],b5) + f_6(x_test[,6],b6)
-y      = f + rnorm(n)*stde
-
-```
-
-When y and x are numerical matrices, we could feed them to HTBoost directly.
-However, a more general procedue (which allows strings), is to transform the data into a dataframe and then into a Julia DataFrame. This is done as follows (here only for x, but the same applies to y if it is not numerical).
-
-```r
-df     =  data.frame(x)   # create a R dataframe
-df_test = data.frame(x_test)
-fnames = colnames(df)
-
-x = DataFrames$DataFrame(df)
-x_test = DataFrames$DataFrame(df_test)
-DataFrames$describe(x)
-```
 
 ### Set up HTBparam and HTBdata, then fit. Optionally, save the model (or load it). Predict. Print some information. 
 
 ```r
+param = HTBoost$HTBparam(loss=loss,priortype=priortype,randomizecv=randomizecv,nfold=nfold,verbose=verbose,modality=modality,nofullsample=nofullsample)
+
+data  = HTBoost$HTBdata(y,x,param,fnames=fnames)   # fnames is optional
 output = HTBoost$HTBfit(data,param)
 
 # save (load) fitted model. NOTE: use the same filename as the name of the object that is being saved.

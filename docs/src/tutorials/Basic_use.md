@@ -2,7 +2,7 @@
 
 **Summary**
 
-- Illustrates use of the main functions on a regression problem with simulated data. 
+- Illustrates use of the main functions of HTBoost on a regression problem with simulated data. 
 - param.modality as the most important user's choice, depending on time budget. 
 - In default modality, HTBoost performs automatic hyperparameter tuning.
 

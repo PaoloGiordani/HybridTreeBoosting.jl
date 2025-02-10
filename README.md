@@ -26,7 +26,11 @@ For R installation and tutorials
 
 ## For Python 
 
-Coming soon .... 
+I am working on a solution for Python that will not require julia and juliacall and will not incur compilation costs each time the program is run. Meanwhile, Python users can run HTBoost via juliacall, as explained here:
+
+- [Installation and use in Python](docs/src/tutorials_py/Installation_and_use_in_Python.md)
+- [Tutorials](docs/src/Tutorials_py.md) 
+
 
 ## Installation in Julia 
 Latest:
