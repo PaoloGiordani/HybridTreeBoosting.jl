@@ -37,7 +37,7 @@ deploydocs(repo="https://github.com/PaoloGiordani/HTBoost.jl.git",
     target="build",
     branch = "gh-pages",
     devbranch="main",
-    push_preview = false,  # true 
+    push_preview = true,  # false to keep the preview internal 
     )
 
 
