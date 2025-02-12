@@ -125,7 +125,7 @@ data   = HTBoost$HTBdata(y,x,param)
 output = HTBoost$HTBfit(data,param)
 ```
 
-This will work even if there are missing data (*NA* in R, *NaN* or *missing* in Julia) (see [Missing data](tutorials/Missing.md)) for how HTBoost deals with missing data internally, delivering superior accuracy if the underlying function is at least partially smooth.  
+This will work even if there are missing data (*NA* in R, *NaN* or *missing* in Julia) (see [Missing data](../tutorials/Missing.md)) for how HTBoost deals with missing data internally, delivering superior accuracy if the underlying function is at least partially smooth.  
 
 When y and/or x contain strings (categorical features), we must translate our R dataframe into a Julia DataFrame, which is then fed to HTBdata(), e.g. (continuing from the previous example)
 

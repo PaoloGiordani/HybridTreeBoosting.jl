@@ -19,7 +19,7 @@ The function *HTBindexes_from_dates()* can assist in building indtrain_a and ind
 
 ## Preliminary steps required in all scripts 
 
-See [Basic_use](Basic_use.mde)
+See [Basic_use](Basic_use.md)
 
 ### Some user's inputs for this dataset
 

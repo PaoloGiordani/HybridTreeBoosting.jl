@@ -133,7 +133,7 @@ verbose     = "Off"
 While the default in other GBM is to randomize the allocation to train and validation sets,
 the default in HTBoost is block cv, which is suitable for time series and panels.
 Set randomizecv=True to bypass this default. 
-See [Time_series_and_panels](Time_series_and_panels.md) for further options on cross-validation (e.g. sequential cv, or generally controlling the training and validation sets).
+See [Time_series_and_panels](../tutorials/Time_series_and_panels.md) for further options on cross-validation (e.g. sequential cv, or generally controlling the training and validation sets).
 
 ```py
 randomizecv = False       # False (default) to use block-cv. 

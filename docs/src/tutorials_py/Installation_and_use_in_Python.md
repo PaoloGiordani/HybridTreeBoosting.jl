@@ -88,7 +88,7 @@ data   = jl.HTBdata(y,x,param)
 output = jl.HTBfit(data,param)
 ```
 
-This will not work properly if there are missing data (*NaN* in Python, *NaN* or *missing* in Julia). See [Missing data](tutorials/Missing.md)) for how HTBoost deals with missing data internally, delivering superior accuracy if the underlying function is at least partially smooth.  
+This will not work properly if there are missing data (*NaN* in Python, *NaN* or *missing* in Julia). See [Missing data](../tutorials/Missing.md)) for how HTBoost deals with missing data internally, delivering superior accuracy if the underlying function is at least partially smooth.  
 
 When there are missing data, or when y and/or x contain strings (categorical features), we must work translate our Python dataframe into a Julia DataFrame, which is then fed to HTBdata(), e.g. (continuing from the previous example)
 

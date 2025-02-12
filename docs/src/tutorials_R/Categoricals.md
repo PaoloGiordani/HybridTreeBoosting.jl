@@ -4,7 +4,7 @@ HTBoost is promising for categorical features, particularly if high dimensionals
 This tutorials shows:
 - How to inform HTBoost about categorical features.
 - Parameters related to categorical features, and their default values.
-- See [Categorical features](tutorials/Categoricals.md) for a comparison with LightGBM and CatBoost, with discussion.  
+- See [Categorical features](../tutorials/Categoricals.md) for a comparison with LightGBM and CatBoost, with discussion.  
 
 ### How to inform HTBoost about categorical features in R 
 
@@ -64,4 +64,4 @@ It seems reasonable to assume that high dimensional target encoding, by its very
 HTBoost a promising tool for high dimensional categorical features. The current treatment of categorical features is however quite
 crude compared to CatBoost, so some of these gains are not yet realized. 
 
-See [Categorical features](tutorials/Categoricals.md) for a comparison with LightGBM and CatBoost on simulated data, with discussion.
+See [Categorical features](../tutorials/Categoricals.md) for a comparison with LightGBM and CatBoost on simulated data, with discussion.
