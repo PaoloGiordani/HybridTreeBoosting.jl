@@ -130,4 +130,4 @@ See [speeding up HTBoost](docs/src/tutorials/Faster%20large%20n.md) for suggesti
 
 ## References
 
-[Paolo Giordani, 2025, "HTBoost: Data Efficient Learning via Boosting of Hybrid Trees"]()
+[Paolo Giordani, 2025, "HTBoost: Data Efficient Learning via Hybrid Tree Boosting"]()
