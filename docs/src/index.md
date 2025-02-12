@@ -1,6 +1,5 @@
 # HTBoost
 
-! LOGO ! 
 
 ## Data efficient boosting with hybrid trees 
 

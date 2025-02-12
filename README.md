@@ -85,13 +85,13 @@ yf     = HTBpredict(x_test,output)
 ```
 
 ### Minimal example with n = 1_000
-<img src="docs/src/examples/figures/Minimal1k.png" width="600" height="400">
+<img src="docs/src/assets/Minimal1k.png" width="600" height="400">
 
 ### Minimal example with n = 10_000
-<img src="docs/src/examples/figures/Minimal10k.png" width="600" height="400">
+<img src="docs/src/assets/Minimal10k.png" width="600" height="400">
 
 ### Minimal example with n = 100_000
-<img src="docs/src/examples/figures/Minimal100k.png" width="600" height="400">
+<img src="docs/src/assets/Minimal100k.png" width="600" height="400">
 
 ## Main features and advantages of HTBoost 
 
@@ -123,6 +123,7 @@ output = HTBfit(data,param)
 ```
 
 See [speeding up HTBoost](docs/src/tutorials/Faster%20large%20n.md) for suggestions on how to handle large n if computing time becomes a constraint.
+
 ## Help improve HTBoost! 
 
 - If you have a dataset in which HTBoost does not outperform other GBMs while *HTBweightedtau( )* suggests it should (see [Basic use](docs/src/tutorials/Basic%20use.md)), and you have read [Outperforming other GBM](docs/src/Outperforming%20other%20GBM.md), please get in touch with me at paolo.giordani@bi.no
