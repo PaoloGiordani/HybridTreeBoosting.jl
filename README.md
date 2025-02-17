@@ -6,7 +6,7 @@
 [![Build Status](https://github.com/PaoloGiordani/HTBoost.jl/workflows/CI/badge.svg)](https://github.com/PaoloGiordani/HTBoost.jl/actions)
 
 Documentation:
-[docs-url]: https://paologiordani.github.io/HTBoost.jl 
+[Coming soon at] https://paologiordani.github.io/HTBoost.jl 
 
 ## Data efficient boosting with hybrid trees 
 
