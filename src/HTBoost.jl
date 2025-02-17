@@ -6,7 +6,7 @@ export HTBinfo, HTBloglikdivide, HTBtree, HTBparam, HTBdata, HTBfit, HTBpredict,
 
 using Distributed, SharedArrays, LinearAlgebra,Statistics, DataFrames,Dates, Random
 using CategoricalArrays, Base.Threads
-import Optim, LineSearches
+import Optim, LineSearches, SpecialFunctions
 
 include("param.jl")
 include("categorical.jl")
