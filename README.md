@@ -95,8 +95,8 @@ yf     = HTBpredict(x_test,output)
 
 ## Main features and advantages of HTBoost 
 
-- Hybrid trees build on smooth trees, which are more accurate than standard trees if f(x) is smooth wrt at least some of the features, but can escape local minima that occasionally trap boosted smooth trees. See [Hybrid Trees](docs/src/examples/Hybrid%20trees.jl).
-- Hybrid trees also refine each tree with a modified single-index model, which allows them to more efficiently capture some types of data on which standard trees struggle. See [PPR](docs/src/examples/Projection%20pursuit%20regression.jl). For more on when HTBoost can be expected to outperform other GBMs, see [Outperforming other GBM](docs/src/Outperforming%20other%20GBM.md).
+- Hybrid trees build on smooth trees, which are more accurate than standard trees if f(x) is smooth wrt at least some of the features, but can escape local minima that occasionally trap boosted smooth trees. See [Hybrid Trees](docs/src/examples/Hybrid_trees.md).
+- Hybrid trees also refine each tree with a modified single-index model, which allows them to more efficiently capture some types of data on which standard trees struggle. See [PPR](docs/src/examples/Projection_pursuit_regression.md). For more on when HTBoost can be expected to outperform other GBMs, see [Outperforming other GBM](docs/src/Outperforming_other_GBM.md).
 - Ease of use: a parsimonious cross-validation of the most important parameters is performed automatically if modality = :compromise or :accurate, while modality = :fast and :fastest fit just one model at default parameters.
 - Adapts to both dense and sparse settings. Unless n/p is large, one of the parameters being cross-validated is a sparsity-inducing penalization, which can result in more aggressive variable selection compared to standard boosting.
 - Additional coefficients (e.g. overdispersion for gammaPoisson, shape for Gamma, dof for t) are estimated internally by maximum likelihood; no user's input or cv required.
@@ -122,11 +122,11 @@ data   = HTBdata(y,x,param)
 output = HTBfit(data,param)
 ```
 
-See [speeding up HTBoost](docs/src/tutorials/Faster%20large%20n.md) for suggestions on how to handle large n if computing time becomes a constraint.
+See [speeding up HTBoost](docs/src/tutorials/Faster_large_n.md) for suggestions on how to handle large n if computing time becomes a constraint.
 
 ## Help improve HTBoost! 
 
-- If you have a dataset in which HTBoost does not outperform other GBMs while *HTBweightedtau( )* suggests it should (see [Basic use](docs/src/tutorials/Basic%20use.md)), and you have read [Outperforming other GBM](docs/src/Outperforming%20other%20GBM.md), please get in touch with me at paolo.giordani@bi.no
+- If you have a dataset in which HTBoost does not outperform other GBMs while *HTBweightedtau( )* suggests it should (see [Basic use](docs/src/tutorials/Basic_use.md)), and you have read [Outperforming other GBM](docs/src/Outperforming_other_GBM.md), please get in touch with me at paolo.giordani@bi.no
 - Suggestions and bug reports are welcome. Do keep in mind that HTBoost is currently a one-person project, so I may not be able to promptly address all issues.  
 
 ## References
