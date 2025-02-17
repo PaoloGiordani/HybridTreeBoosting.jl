@@ -592,7 +592,8 @@ end
 # If distrib_threads = false, uses @distributed and SharedArray. SharedArray can occasionally produce an error in Windows (not in Linux).
 # If this happens, the code switches to distrib_threads = true 
 # If distrib_threads = true, uses Threads.@threads. 
-function gridmatrixμ(data::HTBdata,param::HTBparam,meanx,stdx;maxn::Int = 100_000,tol = 0.005, maxiter::Int = 100, fuzzy::Bool = false,
+function gridmatrixμ(data::HTBdata,param::HTBparam,meanx,stdx;maxn::Int = 100_000,
+    tol = 0.005, maxiter::Int = 100, fuzzy::Bool = false,
          distrib_threads::Bool=false)
 
     x        = data.x

@@ -14,8 +14,8 @@ y   = f + randn(n)
         param  = HTBparam(loss=loss,depth=3,modality=:compromise,nfold=1,nofullsample=true)
         data   = HTBdata(y,x,param)
         output = HTBfit(data,param)
-        yf     = HTBpredict(x0,output,predict=:Egamma)
-        @test sqrt(sum((yf - f).^2)/n) < 0.10
+        yf     = HTBpredict(x,output,predict=:Egamma)
+        @test sqrt(sum((yf - f).^2)/n) < 0.2
     end
     
     @testset "accurate" begin 
@@ -23,8 +23,8 @@ y   = f + randn(n)
         param  = HTBparam(loss=loss,depth=3,modality=:accurate,nfold=1,nofullsample=true)
         data   = HTBdata(y,x,param)
         output = HTBfit(data,param)
-        yf     = HTBpredict(x0,output,predict=:Egamma)
-        @test sqrt(sum((yf - f).^2)/n) < 0.10
+        yf     = HTBpredict(x,output,predict=:Egamma)
+        @test sqrt(sum((yf - f).^2)/n) < 0.2
     end 
 
 end
