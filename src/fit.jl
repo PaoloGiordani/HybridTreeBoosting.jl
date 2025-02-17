@@ -235,17 +235,16 @@ end
 =#
 
 
-
+# Constant terms omitted (e.g. not suitable for Bayes Factors)
 function logpdft(x::T,m::T,s::T,v::T) where T<:AbstractFloat
 
     z       = ( x - m)/s
     logpdfz = -0.5*(1+v)*log(1+(z^2)/v)
+    return T(logpdfz) 
  
-   # In other settings, if I need terms that do not depende on z:  
+   # In other settings, if I need terms that do not depend on z:  
    # logpdfz = T(-0.5723649429247001)+SpecialFunctions.loggamma((v+T(1))/T(2))-SpecialFunctions.loggamma(v/T(2))-T(0.5)*log(v)-T(0.5)*(T(1)+v)*log(T(1)+(z^2)/v)
    # return logpdfz - log(s)
-
-     return T(logpdfz) 
 
 end
 
