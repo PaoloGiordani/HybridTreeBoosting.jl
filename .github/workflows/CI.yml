@@ -22,7 +22,7 @@ jobs:
         with:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
-      - uses: actions/cache
+      - uses: actions/cache 
         env:
           cache-name: cache-artifacts
         with:
