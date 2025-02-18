@@ -10,19 +10,18 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - '1.6'
-          - 'nightly'
+          - '1.8'
         os:
           - ubuntu-latest
         arch:
           - x64
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - uses: julia-actions/setup-julia@v1
         with:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
-      - uses: actions/cache 
+      - uses: actions/cache@v3 
         env:
           cache-name: cache-artifacts
         with:
@@ -57,3 +56,4 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DOCUMENTER_KEY: ${{ secrets.DOCUMENTER_KEY }}
+
