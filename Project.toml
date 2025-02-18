@@ -23,7 +23,7 @@ LineSearches = "7.0.1"
 Optim = "1.2.4"
 SpecialFunctions = "2"
 CategoricalArrays  = "0.10"
-SharedArrays       = "1.11"
+SharedArrays       = "1.6.7"
 julia = "1.6"
 
 [extras]
