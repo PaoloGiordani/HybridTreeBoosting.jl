@@ -35,7 +35,8 @@ makedocs(
 
 # logo = "assets/logo.png"       # if you have a logo in the assets directory
  
-deploydocs(repo="https://github.com/PaoloGiordani/HTBoost.jl.git",
+deploydocs(
+    repo="PaoloGiordani/HTBoost.jl.git", # GitHub complained that I should remove the protocol. Originally repo="https://github.com/PaoloGiordani/HTBoost.jl.git"
     target="build",
     branch = "gh-pages",  # 
     devbranch="master",
