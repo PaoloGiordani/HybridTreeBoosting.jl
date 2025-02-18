@@ -18,6 +18,7 @@ pages=[
     "Tutorials (Python)" => "Tutorials_py.md",
     ]
 
+    
 # Actual HTBoost.jl
 makedocs(
     sitename="HTBoost.jl",
