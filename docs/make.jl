@@ -17,7 +17,7 @@ pages=[
     "Tutorials (R)" => "Tutorials_R.md",
     "Tutorials (Python)" => "Tutorials_py.md",
     ]
-
+ 
 # Actual HTBoost.jl
 makedocs(
     sitename="HTBoost.jl",
@@ -41,6 +41,6 @@ deploydocs(repo="https://github.com/PaoloGiordani/HTBoost.jl.git",
     push_preview = true,  # false to keep the preview internal 
     )
 
-    
+
 
 
