@@ -37,7 +37,7 @@ makedocs(
 deploydocs(repo="https://github.com/PaoloGiordani/HTBoost.jl.git",
     target="build",
     branch = "gh-pages",  # 
-    devbranch="main",
+    devbranch="master",
     push_preview = true,  # false to keep the preview internal 
     )
 
