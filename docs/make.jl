@@ -18,7 +18,7 @@ pages=[
     "Tutorials (Python)" => "Tutorials_py.md",
     ]
 
-    
+
 # Actual HTBoost.jl
 makedocs(
     sitename="HTBoost.jl",
@@ -27,7 +27,7 @@ makedocs(
     format=Documenter.HTML(
         sidebar_sitename=true, # able or disable the site name on the side bar
         repolink = "https://github.com/PaoloGiordani/HTBoost.jl", # explicitly set the remote URL
-        edit_link = "main"        # adds an "Edit on GitHub" button on documentation  
+        edit_link = "master"        # adds an "Edit on GitHub" button on documentation  
       ),
     pages=pages,
     repo = "https://github.com/PaoloGiordani/HTBoost.jl.git", # link for edit_link
@@ -38,7 +38,7 @@ makedocs(
 deploydocs(repo="https://github.com/PaoloGiordani/HTBoost.jl.git",
     target="build",
     branch = "gh-pages",  # 
-    devbranch="main",
+    devbranch="master",
     push_preview = true,  # false to keep the preview internal 
     )
 
