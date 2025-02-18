@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Strategies for zero inflated y · HTBoost.jl</title><meta name="title" content="Strategies for zero inflated y · HTBoost.jl"/><meta property="og:title" content="Strategies for zero inflated y · HTBoost.jl"/><meta property="twitter:title" content="Strategies for zero inflated y · HTBoost.jl"/><meta name="description" content="Documentation for HTBoost.jl."/><meta property="og:description" content="Documentation for HTBoost.jl."/><meta property="twitter:description" content="Documentation for HTBoost.jl."/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../../">HTBoost.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">Introduction</a></li><li><a class="tocitem" href="../../Parameters/">Parameters</a></li><li><a class="tocitem" href="../../JuliaAPI/">API</a></li><li><a class="tocitem" href="../../Tutorials/">Tutorials (Julia)</a></li><li><a class="tocitem" href="../../Examples/">Examples (Julia)</a></li><li><a class="tocitem" href="../../Tutorials_R/">Tutorials (R)</a></li><li><a class="tocitem" href="../../Tutorials_py/">Tutorials (Python)</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Strategies for zero inflated y</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Strategies for zero inflated y</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/PaoloGiordani/HTBoost.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/PaoloGiordani/HTBoost.jl.git" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Strategies-for-zero-inflated-y"><a class="docs-heading-anchor" href="#Strategies-for-zero-inflated-y">Strategies for zero inflated y</a><a id="Strategies-for-zero-inflated-y-1"></a><a class="docs-heading-anchor-permalink" href="#Strategies-for-zero-inflated-y" title="Permalink"></a></h1><p><strong>Options available in HTBoost for zero-inflated data.</strong></p><p>HTBoost has three loss functions for zero inflated data:     <code>:hurdleGamma, :hurdleL2, :hurdleL2loglink</code> The :hurdleGamma is closest to the Tweedie distribution in LightGBM, XGB, and CatBoost. Hurdle models in HTBoost build two separate models, one with logistic loss to predict the occurence of a zero, and a second model with loss gamma or L2 or L2loglink to predict y|y≠0. Compared to a Tweedie regression, hurdle models have richer parametrization but far weaker constraints on the process, implying higher variance and smaller bias. My reading of the literature is that hurdle model typically outperform Tweedy in terms of forecasting. </p><p>While :hurdleGamma and :hurdleL2loglink require y≥0, a :hurdleL2 loss can be used if some y are negative. A hurdleL2 loss could therefore also be used if an otherwise continuous y has positive mass at some value v other than zero, by working with y-v. </p><p>A hurdleL2loglink loss can be a strong alternative to a hurdleGamma loss, if the gamma assumption is incorrect.</p><p>A hurdleL2loglink is also an option for zero-inflated count data, as an alternative to a Poisson or GammaPoisson. </p><p><strong>What this script does.</strong> </p><ul><li>Generates data from a gamma distribution, which is then transformed to produce excess zeros. </li><li>Fit HTBoost, with loss = :hurdleGamma or :hurdleL2loglink</li><li>A comparison with LightGBM using the Tweedie loss is promising.</li><li>HTBpredict takes the form:   yf,prob0,yf<em>not0     = HTBpredict(x</em>test,output) </li></ul><p>where yf = E(y|x) = (1-prob0)*yf_not0</p><pre><code class="language-julia hljs">
+number_workers  = 8  # desired number of workers
+
+using Distributed
+nprocs()&lt;number_workers ? addprocs( number_workers - nprocs()  ) : addprocs(0)
+@everywhere using HTBoost
+
+using Random,Plots,Distributions 
+using LightGBM
+
+# USER&#39;S OPTIONS 
+
+Random.seed!(1)
+
+# Some options for HTBoost
+loss      = :hurdleGamma    # options for y&gt;=0 data are :L2loglink, :L2, :gamma, :hurdleGamma, :hurdleL2loglink, :hurdleL2     
+modality  = :compromise     # :accurate, :compromise (default), :fast, :fastest 
+priortype = :hybrid       # :hybrid (default) or :smooth to force smoothness 
+nfold     = 1             # number of cv folds. 1 faster (single validation sets), default 5 is slower, but more accurate.
+nofullsample = true       # if nfold=1 and nofullsample=true, the model is not re-fitted on the full sample after validation of the number of trees
+
+randomizecv = false       # false (default) to use block-cv. 
+verbose     = :Off
+warnings    = :On
+
+# options to generate data. 
+true_k      = 10     # dispersion parameter of gamma distribution
+α           = 0.5    # Generates y=0 data. Set to 0 for all y strictly positive, larger numbers for more mass at 0 
+
+n,p,n_test  = 10_000,4,100_000
+
+f_1(x,b)    = b./(1.0 .+ (exp.(1.0*(x .- 1.0) ))) .- 0.1*b 
+f_2(x,b)    = b./(1.0 .+ (exp.(4.0*(x .- 0.5) ))) .- 0.1*b 
+f_3(x,b)    = b./(1.0 .+ (exp.(8.0*(x .+ 0.0) ))) .- 0.1*b
+f_4(x,b)    = b./(1.0 .+ (exp.(16.0*(x .+ 0.5) ))) .- 0.1*b
+
+b1,b2,b3,b4 = 0.2,0.2,0.2,0.2
+
+# generate data
+x,x_test = randn(n,p), randn(n_test,p)
+
+c        = -2  
+f        = c .+ f_1(x[:,1],b1) + f_2(x[:,2],b2) + f_3(x[:,3],b3) + f_4(x[:,4],b4)
+f_test   = c .+ f_1(x_test[:,1],b1) + f_2(x_test[:,2],b2) + f_3(x_test[:,3],b3) + f_4(x_test[:,4],b4)
+
+μ        = exp.(f)        # conditional mean 
+μ_test   = exp.(f_test)   # conditional mean 
+
+# k can depend on features for a ≠ 1
+a        = -0   
+logk     = log(true_k)
+logk     = logk .+ a*(b1*x[:,1] + b2*x[:,2] + b4*x[:,4])
+k        = exp.(logk)
+logk_test = log(true_k) .+ a*(b1*x_test[:,1] + b2*x_test[:,2] + b4*x_test[:,4] )
+k_test    = exp.(logk_test) 
+# end k dependent on features
+scale    = μ./k
+scale_test = μ_test./k_test
+y       = zeros(n)
+y_test  = zeros(n_test)
+
+for i in eachindex(y)
+    y[i]  = rand(Gamma.(k[i],scale[i]))
+    μ[i] &lt; α*rand(1)[1] ? y[i] = 0.0 : nothing    # zero-inflated data
+end 
+
+for i in eachindex(y_test)
+    y_test[i]  = rand(Gamma.(k_test[i],scale_test[i]))
+    μ_test[i] &lt; α*rand(1)[1] ? y_test[i] = 0.0 : nothing    
+end 
+
+println(&quot;\n share of y=0 is $(mean(y.==0)) \n&quot;)
+histogram(y,title=&quot;y, unconditional distribution&quot;) 
+
+# set up HTBparam and HTBdata, then fit and predit
+
+param  = HTBparam(loss=loss,priortype=priortype,randomizecv=randomizecv,nfold=nfold,
+                   verbose=verbose,warnings=warnings,modality=modality,nofullsample=nofullsample)
+data   = HTBdata(y,x,param)
+output = HTBfit(data,param)
+
+println(&quot; \n loss = $loss, modality = $(param.modality), nfold = $nfold &quot;)
+
+if loss in [:hurdleL2,:hurdleL2loglink,:hurdleGamma]
+    yf,prob0,yf_not0     = HTBpredict(x_test,output)
+    println(&quot; depth logistic = $(output[1].bestvalue), number of trees logistic = $(output[1].ntrees) &quot;)
+    println(&quot; depth = $(output[2].bestvalue), number of trees = $(output[2].ntrees) &quot;)
+else     
+    yf     = HTBpredict(x_test,output,predict=:Ey)
+    println(&quot; depth = $(output.bestvalue), number of trees = $(output.ntrees) &quot;)
+end 
+
+println(&quot; out-of-sample RMSE (y-yf), HTBoost       &quot;, sqrt(sum((yf - y_test).^2)/n_test) )
+
+# ligthGBM 
+estimator = LGBMRegression(
+    objective = &quot;tweedie&quot;,
+    metric = [&quot;tweedie&quot;],
+    num_iterations = 1000,
+    learning_rate = 0.1,
+    early_stopping_round = 100,
+    num_threads = number_workers
+)
+
+n_train = Int(round((1-param.sharevalidation)*length(y)))
+x_train = x[1:n_train,:]; y_train = Float64.(y[1:n_train])
+x_val   = x[n_train+1:end,:]; y_val = Float64.(y[n_train+1:end])
+    
+# parameter search over num_leaves and max_depth
+splits = (collect(1:n_train),collect(1:min(n_train,100)))  # goes around the problem that at least two training sets are required by search_cv (we want the first)
+
+params = [Dict(:num_leaves =&gt; num_leaves,
+               :max_depth =&gt; max_depth) for
+          num_leaves in (4,16,32,64,127,256),
+          max_depth in (2,3,5,6,8)]
+
+lightcv = LightGBM.search_cv(estimator,x,y,splits,params,verbosity=-1)
+
+loss_cv = [lightcv[i][2][&quot;validation&quot;][estimator.metric[1]][1] for i in eachindex(lightcv)]
+minind = argmin(loss_cv)
+
+estimator.num_leaves = lightcv[minind][1][:num_leaves]
+estimator.max_depth  = lightcv[minind][1][:max_depth]
+
+# re-fit at cv parameters
+LightGBM.fit!(estimator,x_train,y_train,(x_val,y_val),verbosity=-1)
+    
+yf_gbm = LightGBM.predict(estimator,x_test)
+yf_gbm = yf_gbm[:,1]    # drop the second dimension or a (n_test,1) matrix 
+
+println(&quot;\n out-of-sample RMSE (y-yf), LightGBM cv      &quot;, sqrt(sum((yf_gbm - y_test).^2)/n_test) )
+</code></pre><pre><code class="nohighlight hljs"></code></pre></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.8.1 on <span class="colophon-date" title="Tuesday 18 February 2025 13:28">Tuesday 18 February 2025</span>. Using Julia version 1.6.7.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>

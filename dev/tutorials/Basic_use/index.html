@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>- · HTBoost.jl</title><meta name="title" content="- · HTBoost.jl"/><meta property="og:title" content="- · HTBoost.jl"/><meta property="twitter:title" content="- · HTBoost.jl"/><meta name="description" content="Documentation for HTBoost.jl."/><meta property="og:description" content="Documentation for HTBoost.jl."/><meta property="twitter:description" content="Documentation for HTBoost.jl."/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../../">HTBoost.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">Introduction</a></li><li><a class="tocitem" href="../../Parameters/">Parameters</a></li><li><a class="tocitem" href="../../JuliaAPI/">API</a></li><li><a class="tocitem" href="../../Tutorials/">Tutorials (Julia)</a></li><li><a class="tocitem" href="../../Examples/">Examples (Julia)</a></li><li><a class="tocitem" href="../../Tutorials_R/">Tutorials (R)</a></li><li><a class="tocitem" href="../../Tutorials_py/">Tutorials (Python)</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>-</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>-</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/PaoloGiordani/HTBoost.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/PaoloGiordani/HTBoost.jl.git" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h2 id="Basic-use"><a class="docs-heading-anchor" href="#Basic-use">Basic use</a><a id="Basic-use-1"></a><a class="docs-heading-anchor-permalink" href="#Basic-use" title="Permalink"></a></h2><p><strong>Summary</strong></p><ul><li>Illustrates use of the main functions of HTBoost on a regression problem with simulated data. </li><li>param.modality as the most important user&#39;s choice, depending on time budget. </li><li>In default modality, HTBoost performs automatic hyperparameter tuning.</li></ul><p><strong>Main points</strong> </p><ul><li>default loss is :L2. Other options for continuous y are :Huber, :t (recommended in place of :Huber), :gamma, :gammaPoisson, :L2loglink. For zero-inflated continuous y, options are :hurdleGamma, :hurdleL2loglink, :hurdleL2   </li><li>default is block cross-validation with nfolds=4: use randomizecv = true to scramble the data. See <a href="../Time_series_and_panels/">Time series and panels</a> and <a href="../../examples/Global_Equity_Panel/">Global Equity Panel</a> for further options on cross-validation (e.g. sequential cv, or generally controlling the training and validation sets).</li></ul><ul><li>fit, with automatic hyperparameter tuning if modality is :compromise or :accurate</li><li>save fitted model (upload fitted model)</li><li>average τ (smoothness parameter), which is also plotted. (Smoother functions ==&gt; larger gains compared to other GBM)</li><li>feature importance</li><li>partial effects plots</li></ul><hr/><hr/><p><strong>Import HTBoost for distributed parallelization on the desired number of workers.</strong></p><p>This step is not required by other GMBs, which rely on shared parallelization.   The time to first plot increases with the number of cores. HTBoost parallelizes well up to 8 cores, and quite well up to 16 if p/#cores is sufficiently high. </p><pre><code class="language-julia hljs">number_workers  = 8  # desired number of workers
+
+using Distributed
+nprocs()&lt;number_workers ? addprocs( number_workers - nprocs()  ) : addprocs(0)
+@everywhere using HTBoost
+
+# import required packages for this script; JLD2 only required to save and import output
+using Random,Plots
+using JLD2            
+</code></pre><p><strong>Options for HTBparam( ).</strong>  </p><p>I prefer to specify parameter settings separately (here at the top of the script) rather than directly in HTBparam( ), which is of course also possible.   modality is the key parameter: automatic hyperparameter tuning if modality is :compromise or :accurate, no tuning (except of #trees) if :fast or :fastest.     In HTBoost, it is not recommended that the user performs  hyperparameter tuning by cross-validation, because this process is done automatically if modality is :compromise or :accurate. The recommended process is to first run in modality=:fast or :fastest, for exploratory analysis and to gauge computing time, and then switch to :compromise (default) or :accurate. For a tutorial on user-controlled cross-validation, see <a href="../User_controlled_cv/">User&#39;s controlled cross-validation.</a></p><pre><code class="language-julia hljs">
+Random.seed!(1)
+
+# Options for HTBparam()
+loss      = :L2            # :L2 is default. Other options for regression are :L2loglink (if y≥0), :t, :Huber
+modality  = :fastest        # :accurate, :compromise (default), :fast, :fastest 
+priortype = :sharp       # :hybrid (default) or :smooth to force smoothness (typically not recommended)
+nfold     = 1             # number of cv folds (default 4) 
+nofullsample = true       # if true and nfold=1, no re-fitting on the full sample after validation
+
+verbose     = :Off
+warnings    = :On</code></pre><p><strong>Options for cross-validation:</strong></p><p>While the default in other GBM is to randomize the allocation to train and validation sets, the default in HTBoost is block cv, which is suitable for time series and panels. Set randomizecv=true to bypass this default.  See <a href="../../examples/Global_Equity_Panel/">Global Equity Panel</a> for further options on cross-validation (e.g. sequential cv, or generally controlling the training and validation sets).</p><pre><code class="language-julia hljs">randomizecv = false       # false (default) to use block-cv. 
+</code></pre><p><strong>Options to generate data.</strong></p><p>y is the sum of six additive nonlinear functions, plus Gaussian noise.</p><pre><code class="language-julia hljs">n,p,n_test  = 10_000,6,100_000
+stde        = 1.0
+
+f1(x,b)    = @. b*x + 1 
+f2(x,b)    = @. 2*sin(2.5*b*x)  
+f3(x,b)    = @. b*x^3
+f4(x,b)    = @. b*(x &lt; 0.5) 
+f5(x,b)    = @. b/(1.0 + (exp(4.0*x )))
+f6(x,b)    = @. b*(-0.25 &lt; x &lt; 0.25) 
+
+b1,b2,b3,b4,b5,b6 = 1.5,2.0,0.5,4.0,5.0,5.0
+</code></pre><p>End of user&#39;s options.  </p><pre><code class="language-julia hljs"># Generate data.
+
+x,x_test = randn(n,p), randn(n_test,p)
+
+f      = f1(x[:,1],b1)+f2(x[:,2],b2)+f3(x[:,3],b3)+f4(x[:,4],b4)+f5(x[:,5],b5)+f6(x[:,6],b6)
+f_test = f1(x_test[:,1],b1)+f2(x_test[:,2],b2)+f3(x_test[:,3],b3)+f4(x_test[:,4],b4)+f5(x_test[:,5],b5)+f6(x_test[:,6],b6)
+y      = f + stde*randn(n)
+
+# set up HTBparam and HTBdata, then fit and predit
+param  = HTBparam(loss=loss,priortype=priortype,randomizecv=randomizecv,nfold=nfold,verbose=verbose,
+                warnings=warnings,modality=modality,nofullsample=nofullsample)
+
+data   = HTBdata(y,x,param)
+
+@time output = HTBfit(data,param)
+yf     = HTBpredict(x_test,output)  
+
+# save (load) fitted model with JLD2 
+
+@save &quot;output.jld2&quot; output
+@load &quot;output.jld2&quot; output    </code></pre><p>Feature importance and average smoothing parameter for each feature.  </p><p>tau is the smoothness parameter; lower values give smoother functions, while tau=Inf is a sharp split (tau is truncated at 40 for this function).   avgtau is a summary of the smoothness of f(x), with features weighted by their importance. avgtau_a is a vector array with the importance weighted tau for each feature.  </p><pre><code class="language-julia hljs">avgtau,gavgtau,avgtau_a,dftau,x_plot,g_plot = HTBweightedtau(output,data,verbose=true);
+
+plot(x_plot,g_plot,title=&quot;avg smoothness of splits&quot;,xlabel=&quot;standardized x&quot;,label=:none)</code></pre><p>The plot gives an idea of the average (importance weighted) smoothness across all splits.... </p><p>&lt;img src=&quot;../assets/avgtau.png&quot; width=&quot;400&quot; height=&quot;250&quot;&gt;</p><p>... which in this case is a mix of very different values across features: approximate linearity for x1, smooth functions for x3 and x5, and essentially sharp splits for x2, x4, and x6:</p><pre><code class="language-markdown hljs"> Row │ feature  importance  avgtau     sorted_feature  sorted_importance  sorted_avgtau 
+     │ String   Float32     Float64    String          Float32            Float64
+─────┼──────────────────────────────────────────────────────────────────────────────────
+   1 │ x1          14.5666   0.458996  x3                        19.0633       3.30638
+   2 │ x2          12.9643  19.6719    x5                        18.6942       3.72146
+   3 │ x3          19.0633   3.30638   x6                        17.9862      35.1852
+   4 │ x4          16.7254  36.0846    x4                        16.7254      36.0846
+   5 │ x5          18.6942   3.72146   x1                        14.5666       0.458996
+   6 │ x6          17.9862  35.1852    x2                        12.9643      19.6719
+
+ Average smoothing parameter τ is 7.3.
+
+ In sufficiently large samples, and if modality=:compromise or :accurate
+
+ - Values above 20-25 suggest very little smoothness in important features. HTBoost&#39;s performance may slightly outperform or slightly underperform other gradient boosting machines.
+ - At 10-15 or lower, HTBoost should outperform other gradient boosting machines, or at least be worth including in an ensemble.
+ - At 5-7 or lower, HTBoost should strongly outperform other gradient boosting machines.</code></pre><p>Some examples of smoothness corresponding to a few values of tau (for a single split) help to interpret values of avgtau</p><p>&lt;img src=&quot;../assets/Sigmoids.png&quot; width=&quot;600&quot; height=&quot;400&quot;&gt;</p><p>On simulated data, we can evaluate the RMSE from the true f(x), exluding noise:</p><pre><code class="language-julia hljs">
+println(&quot; \n modality = $(param.modality), nfold = $nfold , priortype = $(param.priortype)&quot;)
+println(&quot; depth = $(output.bestvalue), number of trees = $(output.ntrees), gavgtau $gavgtau &quot;)
+println(&quot; out-of-sample RMSE from truth &quot;, sqrt(sum((yf - f_test).^2)/n_test) )</code></pre><p><strong>Hybrid trees outperform both smooth and standard trees</strong></p><p>Here is the output for n=10k (nfold=1, nofullsample=true).  Hybrid trees strongly outperform both smooth trees and standard symmetric (aka oblivious) trees. (Note: modality = :sharp is a very inefficient way to run a symmetric tree; use CatBoost or EvoTrees instead!)</p><pre><code class="language-markdown hljs">  modality = fastest, nfold = 1, priortype = hybrid
+ depth = 5, number of trees = 141, gavgtau 7.3
+ out-of-sample RMSE from truth 0.3136
+
+modality = fastest, nfold = 1, priortype = smooth 
+ depth = 5, number of trees = 121, gavgtau 4.5
+ out-of-sample RMSE from truth 0.5751
+
+ modality = fastest, priortype = sharp
+depth = 5, number of trees = 183, avgtau 40.0
+ out-of-sample RMSE from truth 0.5320</code></pre><p><strong>Feature importance and partial dependence plots</strong></p><p>Variable (feature) importance is computed as in Hastie et al., &quot;The Elements of Statistical Learning&quot;, second edition, except that the normalization is for sum=100.   Partial dependence assumes (in default) that other features are kept at their mean.</p><pre><code class="language-julia hljs">
+fnames,fi,fnames_sorted,fi_sorted,sortedindx = HTBrelevance(output,data,verbose=false);
+q,pdp  = HTBpartialplot(data,output,[1,2,3,4,5,6]) # partial effects for the first 6 variables 
+
+# plot partial dependence
+pl   = Vector(undef,6)
+f,b  = [f1,f2,f3,f4,f5,f6],[b1,b2,b3,b4,b5,b6]
+
+for i in 1:length(pl)
+    pl[i]   = plot( [q[:,i]],[pdp[:,i] f[i](q[:,i],b[i]) - f[i](q[:,i]*0,b[i])],
+           label = [&quot;HTB&quot; &quot;true&quot;],
+           legend = :bottomright,
+           linecolor = [:blue :red],
+           linestyle = [:solid :dot],
+           linewidth = [6 3],
+           titlefont = font(15),
+           legendfont = font(12),
+           xlabel = &quot;x&quot;,
+           ylabel = &quot;f(x)&quot;
+           )
+end
+
+display(plot(pl[1],pl[2],pl[3],pl[4],pl[5],pl[6],layout=(3,2), size=(1300,800)))</code></pre><p>Partial plots for n = 1k,10k,100k, with modality = :fastest and nfold = 1.    Notice how plots are smooth only for some features. </p><h3 id="n-1_000"><a class="docs-heading-anchor" href="#n-1_000">n = 1_000</a><a id="n-1_000-1"></a><a class="docs-heading-anchor-permalink" href="#n-1_000" title="Permalink"></a></h3><p>&lt;img src=&quot;../assets/Minimal1k.png&quot; width=&quot;600&quot; height=&quot;400&quot;&gt;</p><h3 id="n-10_000"><a class="docs-heading-anchor" href="#n-10_000">n = 10_000</a><a id="n-10_000-1"></a><a class="docs-heading-anchor-permalink" href="#n-10_000" title="Permalink"></a></h3><p>&lt;img src=&quot;../assets/Minimal10k.png&quot; width=&quot;600&quot; height=&quot;400&quot;&gt;</p><h3 id="n-100_000"><a class="docs-heading-anchor" href="#n-100_000">n = 100_000</a><a id="n-100_000-1"></a><a class="docs-heading-anchor-permalink" href="#n-100_000" title="Permalink"></a></h3><p>&lt;img src=&quot;../assets/Minimal100k.png&quot; width=&quot;600&quot; height=&quot;400&quot;&gt;</p></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.8.1 on <span class="colophon-date" title="Tuesday 18 February 2025 13:28">Tuesday 18 February 2025</span>. Using Julia version 1.6.7.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>

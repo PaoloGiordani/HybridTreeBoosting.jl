@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Hybrid trees · HTBoost.jl</title><meta name="title" content="Hybrid trees · HTBoost.jl"/><meta property="og:title" content="Hybrid trees · HTBoost.jl"/><meta property="twitter:title" content="Hybrid trees · HTBoost.jl"/><meta name="description" content="Documentation for HTBoost.jl."/><meta property="og:description" content="Documentation for HTBoost.jl."/><meta property="twitter:description" content="Documentation for HTBoost.jl."/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../../">HTBoost.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">Introduction</a></li><li><a class="tocitem" href="../../Parameters/">Parameters</a></li><li><a class="tocitem" href="../../JuliaAPI/">API</a></li><li><a class="tocitem" href="../../Tutorials/">Tutorials (Julia)</a></li><li><a class="tocitem" href="../../Examples/">Examples (Julia)</a></li><li><a class="tocitem" href="../../Tutorials_R/">Tutorials (R)</a></li><li><a class="tocitem" href="../../Tutorials_py/">Tutorials (Python)</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Hybrid trees</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Hybrid trees</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/PaoloGiordani/HTBoost.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/PaoloGiordani/HTBoost.jl.git" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Hybrid-trees"><a class="docs-heading-anchor" href="#Hybrid-trees">Hybrid trees</a><a id="Hybrid-trees-1"></a><a class="docs-heading-anchor-permalink" href="#Hybrid-trees" title="Permalink"></a></h1><p><strong>Hybrid trees: why smooth trees are not always good enough.</strong></p><p>There are two characteristics of HTB trees that make them hybrid:</p><ol><li>Splits are smooth by default, but can be forced to be sharp for some features.</li><li>The fitted value from each tree is the input for a univariate nonlinear transformation.</li></ol><p>Here we explore the first characteristic, while examples/Projection Pursuit Regreession.jl  explores the second.</p><p>When the smoothness parameter τ is estimated for each split and allowed to take high values, including τ=Inf (which corresponds to a sharp split), it&#39;s perhaps intuitive to think that a smooth tree can capture both smooth and sharp functions. However, this is not necessarily true in a boosting context, as illustrated in this script.</p><p>Consider the following example: If we are trying to approximate a step function with a single step (second column in the plot), a smooth tree which can take high values of τ performs asymptotically as well as a sharp split. However, if the step functions has multiple steps (third column in the plot), the fitting function is initially smooth, and it is then impossible for the subsequent trees to fully recover a sharp function. In this example, the greedy nature of boosting gets the algorithm stuck in a local minimu.  A hybrid tree attempts to recognize such cases from a preliminary run, and, if necessary, imposes sharp splits on some features to avoid the local minima. The cross-validated loss is then  used to decide in which combination to use the hybrid and the smooth tree.</p><pre><code class="language-julia hljs">
+number_workers  = 8  # desired number of workers
+
+using Distributed
+nprocs()&lt;number_workers ? addprocs( number_workers - nprocs()  ) : addprocs(0)
+@everywhere using HTBoost
+
+using Random,Plots 
+
+# USER&#39;S OPTIONS 
+
+Random.seed!(123)
+
+# Some options for HTBoost
+loss      = :L2            # :L2 or :logistic (or :Huber or :t). 
+modality  = :fastest       # :accurate, :compromise (default), :fast, :fastest 
+
+ntrees    = 2000          # maximum number of trees  
+nfold     = 1             # number of cv folds. 1 faster (single validation sets), default 4 is slower, but more accurate.
+
+verbose     = :Off
+warnings    = :Off
+ 
+# options to generate data. y = sum of two additive nonlinear functions + Gaussian noise.
+n,p,n_test  = 10_000,6,100_000
+stde        = 0.2
+
+f_1(x,b)    = 1.0./(1.0 .+ (exp.(4.0*(x .- 0.5) ))) .- 0.1*b
+f_2(x,b)    = b*(x.&gt;0.5) .- 0.1*b                      # step function with one step 
+f_3(x,b)    = b*( (x .&gt; -0.5) +  (x .&gt; 0.5) )        # step function with several steps
+f_4(x,b)    =  (-0.25 .&lt; x .&lt; 0.25)                     # &quot;tower&quot; function 
+#f_interact(x1,x2,b)  = b*(-0.25 .&lt; x1 .&lt; 0.25).*(0.25 .&lt; x2 .&lt; 0.5)  # sharp interaction
+f_interact(x1,x2,b)  = b*(-0.25 .&lt; x1 .&lt; 0.25).*(0.25 .&lt; x2 .&lt; 0.5) + (-1.0 .&lt; x1 .&lt; -0.75).*(1.25 .&lt; x2 .&lt; 1.5)  # sharp interaction
+
+b1,b2,b3,b4 = 1.0,1.0,1.0,1.0
+b_interact  = 3.0          # sharp interactions can be difficult to approximate well for a smooth tree
+
+# END USER&#39;S OPTIONS
+
+# generate data
+x,x_test = randn(n,p), randn(n_test,p)
+
+f        = f_interact(x[:,5],x[:,6],b_interact) + f_1(x[:,1],b1) + f_2(x[:,2],b2) + f_3(x[:,3],b3) + f_4(x[:,4],b4) 
+f_test   = f_interact(x_test[:,5],x_test[:,6],b_interact) + f_1(x_test[:,1],b1) + f_2(x_test[:,2],b2) + f_3(x_test[:,3],b3) + f_4(x_test[:,4],b4) 
+
+y = f + stde*randn(n)
+
+# set up HTBparam and HTBdata, then fit and predit
+ntrees == 1 ? lambda = 1 : (modality == :fastest ? lambda = 0.2 : lambda = 0.1)
+
+param  = HTBparam(loss=loss,nfold=nfold,verbose=verbose,warnings=warnings,
+           modality=modality,nofullsample=true,lambda=lambda,ntrees=ntrees)
+
+data   = HTBdata(y,x,param)
+
+output = HTBfit(data,param)
+yf     = HTBpredict(x_test,output)  # predict the natural parameter
+
+println(&quot; \n modality = $(param.modality), nfold = $nfold &quot;)
+println(&quot; out-of-sample RMSE from truth &quot;, sqrt(sum((yf - f_test).^2)/n_test) )
+
+println(&quot; \n with smooth rather than hybrid trees &quot;)
+output_s = HTBfit(data,param,cv_hybrid=false)
+yf     = HTBpredict(x_test,output_s)  # predict the natural parameter
+
+println(&quot; out-of-sample RMSE from truth &quot;, sqrt(sum((yf - f_test).^2)/n_test) )
+
+# After 1 tree, with lambda = 1
+param.ntrees=1 
+param.lambda=param.T(1)
+
+output1 = HTBfit(data,param)
+
+# partial plots 
+q_s,pdp_s  = HTBpartialplot(data,output_s,[1,2,3,4])
+q,pdp  = HTBpartialplot(data,output,[1,2,3,4])
+q,pdp_1  = HTBpartialplot(data,output1,[1,2,3,4])
+
+pl   = Vector(undef,12)
+f,b  = [f_1,f_2,f_3,f_4],[b1,b2,b3,b4]
+
+for i in 1:4
+    pl[i]   = plot( [q_s[:,i]],[pdp_1[:,i] f[i](q_s[:,i],b[i]) - f[i](q_s[:,i]*0,b[i])],
+           label = [&quot;1st tree λ=1&quot; &quot;dgp&quot;],
+           legend = :bottomright,
+           linecolor = [:blue :red],
+           linestyle = [:solid :dot],
+           linewidth = [5 2],
+           titlefont = font(15),
+           legendfont = font(12),
+           xlabel = &quot;x&quot;,
+           ylabel = &quot;f(x)&quot;,
+           )
+end
+
+for i in 1:4
+    pl[i+4]   = plot( [q_s[:,i]],[pdp_s[:,i] f[i](q_s[:,i],b[i]) - f[i](q_s[:,i]*0,b[i])],
+           label = [&quot;smooth&quot; &quot;dgp&quot;],
+           legend = :bottomright,
+           linecolor = [:blue :red],
+           linestyle = [:solid :dot],
+           linewidth = [5 2],
+           titlefont = font(15),
+           legendfont = font(12),
+           xlabel = &quot;x&quot;,
+           ylabel = &quot;f(x)&quot;,
+           )
+end
+
+for i in 1:4
+    pl[i+8]  = plot( [q[:,i]],[pdp[:,i] f[i](q[:,i],b[i]) - f[i](q[:,i]*0,b[i])],
+           label = [&quot;hybrid&quot; &quot;dgp&quot;],
+           legend = :bottomright,
+           linecolor = [:blue :red],
+           linestyle = [:solid :dot],
+           linewidth = [5 2],
+           titlefont = font(15),
+           legendfont = font(12),
+           xlabel = &quot;x&quot;,
+           ylabel = &quot;f(x)&quot;,
+           )
+end
+
+display(plot(pl[1],pl[2],pl[3],pl[4],pl[5],pl[6],pl[7],pl[8],pl[9],pl[10],pl[11],pl[12],layout=(3,4), size=(1300,800)))  # display() will show it in Plots window.
+</code></pre></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.8.1 on <span class="colophon-date" title="Tuesday 18 February 2025 13:28">Tuesday 18 February 2025</span>. Using Julia version 1.6.7.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>

@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>- · HTBoost.jl</title><meta name="title" content="- · HTBoost.jl"/><meta property="og:title" content="- · HTBoost.jl"/><meta property="twitter:title" content="- · HTBoost.jl"/><meta name="description" content="Documentation for HTBoost.jl."/><meta property="og:description" content="Documentation for HTBoost.jl."/><meta property="twitter:description" content="Documentation for HTBoost.jl."/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../../">HTBoost.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">Introduction</a></li><li><a class="tocitem" href="../../Parameters/">Parameters</a></li><li><a class="tocitem" href="../../JuliaAPI/">API</a></li><li><a class="tocitem" href="../../Tutorials/">Tutorials (Julia)</a></li><li><a class="tocitem" href="../../Examples/">Examples (Julia)</a></li><li><a class="tocitem" href="../../Tutorials_R/">Tutorials (R)</a></li><li><a class="tocitem" href="../../Tutorials_py/">Tutorials (Python)</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>-</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>-</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/PaoloGiordani/HTBoost.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/PaoloGiordani/HTBoost.jl.git" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h2 id="Time-series-and-panels"><a class="docs-heading-anchor" href="#Time-series-and-panels">Time series and panels</a><a id="Time-series-and-panels-1"></a><a class="docs-heading-anchor-permalink" href="#Time-series-and-panels" title="Permalink"></a></h2><h3 id="Working-with-time-series-and-longitudinal-data-(panels).-Data-as-DataFrame."><a class="docs-heading-anchor" href="#Working-with-time-series-and-longitudinal-data-(panels).-Data-as-DataFrame.">Working with time series and longitudinal data (panels). Data as DataFrame.</a><a id="Working-with-time-series-and-longitudinal-data-(panels).-Data-as-DataFrame.-1"></a><a class="docs-heading-anchor-permalink" href="#Working-with-time-series-and-longitudinal-data-(panels).-Data-as-DataFrame." title="Permalink"></a></h3><p>The user only needs to provide features and, optionally, a vector of dates in <em>HTBdata( )</em> and, if there is overlapping, the overlap parameter in <em>HTBparam()</em>.   Example:</p><pre><code class="language-julia hljs">param  = HTBparam(overlap=20)         
+data   = HTBdata(y,x,param,dates,fnames = fnames)</code></pre><p>where <em>y</em>,<em>x</em> and <em>dates</em> can be regular vectors and matrices or dataframes, e.g.</p><pre><code class="language-julia hljs">y = df[:,:excessret]
+features = [:logCAPE, :momentum,:vol3m,:vol12m ]
+x = df[:,features]
+dates = df[:,:date]  </code></pre><p>There is no need to specify <em>dates</em> for an individual time series. For a panel, <em>dates</em> is required for correct default block-cv (but not if user-specified train and test samples are provided in indtrain<em>a and indtest</em>a).</p><p>Overlap defaults to 0. Typically overlap = h-1, where y(t) = Y(t+h)-Y(t) (e.g. Y a log price and h=20 for monthly financial returns from daily data). This is used for purged-CV and to calibrate the priors.</p><p>By default, HTBoost uses block-cv, which is suitable for time series and longitudinal data.  Another good alternative for times series and panels is expanding window cross-validation, which requires the user to provide indtrain<em>a and indtest</em>a in <em>HTBparam( )</em>. The function <em>HTBindexes<em>from</em>dates()</em> can assist in building indtrain<em>a and indtest</em>a. Example:</p><pre><code class="language-julia hljs">first_date = Date(&quot;2017-12-31&quot;, Dates.DateFormat(&quot;y-m-d&quot;))
+indtrain_a,indtest_a = HTBindexes_from_dates(df,:date,first_date,12)  # 12 periods in each block, starting from first_date
+</code></pre><p>See <a href="../../JuliaAPI/">API</a> for more details.    The code below provides an application to forecasting international stock market indexes. </p><pre><code class="language-julia hljs">
+# On multiple cores
+number_workers  = 8  # desired number of workers
+using Distributed
+nprocs()&lt;number_workers ? addprocs( number_workers - nprocs()  ) : addprocs(0)
+@everywhere using HTBoost
+
+using Random, Plots, CSV, DataFrames, Statistics
+
+Random.seed!(1)
+</code></pre><p>If we work with log returns, :L2 (or perhaps :t) is a natural loss.   If we work with raw returns P(t)/P(t-1), :L2loglink is an interesting alternative.  </p><pre><code class="language-julia hljs">
+# data 
+log_ret        = false    # true to predict log returns, false (default) to predict returns
+overlap        = 0        
+</code></pre><pre><code class="language-julia hljs">loss       = :L2loglink  # if log_ret=false, consider :L2loglink instead of :L2 
+modality   = :accurate    # # :accurate, :compromise, :fast, :fastest
+
+# Specify cv 
+cv_type     = &quot;block&quot;  # &quot;block&quot; or &quot;expanding&quot; or &quot;randomized&quot; (not recommended for time series and panels)
+nfold       = 4        # number of folds for cv (default 4). Irrelevant if cv_type = &quot;expanding&quot;.
+
+# for cv_type = &quot;expanding&quot; 
+cv_first_date     = 197001   # start date for expanding window cv       
+cv_block_periods  = 120      # number of periods (months in this dataset): if cv_type=&quot;block&quot;, this is the block size
+
+# END USER&#39;S OPTIONS
+
+df = CSV.read(&quot;examples/data/GlobalEquityReturns.csv&quot;, DataFrame, copycols = true) # import data as dataframe. Monthly LOG excess returns.
+#display(describe(df))        
+
+# prepare data 
+log_ret ? y = 100*df[:,:excessret] : y  = @. 100*(exp(df[:,:excessret]) )
+
+features_vector = [:logCAPE, :momentum, :vol3m, :vol12m ]
+fnames = [&quot;logCAPE&quot;, &quot;momentum&quot;, &quot;vol3m&quot;, &quot;vol12m&quot; ]
+
+x      = df[:,features_vector]
+
+# set up HTBparam and HTBdata, then fit, depending on cross-validation type
+
+if cv_type == &quot;randomized&quot;
+  param  = HTBparam(nfold=nfold,overlap=overlap,loss=loss,modality=modality,randomizecv=true) 
+elseif cv_type == &quot;block&quot;   # default 
+  param  = HTBparam(nfold=nfold,overlap=overlap,loss=loss,modality=modality) 
+elseif cv_type == &quot;expanding&quot;
+  indtrain_a,indtest_a = HTBindexes_from_dates(df,:date,cv_first_date,cv_block_periods)
+  param  = HTBparam(nfold=nfold,overlap=overlap,loss=loss,modality=modality,
+                     indtrain_a=indtrain_a,indtest_a=indtest_a)
+end 
+
+data   = HTBdata(y,x,param,df[:,:date],fnames = fnames)
+output = HTBfit(data,param)
+
+yhat   = HTBpredict(x,output)  # in-sample fitted value.
+
+println(&quot;\n modality=$(param.modality), cv=$(cv_type), depth = $(output.bestvalue), number of trees = $(output.ntrees) &quot;)
+println(&quot; in-sample R2 = &quot;, round(1.0 - sum((y - yhat).^2)/sum((y .- mean(y)).^2),digits=3) )
+
+fnames,fi,fnames_sorted,fi_sorted,sortedindx = HTBrelevance(output,data);
+</code></pre><p>The output is   </p><pre><code class="language-markdown hljs">
+modality = :accurate, cv=&quot;block&quot;, depth = 6, number of trees = 76
+ in-sample R2 = 0.017
+
+Feature relevance, sorted from highest to lowest, adding up to 100
+
+   logCAPE    47.954
+  momentum    26.725
+    vol12m    25.320
+     vol3m     0.000
+</code></pre><p>Partial dependence plots help visualize the model&#39;s fit. (However, they don&#39;t capture interactions). The marginal effect of higher valuations and volatility is to reduce expected returns, while positive momentum increases them. </p><pre><code class="language-julia hljs">
+# partial dependence plots, best four features. q1st is the first quantile. e.g. 0.01 or 0.05
+q,pdp  = HTBpartialplot(data,output,sortedindx[[1,2,3,4]],q1st=0.01,npoints = 5000)
+
+# partial dependence plots
+pl = Vector(undef,4)
+
+for i in 1:4 
+  pl[i]   = plot(q[:,i],pdp[:,i], legend=false,title=fnames[sortedindx[i]],color=:green)
+end 
+
+display(plot(pl[1],pl[2],pl[3],pl[4], layout=(2,2), size=(1200,600))) 
+</code></pre><p>&lt;img src=&quot;../assets/GlobalEquityPanel.png&quot; width=&quot;600&quot; height=&quot;400&quot;&gt;</p></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.8.1 on <span class="colophon-date" title="Tuesday 18 February 2025 13:28">Tuesday 18 February 2025</span>. Using Julia version 1.6.7.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>

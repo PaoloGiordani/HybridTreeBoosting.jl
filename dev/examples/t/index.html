@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Student t loss with estimated degrees of freedom · HTBoost.jl</title><meta name="title" content="Student t loss with estimated degrees of freedom · HTBoost.jl"/><meta property="og:title" content="Student t loss with estimated degrees of freedom · HTBoost.jl"/><meta property="twitter:title" content="Student t loss with estimated degrees of freedom · HTBoost.jl"/><meta name="description" content="Documentation for HTBoost.jl."/><meta property="og:description" content="Documentation for HTBoost.jl."/><meta property="twitter:description" content="Documentation for HTBoost.jl."/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../../">HTBoost.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">Introduction</a></li><li><a class="tocitem" href="../../Parameters/">Parameters</a></li><li><a class="tocitem" href="../../JuliaAPI/">API</a></li><li><a class="tocitem" href="../../Tutorials/">Tutorials (Julia)</a></li><li><a class="tocitem" href="../../Examples/">Examples (Julia)</a></li><li><a class="tocitem" href="../../Tutorials_R/">Tutorials (R)</a></li><li><a class="tocitem" href="../../Tutorials_py/">Tutorials (Python)</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Student t loss with estimated degrees of freedom</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Student t loss with estimated degrees of freedom</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/PaoloGiordani/HTBoost.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/PaoloGiordani/HTBoost.jl.git" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Student-t-loss-with-estimated-degrees-of-freedom"><a class="docs-heading-anchor" href="#Student-t-loss-with-estimated-degrees-of-freedom">Student t loss with estimated degrees of freedom</a><a id="Student-t-loss-with-estimated-degrees-of-freedom-1"></a><a class="docs-heading-anchor-permalink" href="#Student-t-loss-with-estimated-degrees-of-freedom" title="Permalink"></a></h1><p><strong>Purpose and main results:</strong></p><ul><li>Generates synthetic data with t-distributed errors.</li><li>Show how to use the option loss = :t for leptokurtic (fat tailed) data, which is recommended over  the Huber loss since the degrees of freedom of the t distribution are estimated internally, thus providing the &quot;right&quot; amount of robustness (in the sense of maximizing the likelihood.)</li><li>IF the errors are IID, the :t loss will generally outperform the :L2 loss. However, errors are often not IID, and then the :L2 loss can outperform the :t or :Huber loss even with leptokurtic errors. </li></ul><pre><code class="language-julia hljs">
+number_workers  = 8  # desired number of workers
+
+using Distributed
+nprocs()&lt;number_workers ? addprocs( number_workers - nprocs()  ) : addprocs(0)
+@everywhere using HTBoost
+
+using Random,Statistics,Plots,Distributions
+using LightGBM
+
+# USER&#39;S OPTIONS 
+
+Random.seed!(123)
+
+# Options for data generation 
+n         = 5_000
+p         = 5      # p&gt;=5. Only the first 4 variables are used in the function f(x) below 
+stde      = 1     # e.g. 1 for high SNR, 5 for lowish, 10 for low (R2 around 4%). Not really the stde unless dof is high. 
+dof       = 3     # degrees of freedom for the t distribution to generate data. e.g. 3 or 5 or 10.
+
+# Options for HTBoost: modality is the key parameter guiding hyperparameter tuning and learning rate.
+# :fast and :fastest only fit one model at default parameters, while :compromise and :accurate perform
+# automatic hyperparameter tuning. 
+
+loss      = :t      # :t  
+modality  = :fastest   # :accurate, :compromise (default), :fast, :fastest
+
+# define the function dgp(x), here the Friedman&#39;s function for x~U  
+dgp(x) = 10.0*sin.(π*x[:,1].*x[:,2]) + 20.0*(x[:,3].-0.5).^2 + 10.0*x[:,4] + 5.0*x[:,5]
+
+# End user&#39;s options 
+
+# generate data. x is standard uniform, and errors are a mixture of two normals, with right skew
+x,x_test   = rand(n,p),rand(n_test,p)
+ftrue      = dgp(x)
+ftrue_test = dgp(x_test)
+
+t_object = TDist(dof)
+
+u = rand(t_object,n)
+
+y      = ftrue + u*stde
+
+histogram(u,title=&quot;errors&quot;,label=&quot;&quot;)
+
+# HTBoost parameters
+param  = HTBparam(loss=loss,nfold=1,nofullsample=true,modality=modality,verbose=:Off)
+data   = HTBdata(y,x,param)
+
+# ligthGBM parameters 
+estimator = LGBMRegression(
+    objective = &quot;regression&quot;,
+    num_iterations = 1000,
+    learning_rate = 0.1,
+    early_stopping_round = 100,
+    num_threads = number_workers
+)
+
+estimator_huber = LGBMRegression(
+    objective = &quot;huber&quot;,
+    num_iterations = 1000,
+    learning_rate = 0.1,
+    early_stopping_round = 100,
+    num_threads = number_workers
+)
+
+
+# Fit lightGBM 
+
+n_train = Int(round((1-param.sharevalidation)*length(y)))
+x_train = x[1:n_train,:]; y_train = Float64.(y[1:n_train])
+x_val   = x[n_train+1:end,:]; y_val = Float64.(y[n_train+1:end])
+    
+LightGBM.fit!(estimator,x_train,y_train,(x_val,y_val),verbosity=-1)
+    
+yf_gbm = LightGBM.predict(estimator,x_test)
+yf_gbm2 = yf_gbm[:,1]    # drop the second dimension or a (n_test,1) matrix 
+MSE2    = sum((yf_gbm2 - ftrue_test).^2)/n_test
+
+LightGBM.fit!(estimator_huber,x_train,y_train,(x_val,y_val),verbosity=-1)
+yf_gbm = LightGBM.predict(estimator_huber,x_test)
+yf_gbm = yf_gbm[:,1]    # drop the second dimension or a (n_test,1) matrix 
+MSE3    = sum((yf_gbm - ftrue_test).^2)/n_test
+
+println(&quot;\n oos RMSE from true f(x), lightGBM, Huber loss                    &quot;, sqrt(MSE3) )
+println(&quot; oos RMSE from true f(x), lightGBM, L2 loss                       &quot;, sqrt(MSE2) )
+
+# Fit HTBoost, :t (or :Huber) 
+output = HTBfit(data,param)
+yf     = HTBpredict(x_test,output)  
+MSE1   = sum((yf - ftrue_test).^2)/n_test
+θ      = HTBcoeff(output,verbose=false)         # info on estimated coeff
+
+println(&quot; oos RMSE from true f(x) parameter, HTBoost, loss = $loss          &quot;, sqrt(MSE1) )
+
+# Fit HTBoost, :L2 
+param.loss = :L2 
+output_L2 = HTBfit(data,param)
+yf     = HTBpredict(x_test,output_L2)  
+MSE0    = sum((yf - ftrue_test).^2)/n_test
+
+println(&quot; oos RMSE from true f(x) parameter, HTBoost, loss = L2         &quot;, sqrt(MSE0) )
+
+println(&quot;\n true dof = $dof and estimated dof = $(θ.dof) &quot;)
+println(&quot;\n For more information about coefficients, use HTBcoeff(output) &quot;)
+HTBcoeff(output)
+</code></pre></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.8.1 on <span class="colophon-date" title="Tuesday 18 February 2025 13:28">Tuesday 18 February 2025</span>. Using Julia version 1.6.7.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>

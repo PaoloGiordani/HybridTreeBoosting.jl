@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Incorporating an offset · HTBoost.jl</title><meta name="title" content="Incorporating an offset · HTBoost.jl"/><meta property="og:title" content="Incorporating an offset · HTBoost.jl"/><meta property="twitter:title" content="Incorporating an offset · HTBoost.jl"/><meta name="description" content="Documentation for HTBoost.jl."/><meta property="og:description" content="Documentation for HTBoost.jl."/><meta property="twitter:description" content="Documentation for HTBoost.jl."/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../../">HTBoost.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">Introduction</a></li><li><a class="tocitem" href="../../Parameters/">Parameters</a></li><li><a class="tocitem" href="../../JuliaAPI/">API</a></li><li><a class="tocitem" href="../../Tutorials/">Tutorials (Julia)</a></li><li><a class="tocitem" href="../../Examples/">Examples (Julia)</a></li><li><a class="tocitem" href="../../Tutorials_R/">Tutorials (R)</a></li><li><a class="tocitem" href="../../Tutorials_py/">Tutorials (Python)</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Incorporating an offset</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Incorporating an offset</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/PaoloGiordani/HTBoost.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/PaoloGiordani/HTBoost.jl.git" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Incorporating-an-offset"><a class="docs-heading-anchor" href="#Incorporating-an-offset">Incorporating an offset</a><a id="Incorporating-an-offset-1"></a><a class="docs-heading-anchor-permalink" href="#Incorporating-an-offset" title="Permalink"></a></h1><p><strong>Short description:</strong></p><p>offset is added to γ (NOT multiplied by E(y|x)), where γ = link(E(y|x)). It should therefore be in logs for loss in [:L2loglink,:gamma,:Poisson,:gammaPoisson,:hurdleGamma, :hurdleL2loglink], and logit for loss in [:logistic].</p><p>For example, if loss = :gamma and E(y|x) = offset*f, then the offset that is fed into HTBdata() should be log(offset), data   = HTBdata(y,x,param,offset=log(offset))    </p><p>Instructions </p><ol><li>Make sure that the offset vector has the same length as y and that it is appropriately transformed (so it can be <em>added</em> to the link-transformed E(y|x)).</li></ol><pre><code class="language-julia hljs">
+    if loss in [:gamma,:L2loglink,:Poisson,:gammaPoisson,:hurdleGamma, :hurdleL2loglink]
+        γ = log.(offset)
+    else
+        γ = offset
+    end</code></pre><ol><li>Add the offset as an argument in <em>HTBdata( )</em></li></ol><pre><code class="language-julia hljs">data   = HTBdata(y,x,param,offset=γ)</code></pre><ol><li>If predicting, add any offset as an argument in <em>HTBpredict( )</em></li></ol><pre><code class="language-julia hljs">yhat  = HTBpredict(x_test,output,predict=:Ey,offset=γ_test)</code></pre><p><strong>Warning!:</strong></p><blockquote><p>Categorical features with more than two categories are not currently handled correctly (by the mean targeting transformation)</p></blockquote><p>with offsets. The program will run but categorical information will be used sub-optimally, particularly if the average offset differs across categories. If categorical features are important, it may be better to omit the offset from HTBdata(), and instead model y/offset with a :L2loglink loss instead of a :gamma, :Poisson or :gammaPoisson. </p><p>Some advice: </p><p>Unless you are absolutely sure that an offset enters exactly with coeff 1, I recommend also adding it  as a feature. HTBoost will then be able to capture possibly subtle nonlinearities and interaction effects in E(y|offset).  </p><pre><code class="language-julia hljs">
+
+number_workers  = 8  # desired number of workers
+
+using Distributed
+nprocs()&lt;number_workers ? addprocs( number_workers - nprocs()  ) : addprocs(0)
+@everywhere using HTBoost
+
+using Random,Plots,Statistics
+import Distributions 
+
+# USER&#39;S OPTIONS 
+
+Random.seed!(12)
+
+# Some options for HTBoost
+loss      = :gamma          
+modality  = :fast       # :accurate, :compromise (default), :fast, :fastest 
+
+priortype = :hybrid      # :hybrid (default) or :smooth to force smoothness 
+nfold     = 1             # number of cv folds. 1 faster (single validation sets), default 5 is slower, but more accurate.
+nofullsample = true       # if nfold=1 and nofullsample=true, the model is not re-fitted on the full sample after validation of the number of trees
+ 
+randomizecv = false       # false (default) to use block-cv. 
+verbose     = :On
+warnings    = :On
+
+# options to generate data.
+k           = 10         # shape parameter
+n,p,n_test  = 10_000,4,100_000
+
+f_1(x,b)    = b*x  
+f_2(x,b)    = -b*(x.&lt;-0.5) + b*(x.&gt;=0.5)   
+f_3(x,b)    = b*x.*(x.&lt;0)
+f_4(x,b)    = b*(x.&gt;=0.5)
+
+b1,b2,b3,b4 = 0.2,0.2,0.2,0.2
+
+# generate data
+x,x_test = randn(n,p), randn(n_test,p)
+
+c        = -2  
+f        = c .+ f_1(x[:,1],b1) + f_2(x[:,2],b2) + f_3(x[:,3],b3) + f_4(x[:,4],b4)
+f_test   = c .+ f_1(x_test[:,1],b1) + f_2(x_test[:,2],b2) + f_3(x_test[:,3],b3) + f_4(x_test[:,4],b4)
+
+offset  = exp.(2*(randn(n)*std(f) .+ 0.2))  # offset here in terms of E(y|x), to be transformed later.
+
+if loss in [:gamma,:L2loglink,:Poisson,:gammaPoisson,:hurdleGamma, :hurdleL2loglink]
+    γ = log.(offset)
+else
+    γ = offset
+end
+
+μ        = @. exp(f)*offset     # conditional mean 
+μ_test   = exp.(f_test)          
+
+scale    = μ/k
+scale_test = μ_test/k
+y       = zeros(n)
+
+for i in eachindex(y)
+    y[i]  = rand(Distributions.Gamma.(k,scale[i]))
+end 
+
+histogram(y)
+@show [mean(y), std(y), std(μ), maximum(y)]
+
+# set up HTBparam and HTBdata, then fit and predit
+
+# coefficient estimated internally. 
+param  = HTBparam(loss=loss,priortype=priortype,randomizecv=randomizecv,nfold=nfold,
+                   verbose=verbose,warnings=warnings,modality=modality,nofullsample=nofullsample)
+data   = HTBdata(y,x,param,offset=γ)
+
+output = HTBfit(data,param)
+yf     = HTBpredict(x_test,output,predict=:Ey)
+#yhat  = HTBpredict(x_test,output,predict=:Ey,offset=γ_test)
+
+println(&quot; \n loss = $loss, modality = $(param.modality), nfold = $nfold &quot;)
+println(&quot; depth = $(output.bestvalue), number of trees = $(output.ntrees) &quot;)
+println(&quot; out-of-sample RMSE from truth, μ     &quot;, sqrt(sum((yf - μ_test).^2)/n_test) )
+
+println(&quot;\n true shape = $k, estimated = $(exp(output.bestparam.coeff_updated[1][1])) &quot;)
+println(&quot;\n For information about coefficients, use HTBcoeff(output) &quot;)
+HTBcoeff(output)
+
+
+# Plot 
+
+q,pdp  = HTBpartialplot(data,output,[1,2,3,4],predict=:Egamma)
+
+# plot partial dependence in terms of the natural parameter 
+pl   = Vector(undef,4)
+f,b  = [f_1,f_2,f_3,f_4],[b1,b2,b3,b4]
+
+for i in 1:length(pl)
+        pl[i]   = plot( [q[:,i]],[pdp[:,i] f[i](q[:,i],b[i]) - f[i](q[:,i]*0,b[i])],
+           label = [&quot;HTB&quot; &quot;dgp&quot;],
+           legend = :bottomright,
+           linecolor = [:blue :red],
+           linestyle = [:solid :dot],
+
+           linewidth = [5 5],
+           titlefont = font(15),
+           legendfont = font(12),
+           xlabel = &quot;x&quot;,
+           ylabel = &quot;f(x)&quot;,
+           )
+end
+
+display(plot(pl[1], pl[2], pl[3], pl[4], layout=(2,2), size=(1300,800)))  # display() will show it in Plots window.
+</code></pre></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.8.1 on <span class="colophon-date" title="Tuesday 18 February 2025 13:28">Tuesday 18 February 2025</span>. Using Julia version 1.6.7.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>

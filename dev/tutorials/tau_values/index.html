@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>- · HTBoost.jl</title><meta name="title" content="- · HTBoost.jl"/><meta property="og:title" content="- · HTBoost.jl"/><meta property="twitter:title" content="- · HTBoost.jl"/><meta name="description" content="Documentation for HTBoost.jl."/><meta property="og:description" content="Documentation for HTBoost.jl."/><meta property="twitter:description" content="Documentation for HTBoost.jl."/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../../">HTBoost.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">Introduction</a></li><li><a class="tocitem" href="../../Parameters/">Parameters</a></li><li><a class="tocitem" href="../../JuliaAPI/">API</a></li><li><a class="tocitem" href="../../Tutorials/">Tutorials (Julia)</a></li><li><a class="tocitem" href="../../Examples/">Examples (Julia)</a></li><li><a class="tocitem" href="../../Tutorials_R/">Tutorials (R)</a></li><li><a class="tocitem" href="../../Tutorials_py/">Tutorials (Python)</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>-</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>-</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/PaoloGiordani/HTBoost.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/PaoloGiordani/HTBoost.jl.git" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h2 id="Plotting-and-printing-τ-values"><a class="docs-heading-anchor" href="#Plotting-and-printing-τ-values">Plotting and printing τ values</a><a id="Plotting-and-printing-τ-values-1"></a><a class="docs-heading-anchor-permalink" href="#Plotting-and-printing-τ-values" title="Permalink"></a></h2><p><strong>Summary</strong></p><ul><li>Simulates a dataset from four different functions.</li><li>For each dataset, plots the average (across features) value of τ (weighted by importance).</li><li>For a specific function, prints a detailed breakdown to screen   </li></ul><p><strong>Main points</strong></p><ul><li>The average tau across all features provides a rough estimate of the overall smoothness of f(x), and therefore of the expected gains from HTBoost.</li><li>The function may be considerably more nonlinear than what plots of a single value of tau may imply! Average values of tau mostly provide a guide to the gains that can be obtained by HTBoost: to gauge the nonlinearity of the function, these numbers should be supplemented by partial effect plots. </li></ul><hr/><hr/><p>Import HTBoost and other required packages</p><pre><code class="language-julia hljs">number_workers  = 8  # desired number of workers
+
+using Distributed
+nprocs()&lt;number_workers ? addprocs( number_workers - nprocs()  ) : addprocs(0)
+@everywhere using HTBoost
+
+using Random,Plots 
+
+# USER&#39;S OPTIONS 
+</code></pre><p>Specify some user&#39;s options</p><pre><code class="language-julia hljs">
+# dgp: four increasingly irregular functions
+dgp_a = [&quot;Linear&quot;,&quot;Friedman&quot;,&quot;Threshold Friedman&quot;,&quot;AND&quot;] 
+which_function = 3                                     # for which function to print detailed break-down 
+
+# Some options for HTBoost
+loss      = :L2         
+modality  = :fast     # :accurate, :compromise (default), :fast, :fastest 
+
+priortype = :hybrid       # :hybrid (default) or :smooth to force smoothness 
+nfold     = 1             # number of cv folds. 1 faster (single validation sets), default 4 is slower, but more accurate.
+nofullsample = true       # if nfold=1 and nofullsample=true, the model is not re-fitted on the full sample after validation of the number of trees
+
+randomizecv = false       # false (default) to use block-cv. 
+verbose     = :Off
+warnings    = :Off
+ 
+# options to generate data. y = sum of six additive nonlinear functions + Gaussian noise.
+n,n_test  = 10_000,100_000
+stde      = 1.0
+rndseed   = 1234
+</code></pre><p>Four functions, increasingly irregular (from linearity to sharp splits)</p><pre><code class="language-julia hljs">function simulatedata(n,stde;rndseed=1,dgp=&quot;Friedman&quot;)
+    
+    Random.seed!(rndseed)
+
+    if dgp==&quot;Linear&quot;
+        p = 5
+        x = randn(n,p)
+        f = x[:,1] + x[:,2] + x[:,3] + x[:,4] + x[:,5]
+        y = f + stde*randn(n)   
+    elseif dgp==&quot;Friedman&quot;
+        p = 5
+        x     = rand(n,p)  # for Friedman function x is uniform
+        f = 10.0*sin.(π*x[:,1].*x[:,2]) + 20.0*(x[:,3].-0.5).^2 + 10.0*x[:,4] + 5.0*x[:,5]
+        y = f + stde*randn(n)
+    elseif dgp==&quot;Threshold Friedman&quot;
+        p = 6
+        x = rand(n,p)  # for Friedman function x is uniform
+        f1 = 10.0*sin.(π*x[:,1].*x[:,2]) + 20.0*(x[:,3].-0.5).^2 + 10.0*x[:,4] + 5.0*x[:,5]
+        f2 = 0.5*f1
+        f  = f1.*(x[:,6].&lt;0.5) + f2.*(x[:,6].&gt;0.5)
+        y = f + stde*randn(n)
+    elseif dgp==&quot;AND&quot;
+        p = 3
+        x = randn(n,p)
+        f = 10*( (x[:,1].&gt;0.3).*(x[:,2].&gt;0.3).*(x[:,3].&gt;0.3) )   # same threshold: symmetric trees outperform     
+        y = f + stde*randn(n) 
+    end 
+
+    return y,x,f 
+
+end 
+</code></pre><p>For each function, generate a dataset, fit HTBoost, store output</p><pre><code class="language-julia hljs">
+output_a = Vector(undef,length(dgp_a))
+
+for (i,dgp) in enumerate(dgp_a)
+
+    y,x,f             = simulatedata(n,stde,rndseed=rndseed,dgp=dgp)
+    y_test,x_test,f_test = simulatedata(100_000,stde,rndseed=rndseed,dgp=dgp)
+
+    param  = HTBparam(loss=loss,priortype=priortype,randomizecv=randomizecv,nfold=nfold,verbose=verbose,warnings=warnings,
+                modality=modality,nofullsample=nofullsample)
+
+    data   = HTBdata(y,x,param)
+    output = HTBfit(data,param)
+    output_a[i] = output
+
+end
+</code></pre><p>Plotting average values for each function</p><pre><code class="language-julia hljs">
+pl   = Vector(undef,length(dgp_a))
+
+for i in eachindex(dgp_a)
+
+    avgtau,gavgtau,avgtau_a,dftau,x_plot,g_plot = HTBweightedtau(output_a[i],data,verbose=false,best_model=false);
+
+    pl[i]   = plot( x_plot,g_plot,
+           title =  dgp_a[i],
+           legend = :bottomright,
+           linecolor = [:blue],
+           linestyle = [:solid],
+
+           linewidth = [5],
+           titlefont = font(15),
+           legendfont = font(12),
+           xlabel=&quot;standardized x&quot;,
+           ylabel=&quot;avg tau&quot;,
+           label=:none,
+           )           
+end
+
+display(plot(pl[1],pl[2],pl[3],pl[4],layout=(2,2), size=(1200,800)))  
+</code></pre><p>While the actual function will typically be more nonlinear than implied by these plots, we do get a useful estimate of whether HTBoost is using smooth or quasi-hard (or hard) splits, and therefore of the efficiency gains that can be expected. </p><p>&lt;img src=&quot;../assets/tau values.png&quot; width=&quot;600&quot; height=&quot;350&quot;&gt;</p><p>Printing a more detailed break-down for a specific function (here Threshold Friedman)</p><pre><code class="language-julia hljs">avgtau,gavgtau,avgtau_a,dftau,x_plot,g_plot = HTBweightedtau(output_a[which_function],data_a[which_function],verbose=true,best_model=false);</code></pre><p>Notice how x6, which operates a hard split, has a high avg tau, x1,x2,x3, which enter nonlinearly, have average values of tau, and x4 and x5, which enter linearly, have small values.</p><pre><code class="language-markdown hljs">
+Row │ feature  importance  avgtau     sorted_feature  sorted_importance  sorted_avgtau 
+     │ String   Float32     Float64    String          Float32            Float64       
+─────┼──────────────────────────────────────────────────────────────────────────────────
+─────┼──────────────────────────────────────────────────────────────────────────────────
+─────┼──────────────────────────────────────────────────────────────────────────────────
+   1 │ x1         15.4995    3.17203   x6                       30.5483       38.58
+   2 │ x2         15.655     3.20808   x4                       19.1541        0.669109
+   3 │ x3          9.6912    7.06228   x2                       15.655         3.20808
+   4 │ x4         19.1541    0.669109  x1                       15.4995        3.17203
+   5 │ x5          9.45188   0.994279  x3                        9.6912        7.06228
+   6 │ x6         30.5483   38.58      x5                        9.45188       0.994279
+
+ Average smoothing parameter τ is 4.9.
+
+ In sufficiently large samples, and if modality=:compromise or :accurate
+
+ - Values above 20-25 suggest little smoothness in important features. HTBoost&#39;s performance may slightly outperform or slightly underperform other gradient boosting machines.
+ - At 10-15 or lower, HTBoost should outperform other gradient boosting machines, or at least be worth including in an ensemble.
+ - At 5-7 or lower, HTBoost should strongly outperform other gradient boosting machines.
+</code></pre></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.8.1 on <span class="colophon-date" title="Tuesday 18 February 2025 13:28">Tuesday 18 February 2025</span>. Using Julia version 1.6.7.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>

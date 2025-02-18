@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Speeding up training with large n · HTBoost.jl</title><meta name="title" content="Speeding up training with large n · HTBoost.jl"/><meta property="og:title" content="Speeding up training with large n · HTBoost.jl"/><meta property="twitter:title" content="Speeding up training with large n · HTBoost.jl"/><meta name="description" content="Documentation for HTBoost.jl."/><meta property="og:description" content="Documentation for HTBoost.jl."/><meta property="twitter:description" content="Documentation for HTBoost.jl."/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../../">HTBoost.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">Introduction</a></li><li><a class="tocitem" href="../../Parameters/">Parameters</a></li><li><a class="tocitem" href="../../JuliaAPI/">API</a></li><li><a class="tocitem" href="../../Tutorials/">Tutorials (Julia)</a></li><li><a class="tocitem" href="../../Examples/">Examples (Julia)</a></li><li><a class="tocitem" href="../../Tutorials_R/">Tutorials (R)</a></li><li><a class="tocitem" href="../../Tutorials_py/">Tutorials (Python)</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Speeding up training with large n</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Speeding up training with large n</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/PaoloGiordani/HTBoost.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/PaoloGiordani/HTBoost.jl.git" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Speeding-up-training-with-large-n"><a class="docs-heading-anchor" href="#Speeding-up-training-with-large-n">Speeding up training with large n</a><a id="Speeding-up-training-with-large-n-1"></a><a class="docs-heading-anchor-permalink" href="#Speeding-up-training-with-large-n" title="Permalink"></a></h1><h2 id="Some-options-to-speed-up-training-for-HTBoost,-particularly-with-large-n-and-large-p."><a class="docs-heading-anchor" href="#Some-options-to-speed-up-training-for-HTBoost,-particularly-with-large-n-and-large-p.">Some options to speed up training for HTBoost, particularly with large n and large p.</a><a id="Some-options-to-speed-up-training-for-HTBoost,-particularly-with-large-n-and-large-p.-1"></a><a class="docs-heading-anchor-permalink" href="#Some-options-to-speed-up-training-for-HTBoost,-particularly-with-large-n-and-large-p." title="Permalink"></a></h2><p>HTBoost runs much faster (particularly with large n) with multiple cores than with one, after the initial one-off cost. The improvements in speed are roughly linear in the number of cores, up to 8 cores, and still good up to 16 cores, particularly when p/#cores is large. Gains from 16 to 32 cores are modest. </p><p><strong>1) modality = :fast, nfold = 1, nofullsample = true, disengage variable selection.</strong> </p><p>The easiest way to speed up training is by setting nfold = 1 (a single validation set), and modality=:fast or :fastest. These modalities do not perform cv.  :fast will typically still produces a competitive model in terms of accuracy, particularly if n/p is large. If nfold=1, setting nofullsample=true further reduces computing time by 60% at the cost of fitting the model on a smaller sample. modality = :fastest automatically sets nfold=1, nofullsample=true, and also lambda = 0.2 instead of 0.1. lambda = 0.2 can perform almost as well if the function is smooth and n/p is large.</p><p><strong>2) Use a coarser grid for feature selection at deeper levels of the tree. (Can be combined with any value of modality)</strong> </p><p>Examples of use: </p><pre><code class="language-julia hljs">
+    param = HTBparam(depth_coarse_grid =4,depth_coarse_grid2=5,modality=:fast)
+    param = HTBparam(depth_coarse_grid =4,depth_coarse_grid2=5,modality=:compromise)</code></pre><p>Replacing the defaults (5,7) with (4,5) may speed up computations by 25-33%, with no or little loss of fit in most cases. </p><p><strong>3) Don&#39;t allow forcing sharp splits (in combination with modality=:fast). Warning: potential for decreased performance if f(x) is not smooth!</strong> </p><p>In situations where some features may require imposing sharp splits, the model is estimated twice. To avoid this, the recommended option is to run </p><p>output = SMARTfit(data,param,cv_hybrid=false)</p><p>(in combination with modality=:fast or :fastest) then cuts computing times in half. The loss of fit is typically modest, but can be substantial in some cases.</p><p><strong>4) Be aware of how time increases with depth in HTBoost.</strong></p><p>The cost of fitting a tree of depth 6 (7) is roughly twice the cost of fitting a tree of depth 5 (6). Hence going from depth 5 to depth 7 could increases computing time by a factor of 4. In most cases the actual increase is smaller, as less trees are needed, but still substantial.</p><p><strong>5) Cross-validate on a sub-sample, then one run best model on full sample.</strong></p><p>Setting modality = :fast fits the model at default parameters. If some cross-validation is desired,  the following strategy can be used to speed up cross-validation, typically with only small deterioration in performance if n is large and n/p is large. </p><p>When n is very large, and it takes too long to fit HTBoost in modality = :compromise or :accurate, one way to proceed is to cv on a subsample of the data (say 20%) and then fit only one model on the full sample, using the  best parameters found in the subsample, except for the number of trees. If the subsample is large enough, the best parameters found in the subsample will be close to the best parameters in the full sample. (Of course the subset is more noisy and will prefer simpler models, but the difference should be modest if n is large. The number of trees should not be taken from the subset of course.) This can be accomplished as follows:</p><ul><li>Set modality=:compromise or :accurate, take a subsample of the data (20%), and run output=HTBfit() on that.</li><li>Set param=output.bestparam, and then param.modality=:fast, and run HTBfit() on the full data.</li></ul><p>An example is given below: </p><pre><code class="language-julia hljs">number_workers  = 8  # desired number of workers
+
+using Distributed
+nprocs()&lt;number_workers ? addprocs( number_workers - nprocs()  ) : addprocs(0)
+@everywhere using HTBoost
+
+using Random,Statistics
+
+# USER&#39;S OPTIONS 
+Random.seed!(123)
+
+# Options for data generation 
+n         = 500_000
+p         = 100         # number of features 
+dummies   = true        # if true if x, x_test are 0-1 (much faster training).
+stde      = 1            
+
+# Options for HTBoost: modality is the key parameter guiding hyperparameter tuning and learning rate.
+# :fast only fits one model at default parameters, while :compromise and :accurate perform
+# automatic hyperparameter tuning. 
+
+randomsubset      = 0.2          # e.g. 0.2. Share of observations in the first sub-set 
+modality_subs     = :compromise  # :accurate or :compromise (default)
+modality_full     = :fast        # :fast
+
+nfold_subs       = 1             # number of cv folds. 1 sufficient if the sub-sample is sufficiently large 
+nfold_full       = 1         
+nofullsample_full = true         # if nfold=1 and nofullsample=true, the model is not re-fitted on the full sample after validation          
+randomizecv       = false       # false (default) to use block-cv.
+
+verbose          = :Off
+warnings         = :On
+
+# simple f(x), with pstar relevant features.
+
+p_star    = 10       # number of relevant features 
+β         = randn(p_star)    # draw linear coefficients from a Gaussian distribution
+dgp(x)    = x[:,1:length(β)]*β
+
+# END USER&#39;S INPUTS 
+
+if dummies
+    x,x_test = randn(n,p),randn(200_000,p) 
+    x,x_test = Float64.(x .&gt; 0), Float64.(x_test .&gt; 0)
+else
+    x,x_test = randn(n,p), randn(200_000,p)    
+end     
+
+y       = dgp(x) + stde*randn(n)
+f_test  = dgp(x_test)
+
+# HTBoost on a sub-sample 
+param_subs   = HTBparam(modality=modality_subs,nfold=nfold_subs,nofullsample=true,randomizecv=randomizecv,
+                verbose=verbose,warnings=warnings)
+data         = HTBdata(y,x,param_subs)
+n            = length(data.y)
+
+ind       = randperm(n)[1:convert(Int,round(randomsubset*n))]
+data_subs = HTBdata(y[ind],x[ind,:],param_subs)
+
+output_subs = HTBfit(data_subs,param_subs) # performs cv on subset
+
+# HTBoost on full sample 
+param          = output_subs.bestparam        # sets param at best configuration in subset, then modify where appropriate
+
+param.ntrees   = 2_000                        # number of trees should not be from subsample! Early stopping must be on full sample.
+param.modality = modality_full      
+param.nfold    = nfold_full
+param.nofullsample = nofullsample_full
+
+data  = HTBdata(y,x,param)
+
+println(&quot;\n n = $n, p = $p, dummies=$dummies, modality = $(param.modality)&quot;)
+
+println(&quot;\n Time to train the full model.&quot;)
+@time output = HTBfit(data,param);
+
+yf = HTBpredict(x_test,output,predict=:Ey)  # predict
+println(&quot;\n RMSE of HTBoost from true E(y|x) &quot;, sqrt(mean((yf-f_test).^2)) )
+</code></pre></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.8.1 on <span class="colophon-date" title="Tuesday 18 February 2025 13:28">Tuesday 18 February 2025</span>. Using Julia version 1.6.7.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
