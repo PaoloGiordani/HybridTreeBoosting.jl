@@ -1,10 +1,11 @@
 # Documenter creates html files in build directory. 
-# To generate the documentation: set working directory to the docs directory, then run the make.jl file in Julia.
-# This produces html files that can be navigated as any other, using a browser. 
+# Instructions: set working directory to the docs directory, then run the make.jl file in Julia.
+# This produces html files that can be navigated as any other. 
 
 push!(LOAD_PATH, "../src/")   # for API
 
-using Documenter, HTBoost
+using Documenter
+using HTBoost
 
 # These files must be in the docs/src directory, or otherwise specify the path. 
 pages=[
@@ -35,16 +36,10 @@ makedocs(
  
 deploydocs(repo="https://github.com/PaoloGiordani/HTBoost.jl.git",
     target="build",
-    branch = "gh-pages",
+    branch = "gh-pages",  # 
     devbranch="main",
     push_preview = true,  # false to keep the preview internal 
     )
-
-
-# Pages: 
-# https://paologiordani.github.io/HTBoost.jl
-
-# Generate a table of contents using Documenter.jl ? 
 
 
 
