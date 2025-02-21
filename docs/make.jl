@@ -5,7 +5,7 @@
 push!(LOAD_PATH, "../src/")   # for API
 
 using Documenter
-using HTBoost
+using HybridTreeBoosting
 
 # These files must be in the docs/src directory, or otherwise specify the path. 
 pages=[

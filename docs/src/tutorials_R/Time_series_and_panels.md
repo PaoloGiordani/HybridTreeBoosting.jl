@@ -5,8 +5,8 @@
 The user only needs to provide features and, optionally, a vector of dates in *HTBdata( )* and, if there is overlapping, the overlap parameter in *HTBparam()*.
   Example:
 ```r 
-param  = HTBoost$HTBparam(overlap=20)         
-data   = HTBoost$HTBdata(y,x,param,dates,fnames = fnames)
+param  = HybridTreeBoosting$HTBparam(overlap=20)         
+data   = HybridTreeBoosting$HTBdata(y,x,param,dates,fnames = fnames)
 ```
 
 There is no need to specify *dates* for an individual time series. For a panel, *dates* is required for correct default block-cv (but not if user-specified train and test samples are provided in indtrain_a and indtest_a).
@@ -70,20 +70,20 @@ The panel does not need to be chronologically sorted.
 ```r
 
 if (cv_type == "randomized") {
-  param = HTBoost$HTBparam(nfold=nfold, overlap=overlap, loss=loss, modality=modality, priortype=priortype, randomizecv=TRUE)
+  param = HybridTreeBoosting$HTBparam(nfold=nfold, overlap=overlap, loss=loss, modality=modality, priortype=priortype, randomizecv=TRUE)
 } else if (cv_type == "block") {   # default 
-  param = HTBoost$HTBparam(nfold=nfold, overlap=overlap, loss=loss, modality=modality, priortype=priortype)
+  param = HybridTreeBoosting$HTBparam(nfold=nfold, overlap=overlap, loss=loss, modality=modality, priortype=priortype)
 } else if (cv_type == "expanding") {
   df_julia = DataFrames$DataFrame(df)   # dataframe including "dates" 
-  indtrain_a = HTBoost$HTBindexes_from_dates(df_julia,"dates", cv_first_date, cv_block_periods)$indtrain_a
-  indtest_a = HTBoost$HTBindexes_from_dates(df_julia,"dates", cv_first_date, cv_block_periods)$indtest_a
+  indtrain_a = HybridTreeBoosting$HTBindexes_from_dates(df_julia,"dates", cv_first_date, cv_block_periods)$indtrain_a
+  indtest_a = HybridTreeBoosting$HTBindexes_from_dates(df_julia,"dates", cv_first_date, cv_block_periods)$indtest_a
   param = HTBparam(nfold=nfold, overlap=overlap, loss=loss, modality=modality, priortype=priortype, indtrain_a=indtrain_a, indtest_a=indtest_a)
 }
 
-data = HTBoost$HTBdata(y,x,param,dates,fnames=fnames)
-output = HTBoost$HTBfit(data, param)
+data = HybridTreeBoosting$HTBdata(y,x,param,dates,fnames=fnames)
+output = HybridTreeBoosting$HTBfit(data, param)
 
-yhat = HTBoost$HTBpredict(x, output)  # in-sample fitted value.
+yhat = HybridTreeBoosting$HTBpredict(x, output)  # in-sample fitted value.
 
 cat("\n depth =", output$bestvalue, ", number of trees =", output$ntrees, "\n")
 cat(" in-sample R2 =", round(1.0 - sum((y - yhat)^2) / sum((y - mean(y))^2), digits=3), "\n")

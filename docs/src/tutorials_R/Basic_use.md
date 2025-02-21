@@ -64,7 +64,7 @@ juliaEval('
            number_workers  = 8  # desired number of workers, e.g. 8
            using Distributed
            nprocs()<number_workers ? addprocs( number_workers - nprocs()  ) : addprocs(0)
-           @everywhere using HTBoost
+           @everywhere using HybridTreeBoosting
            ')
 ```
 
@@ -154,17 +154,17 @@ randomizecv = FALSE       # false (default) to use block-cv.
 ### Set up HTBparam and HTBdata, then fit. Optionally, save the model (or load it). Predict. Print some information. 
 
 ```r
-param = HTBoost$HTBparam(loss=loss,priortype=priortype,randomizecv=randomizecv,nfold=nfold,verbose=verbose,modality=modality,nofullsample=nofullsample)
+param = HybridTreeBoosting$HTBparam(loss=loss,priortype=priortype,randomizecv=randomizecv,nfold=nfold,verbose=verbose,modality=modality,nofullsample=nofullsample)
 
-data  = HTBoost$HTBdata(y,x,param,fnames=fnames)   # fnames is optional
-output = HTBoost$HTBfit(data,param)
+data  = HybridTreeBoosting$HTBdata(y,x,param,fnames=fnames)   # fnames is optional
+output = HybridTreeBoosting$HTBfit(data,param)
 
 # save (load) fitted model. NOTE: use the same filename as the name of the object that is being saved.
 #save(output, file = "output")
 #load("output")
 
-yhat = HTBoost$HTBpredict(x, output)      # Fitted values
-yf = HTBoost$HTBpredict(x_test, output)   # Predicted values
+yhat = HybridTreeBoosting$HTBpredict(x, output)      # Fitted values
+yf = HybridTreeBoosting$HTBpredict(x_test, output)   # Predicted values
 
 cat("modality =", param$modality, ", nfold =", nfold, "\n")
 cat("depth =", output$bestvalue, ", number of trees =", output$ntrees, "\n")
@@ -190,7 +190,7 @@ avgtau_a is a vector array with the importance weighted tau for each feature.
 The Julia functions do not always print nearly in R. To control printing, create a R dataframe  
 
 ```r
-tuple = HTBoost$HTBweightedtau(output,data,verbose=FALSE)  # output is a Julia tuple, which can be converted to a R list
+tuple = HybridTreeBoosting$HTBweightedtau(output,data,verbose=FALSE)  # output is a Julia tuple, which can be converted to a R list
 list = juliaGet(tuple)
 
 # Create a data frame: features from 1 to p 
@@ -316,7 +316,7 @@ fnames,fi,fnames_sorted,fi_sorted,sortedindx = HTBrelevance(output,data,verbose=
 q,pdp  = HTBpartialplot(data,output,[1,2,3,4,5,6]) # partial effects for the first 6 variables 
 
 # plot partial dependence
-tuple = HTBoost$HTBpartialplot(data,output,c(1,2,3,4,5,6))
+tuple = HybridTreeBoosting$HTBpartialplot(data,output,c(1,2,3,4,5,6))
 list = juliaGet(tuple)   #  this is not necessary in most cases (e.g. tuple$q works fine)
 
 q  = list$q     

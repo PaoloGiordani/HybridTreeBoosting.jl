@@ -1,5 +1,5 @@
 #
-# Using HTBoost in Python with juliacall package
+# using HybridTreeBoosting in Python with juliacall package
 #
 # Simplest example with one feature.
 #
@@ -11,7 +11,7 @@
 # Install Distributed, HTBoost packages in Julia. This can also be done from Python using juliacall, as
 # jl.seval("using Pkg")
 # jl.seval("Pkg.add('Distributed')")
-# jl.seval("Pkg.add('HTBoost')") 
+# jl.seval("Pkg.add('HybridTreeBoosting')") 
 
 # import packages 
 from juliacall import Main as jl, convert as jlconvert
@@ -41,12 +41,12 @@ x = jl.DataFrame(df)
 
 # run HTBoost 
 
-jl.seval("using HTBoost")   # HTBoost must be installed in Julia 
+jl.seval("using HybridTreeBoosting")   # HTBoost must be installed in Julia 
 
 # Set desired number of workes (here 4)
 jl.seval("using Distributed")
 jl.seval("number_workers = 4; nprocs()<number_workers ? addprocs( number_workers - nprocs()  ) : addprocs(0)")
-jl.seval("@everywhere using HTBoost")
+jl.seval("@everywhere using HybridTreeBoosting")
 
 param  = jl.HTBparam(nfold=1,depth=2,nofullsample=True,modality="fastest")
 data   = jl.HTBdata(y,x,param)

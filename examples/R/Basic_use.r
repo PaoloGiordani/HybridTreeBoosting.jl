@@ -28,13 +28,13 @@ library(JuliaConnectoR)
 # juliaEval('using Pkg; Pkg.add("RData")') # the RData package is not needed in this script (simulated data), but is generally useful for data exchange between R and Julia.
 
 # To install HTBoost from the registry, use the following command.
-# juliaEval('using Pkg; Pkg.add("HTBoost")')
+# juliaEval('using Pkg; Pkg.add("HybridTreeBoosting")')
 # Alternatively, this will work even if the package is not in the registry.
-# juliaEval('using Pkg; Pkg.add("https://github.com/PaoloGiordani/HTBoost.jl")')
+# juliaEval('using Pkg; Pkg.add("https://github.com/PaoloGiordani/HybridTreeBoosting.jl")')
 
 # Load the Julia packages into R, if not already loaded. We only want to do this once to avoid recompliation time on each run.
 # (This is not a problem in Julia, but it is when running Julia in R or Python). 
-HTBoost = juliaImport("HTBoost") 
+HTBoost = juliaImport("HybridTreeBoosting") 
 DataFrames = juliaImport("DataFrames") 
 RData = juliaImport("RData")   # the RData package is not needed here (simulated data),  but is generally useful for data exchange between R and Julia.
 
@@ -43,7 +43,7 @@ juliaEval('
            number_workers  = 1  # desired number of workers, e.g. 8
            using Distributed
            nprocs()<number_workers ? addprocs( number_workers - nprocs()  ) : addprocs(0)
-           @everywhere using HTBoost
+           @everywhere using HybridTreeBoosting
            ')
 
 # Generate data for the example
@@ -95,23 +95,23 @@ nofullsample = TRUE     # if nfold=1 and nofullsample=TRUE, the model is not re-
 randomizecv = FALSE     # FALSE (default) to use block-cv. 
 verbose     = "Off"
 
-param = HTBoost$HTBparam(loss=loss,priortype=priortype,randomizecv=randomizecv,nfold=nfold,verbose=verbose,modality=modality,nofullsample=nofullsample)
-data  = HTBoost$HTBdata(y,x,param,fnames=fnames)   # fnames is optional
+param = HybridTreeBoosting$HTBparam(loss=loss,priortype=priortype,randomizecv=randomizecv,nfold=nfold,verbose=verbose,modality=modality,nofullsample=nofullsample)
+data  = HybridTreeBoosting$HTBdata(y,x,param,fnames=fnames)   # fnames is optional
 
 # Fit the model
 # The first run pays a heavy cost for compilation: around 1.5' for 8 workers. While in Julia this cost is paid only once,
 # in R it is paid every time the program is run. To avoid this problem, run 
 
-#output = HTBoost$HTBfit(data, param)
+#output = HybridTreeBoosting$HTBfit(data, param)
 
 time_taken <- system.time({
-  output <- HTBoost$HTBfit(data, param)
+  output <- HybridTreeBoosting$HTBfit(data, param)
 })
 
 cat("HTBoost fitting time 1st run:", time_taken["elapsed"], "seconds\n")
 
 time_taken <- system.time({
-  output <- HTBoost$HTBfit(data, param)
+  output <- HybridTreeBoosting$HTBfit(data, param)
 })
 cat("HTBoost fitting time 2nd run:", time_taken["elapsed"], "seconds\n")
 
@@ -120,8 +120,8 @@ cat("HTBoost fitting time 2nd run:", time_taken["elapsed"], "seconds\n")
 #load("output")
 
 # Fitted and Predicted values 
-yhat = HTBoost$HTBpredict(x, output)      # Fitted values
-yf = HTBoost$HTBpredict(x_test, output)   # Predicted values
+yhat = HybridTreeBoosting$HTBpredict(x, output)      # Fitted values
+yf = HybridTreeBoosting$HTBpredict(x_test, output)   # Predicted values
 
 # Print some information 
 cat("modality =", param$modality, ", nfold =", nfold, "\n")
@@ -132,7 +132,7 @@ cat("out-of-sample RMSE from truth", sqrt(sum((yf - f_test)^2)/n_test), "\n")
 
 # The Julia functions don't always print nearly in R. To control printing, create a R dataframe.
 # 
-tuple = HTBoost$HTBweightedtau(output,data,verbose=FALSE)  # output is a Julia tuple, which can be converted to a R list
+tuple = HybridTreeBoosting$HTBweightedtau(output,data,verbose=FALSE)  # output is a Julia tuple, which can be converted to a R list
 list = juliaGet(tuple)
 
 # Create a data frame: features from 1 to p 
@@ -182,7 +182,7 @@ p <- ggplot(df, aes(x = list$x_plot, y = list$g_plot)) +
 print(p)
 
 # Partial dependence plots 
-tuple = HTBoost$HTBpartialplot(data,output,c(1,2,3,4,5,6))
+tuple = HybridTreeBoosting$HTBpartialplot(data,output,c(1,2,3,4,5,6))
 list = juliaGet(tuple)   #  this is not necessary in most cases (e.g. tuple$q works fine)
 
 q  = list$q     

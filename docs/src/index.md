@@ -33,7 +33,7 @@ I am working on solutions for R and Python users. Coming soon ...
 number_workers  = 8      
 using Distributed
 nprocs()<number_workers ? addprocs( number_workers - nprocs()  ) : addprocs(0)
-@everywhere using HTBoost
+@everywhere using HybridTreeBoosting
 
 using Random 
 

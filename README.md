@@ -1,16 +1,16 @@
 ## Paolo Giordani
-# HTBoost
+# HybridTreeBoosting 
 
 
 
-[![Build Status](https://github.com/PaoloGiordani/HTBoost.jl/workflows/CI/badge.svg)](https://github.com/PaoloGiordani/HTBoost.jl/actions)
+[![Build Status](https://github.com/PaoloGiordani/HybridTreeBoosting.jl/workflows/CI/badge.svg)](https://github.com/PaoloGiordani/HybridTreeBoosting.jl/actions)
 
 Documentation:
-https://paologiordani.github.io/HTBoost.jl 
+https://paologiordani.github.io/HybridTreeBoosting.jl 
 
-## Data efficient boosting with hybrid trees 
+## HTBoost: data efficient boosting with hybrid trees 
 
-A Julia implementation of Hybrid Trees Boosting as described in [HTBoost paper](provide link!!), with  
+A Julia implementation of Hybrid Trees Boosting (HTBoost) as described in [HTBoost paper](provide link!!), with  
 bindings for R and Python. 
 
 HTBoost attempts to eliminate or mitigate some limitations of standard boosted trees in dealing with smooth and partially smooth functions. It also differs from other packages in the estimation of fixed parameters and in its ability to find sparse structures (i.e. situations in which few features are relevant). 
@@ -36,7 +36,7 @@ I am working on a solution for Python that will not require julia and juliacall 
 Latest:
 
 ```markdown
-pkg> add "https://github.com/PaoloGiordani/HTBoost.jl"    
+pkg> add "https://github.com/PaoloGiordani/HybridTreeBoosting.jl"    
 ```
 
 ## Documentation 
@@ -54,7 +54,7 @@ pkg> add "https://github.com/PaoloGiordani/HTBoost.jl"
 number_workers  = 8      
 using Distributed
 nprocs()<number_workers ? addprocs( number_workers - nprocs()  ) : addprocs(0)
-@everywhere using HTBoost
+@everywhere using HybridTreeBoosting
 
 using Random 
 

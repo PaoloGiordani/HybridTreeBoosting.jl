@@ -20,7 +20,7 @@ y   = f + randn(n)
         using Distributed
         number_workers  = 2  # desired number of workers
         nprocs()<number_workers ? addprocs( number_workers - nprocs()  ) : addprocs(0)
-        @everywhere using HTBoost
+        @everywhere using HybridTreeBoosting
         output = HTBfit(data,param)
         yf     = HTBpredict(x,output,predict=:Egamma)
         rmse2  =  sqrt(sum((yf - f).^2)/n) < 0.10

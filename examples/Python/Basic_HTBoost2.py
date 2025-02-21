@@ -1,5 +1,5 @@
 #
-# Using HTBoost in Python with juliacall package
+# using HybridTreeBoosting in Python with juliacall package
 #
 # A limitation is that, unlike what happens in Julia, compile time is paid every time the code is run.
 # There may be ways around this using a persitent Julia session with pyjulia. 
@@ -8,7 +8,7 @@
 # Install Distributed, HTBoost packages in Julia. This can also be done from Python using juliacall, as
 # jl.seval("using Pkg")
 # jl.seval("Pkg.add('Distributed')")
-# jl.seval("Pkg.add('HTBoost')")
+# jl.seval("Pkg.add('HybridTreeBoosting')")
 
 # import packages 
 from juliacall import Main as jl, convert as jlconvert
@@ -52,13 +52,13 @@ jl.describe(x)
 # y can be an array. If it is a dataframe, use y = jl.DataFrame(df_y)
 
 # set up HTBoost 
-jl.seval("using HTBoost")   # HTBoost must be installed in Julia 
+jl.seval("using HybridTreeBoosting")   # HTBoost must be installed in Julia 
 
 # Set desired number of workes (here 8)
 # Python incurs this compile time cost every time the program is run (unlike Julia and R)
 jl.seval("using Distributed")
 jl.seval("number_workers = 8; nprocs()<number_workers ? addprocs( number_workers - nprocs()  ) : addprocs(0)")
-jl.seval("@everywhere using HTBoost")
+jl.seval("@everywhere using HybridTreeBoosting")
 
 param  = jl.HTBparam(nfold=1,depth=2,nofullsample=True,modality='fast')
 data   = jl.HTBdata(y,x,param)

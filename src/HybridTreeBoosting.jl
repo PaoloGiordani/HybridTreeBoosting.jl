@@ -1,4 +1,4 @@
-module HTBoost
+module HybridTreeBoosting
 
 export HTBinfo, HTBloglikdivide, HTBtree, HTBparam, HTBdata, HTBfit, HTBpredict, HTBrelevance, HTBpartialplot,
  HTBmarginaleffect, HTBoostTrees, HTBindexes_from_dates, losscv, HTBweightedtau, HTBmulticlass_loss,

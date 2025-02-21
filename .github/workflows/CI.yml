@@ -49,8 +49,8 @@ jobs:
       - run: |
           julia --project=docs -e '
             using Documenter: DocMeta, doctest
-            using HTBoost
-            DocMeta.setdocmeta!(HTBoost, :DocTestSetup, :(using HTBoost); recursive=true)
+            using HybridTreeBoosting
+            DocMeta.setdocmeta!(HTBoost, :DocTestSetup, :(using HybridTreeBoosting); recursive=true)
             doctest(HTBoost)'
       - run: julia --project=docs docs/make.jl
         env:

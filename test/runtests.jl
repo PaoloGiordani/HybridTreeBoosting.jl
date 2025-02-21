@@ -1,5 +1,5 @@
 
-using HTBoost
+using HybridTreeBoosting
 using Test 
 
 using Random 
@@ -8,7 +8,7 @@ using CategoricalArrays
 using Distributions: Gamma, NegativeBinomial, Poisson, TDist
 using Distributed 
 
-@testset "HTBoost.jl" begin
+@testset "HybridTreeBoosting.jl" begin
  
     @testset "loss functions (distributions)" begin
         include("continuous.jl")             

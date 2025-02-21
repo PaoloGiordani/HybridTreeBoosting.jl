@@ -14,8 +14,8 @@ When y and/or x contain strings (categorical features), we must translate our R 
 x_string =  sample(c("v1", "v2", "v3"), n, replace = TRUE)   # create a categorical with 3 values
 df       = data.frame(x,x_string)                          # R dataframe 
 x        = DataFrames$DataFrame(df)                          # x is a Julia dataframe
-data     = HTBoost$HTBdata(y,x,param,fnames=colnames(df))    # pass the column names 
-output   = HTBoost$HTBfit(data,param)                        
+data     = HybridTreeBoosting$HTBdata(y,x,param,fnames=colnames(df))    # pass the column names 
+output   = HybridTreeBoosting$HTBfit(data,param)                        
 
 ```
 
@@ -23,12 +23,12 @@ Columns of string values are automatically interpreted by HTBoost as a categoric
 
 ```r
 # either 
-param = HTBoost$HTBparam(cat_features=c(3))
-data  = HTBoost$HTBdata(y,x,param)    # passing the column names is optional
+param = HybridTreeBoosting$HTBparam(cat_features=c(3))
+data  = HybridTreeBoosting$HTBdata(y,x,param)    # passing the column names is optional
 
 # or
-param = HTBoost$HTBparam(cat_features=c("x_string"))
-data  = HTBoost$HTBdata(y,x,param,fnames=colnames(df))    # passing the column names is required
+param = HybridTreeBoosting$HTBparam(cat_features=c("x_string"))
+data  = HybridTreeBoosting$HTBdata(y,x,param,fnames=colnames(df))    # passing the column names is required
 
 ```
 

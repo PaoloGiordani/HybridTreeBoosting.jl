@@ -41,18 +41,18 @@ juliaEval('using Pkg; Pkg.add("DataFrames")')
 ```
 To install HTBoost from the registry, use the following command.
 ```r
-juliaEval('using Pkg; Pkg.add("HTBoost")')
+juliaEval('using Pkg; Pkg.add("HybridTreeBoosting")')
 ```
 Alternatively, this will work even if the package is not in the registry.
 ```r
-juliaEval('using Pkg; Pkg.add("https://github.com/PaoloGiordani/HTBoost.jl")')
+juliaEval('using Pkg; Pkg.add("https://github.com/PaoloGiordani/HybridTreeBoosting.jl")')
 ```
 
 
 Load the packages 
 
 ```r
-HTBoost = juliaImport("HTBoost")
+HTBoost = juliaImport("HybridTreeBoosting")
 DataFrames = juliaImport("DataFrames")   
 #RData = juliaImport("RData")    # not required by HTBoost, can be convenient to work with R datasets in Julia
 ```
@@ -64,7 +64,7 @@ juliaEval('
            number_workers  = 8  # desired number of workers, e.g. 8
            using Distributed
            nprocs()<number_workers ? addprocs( number_workers - nprocs()  ) : addprocs(0)
-           @everywhere using HTBoost
+           @everywhere using HybridTreeBoosting
            ')
 ```
 
@@ -74,15 +74,15 @@ juliaEval('
 The most important functions in HTBoost are
 
 ```r
-param  = HTBoost$HTBparam()           # defines the model     
-data   = HTBoost$HTBparam(y,x,param)  # defines the data, including optional features such as names, weights, time
-output = HTBoost$HTBfit(data,param)   # fits the model 
-yf     = HTBoost$HTBpredict(x_predict,output)
-t      = HTBoost$HTBweightedtau(output,data)  # variable importance and smoothness
-t      = HTBoost$HTBpartialplot(data,output,c(1,2))  # partial dependence plots, here for the first two features  
+param  = HybridTreeBoosting$HTBparam()           # defines the model     
+data   = HybridTreeBoosting$HTBparam(y,x,param)  # defines the data, including optional features such as names, weights, time
+output = HybridTreeBoosting$HTBfit(data,param)   # fits the model 
+yf     = HybridTreeBoosting$HTBpredict(x_predict,output)
+t      = HybridTreeBoosting$HTBweightedtau(output,data)  # variable importance and smoothness
+t      = HybridTreeBoosting$HTBpartialplot(data,output,c(1,2))  # partial dependence plots, here for the first two features  
 ```
 
-## Further notes on using HTBoost in R
+## Further notes on using HybridTreeBoosting in R
 
 ### To translate the Julia tutorials in R 
 
@@ -106,7 +106,7 @@ t      = HTBoost$HTBpartialplot(data,output,c(1,2))  # partial dependence plots,
 ```
 This will not work in R, but it is always possible to work with the list, so R becomes
 ```r 
-    t = HTBoost$HTBpredict(x_test,output)
+    t = HybridTreeBoosting$HTBpredict(x_test,output)
     prob0 = t$prob0 
 ```    
 
@@ -120,9 +120,9 @@ p      = 2
 x      = matrix(rnorm(n*p),nrow = n,ncol = p)
 y      = x[,1] + rnorm(n)
 
-param   = HTBoost$HTBparam(modality="accurate")  
-data   = HTBoost$HTBdata(y,x,param)
-output = HTBoost$HTBfit(data,param)
+param   = HybridTreeBoosting$HTBparam(modality="accurate")  
+data   = HybridTreeBoosting$HTBdata(y,x,param)
+output = HybridTreeBoosting$HTBfit(data,param)
 ```
 
 This will work even if there are missing data (*NA* in R, *NaN* or *missing* in Julia) (see [Missing data](../tutorials/Missing.md)) for how HTBoost deals with missing data internally, delivering superior accuracy if the underlying function is at least partially smooth.  
@@ -133,20 +133,20 @@ When y and/or x contain strings (categorical features), we must translate our R 
 x_string =  sample(c("v1", "v2", "v3"), n, replace = TRUE)   # create a categorical with 3 values
 df       = data.frame(x,x_string)                          # R dataframe 
 x        = DataFrames$DataFrame(df)                          # x is a Julia dataframe
-data     = HTBoost$HTBdata(y,x,param,fnames=colnames(df))    # pass the column names 
-output   = HTBoost$HTBfit(data,param)                        
+data     = HybridTreeBoosting$HTBdata(y,x,param,fnames=colnames(df))    # pass the column names 
+output   = HybridTreeBoosting$HTBfit(data,param)                        
 
 ```
 
 Columns of string values are automatically interpreted by HTBoost as a categorical. If some categorical features are represented by numerical values, it is necessary to list them in param (in which case all categorical features, even strings, must be listed). This can be done either with a vector of their column positions, or with their names, if fnames (an optional argument) is provided to HTBdata()
 ```r
 # either 
-param = HTBoost$HTBparam(cat_features=c(3))
-data  = HTBoost$HTBdata(y,x,param)    # passing the column names is optional
+param = HybridTreeBoosting$HTBparam(cat_features=c(3))
+data  = HybridTreeBoosting$HTBdata(y,x,param)    # passing the column names is optional
 
 # or
-param = HTBoost$HTBparam(cat_features=c("x_string"))
-data  = HTBoost$HTBdata(y,x,param,fnames=colnames(df))    # passing the column names is required
+param = HybridTreeBoosting$HTBparam(cat_features=c("x_string"))
+data  = HybridTreeBoosting$HTBdata(y,x,param,fnames=colnames(df))    # passing the column names is required
 
 ```
 

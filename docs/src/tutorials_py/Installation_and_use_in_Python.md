@@ -21,23 +21,23 @@ Installation is needed only once, and can be done from Julia or in Python as fol
 ```py
 jl.seval("using Pkg")
 jl.seval("Pkg.add('Distributed')")
-jl.seval("Pkg.add('HTBoost')")
+jl.seval("Pkg.add('HybridTreeBoosting')")
 ```
 
 To install HTBoost from the registry, use the following command.
 ```py
-jl.seval('using Pkg; Pkg.add("HTBoost")')
+jl.seval('using Pkg; Pkg.add("HybridTreeBoosting")')
 ```
 Alternatively, this will work even if the package is not in the registry.
 ```py
-jl.seval('using Pkg; Pkg.add("https://github.com/PaoloGiordani/HTBoost.jl")')
+jl.seval('using Pkg; Pkg.add("https://github.com/PaoloGiordani/HybridTreeBoosting.jl")')
 ```
 
 Load the packages in Julia
 
 ```py
 jl.seval("using DataFrames")  
-jl.seval("using HTBoost")   # HTBoost must be installed in Julia 
+jl.seval("using HybridTreeBoosting")   # HTBoost must be installed in Julia 
 ```
 
 #### 3. Set the desired number of workers (cores) to be used in parallel.
@@ -47,7 +47,7 @@ Note: Python incurs this compile time cost every time the program is run (unlike
 ```py
 jl.seval("using Distributed")
 jl.seval("number_workers = 8; nprocs()<number_workers ? addprocs( number_workers - nprocs()  ) : addprocs(0)")
-jl.seval("@everywhere using HTBoost")
+jl.seval("@everywhere using HybridTreeBoosting")
 ```
 
 ## Running HTBoost 
@@ -63,7 +63,7 @@ t      = jl.HTBweightedtau(output,data)  # variable importance and smoothness
 t      = jl.HTBpartialplot(data,output,[1,2])  # partial dependence plots, here for the first two features  
 ```
 
-## Further notes on using HTBoost in Python
+## Further notes on using HybridTreeBoosting in Python
 
 ### To translate the Julia tutorials in Python 
 
