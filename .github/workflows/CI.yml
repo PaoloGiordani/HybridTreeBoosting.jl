@@ -50,10 +50,10 @@ jobs:
           julia --project=docs -e '
             using Documenter: DocMeta, doctest
             using HybridTreeBoosting
-            DocMeta.setdocmeta!(HTBoost, :DocTestSetup, :(using HybridTreeBoosting); recursive=true)
-            doctest(HTBoost)'
+            DocMeta.setdocmeta!(HybridTreeBoosting, :DocTestSetup, :(using HybridTreeBoosting); recursive=true)
+            doctest(HybridTreeBoosting)'
       - run: julia --project=docs docs/make.jl
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          DOCUMENTER_KEY: ${{ secrets.DOCUMENTER_KEY }}
+          #DOCUMENTER_KEY: ${{ secrets.DOCUMENTER_KEY }}
 
