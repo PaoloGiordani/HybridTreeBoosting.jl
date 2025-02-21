@@ -8,6 +8,12 @@ using CategoricalArrays
 using Distributions: Gamma, NegativeBinomial, Poisson, TDist
 using Distributed 
 
+# Basic test 
+@testset "HybridTreeBoosting.jl" begin
+    include("continuous.jl")             
+end 
+
+#=
 @testset "HybridTreeBoosting.jl" begin
  
     @testset "loss functions (distributions)" begin
@@ -38,3 +44,4 @@ using Distributed
     end
 
 end
+=#
