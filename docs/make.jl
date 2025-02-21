@@ -19,24 +19,23 @@ pages=[
     ]
 
 
-# Actual HTBoost.jl
 makedocs(
-    sitename="HTBoost.jl",
+    sitename="HybridTreeBoosting.jl",
     authors = "Paolo Giordani",
-    modules=[HTBoost],
+    modules=[HybridTreeBoosting],
     format=Documenter.HTML(
         sidebar_sitename=true, # able or disable the site name on the side bar
-        repolink = "https://github.com/PaoloGiordani/HTBoost.jl", # explicitly set the remote URL
+        repolink = "https://github.com/PaoloGiordani/HybridTreeBoosting.jl", # explicitly set the remote URL
         edit_link = "main"        # adds an "Edit on GitHub" button on documentation  
       ),
     pages=pages,
-    repo = "https://github.com/PaoloGiordani/HTBoost.jl.git", # link for edit_link
+    repo = "https://github.com/PaoloGiordani/HybridTreeBoosting.jl.git", # link for edit_link
 )
 
 # logo = "assets/logo.png"       # if you have a logo in the assets directory
  
 deploydocs(
-    repo="PaoloGiordani/HTBoost.jl.git", # GitHub complained that I should remove the protocol. Originally repo="https://github.com/PaoloGiordani/HTBoost.jl.git"
+    repo="PaoloGiordani/HybridTreeBoosting.jl.git", # GitHub complained that I should remove the protocol. Originally repo="https://github.com/PaoloGiordani/HybridTreeBoosting.jl.git"
     target="build",
     branch = "gh-pages",  # 
     devbranch="main",
