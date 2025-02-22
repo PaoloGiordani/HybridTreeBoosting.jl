@@ -136,8 +136,9 @@ plot(x_plot,g_plot,title="avg smoothness of splits",xlabel="standardized x",labe
 
 The plot gives an idea of the average (importance weighted) smoothness across all splits.... 
 
-<img src="../assets/avgtau.png" width="400" height="250">
+<img src="./../assets/avgtau.png" width="400" height="250">
 
+![](../assets/avgtau.png) 
 
 ... which in this case is a mix of very different values across features: approximate linearity for x1, smooth functions for x3 and x5, and essentially sharp splits for x2, x4, and x6:
 
@@ -164,6 +165,8 @@ The plot gives an idea of the average (importance weighted) smoothness across al
 Some examples of smoothness corresponding to a few values of tau (for a single split) help to interpret values of avgtau
 
 <img src="../assets/Sigmoids.png" width="600" height="400">
+
+![](../assets/Sigmoids.png) 
 
 On simulated data, we can evaluate the RMSE from the true f(x), exluding noise:
 
@@ -230,9 +233,15 @@ Notice how plots are smooth only for some features.
 ### n = 1_000
 <img src="../assets/Minimal1k.png" width="600" height="400">
 
+![](../assets/Minimal1k.png) 
+
 ### n = 10_000
 <img src="../assets/Minimal10k.png" width="600" height="400">
+
+![](../assets/Minimal10k.png) 
+
 
 ### n = 100_000
 <img src="../assets/Minimal100k.png" width="600" height="400">
 
+![](../assets/Minimal100k.png) 
