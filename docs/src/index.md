@@ -64,17 +64,14 @@ yf     = HTBpredict(x_test,output)
 ```
 
 ### Minimal example with n = 1_000
-<img src="assets/Minimal1k.png" width="600" height="400">
 
 ![](assets/Minimal1k.png)
 
 ### Minimal example with n = 10_000
-<img src="assets/Minimal10k.png" width="600" height="400">
 
 ![](assets/Minimal10k.png)
 
 ### Minimal example with n = 100_000
-<img src="assets/Minimal100k.png" width="600" height="400">
 
 ![](assets/Minimal100k.png)
 

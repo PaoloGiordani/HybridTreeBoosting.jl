@@ -144,5 +144,4 @@ display(plot(pl[1],pl[2],pl[3],pl[4], layout=(2,2), size=(1200,600)))
 
 ```
 
-<img src="../assets/GlobalEquityPanel.png" width="600" height="400">
-
+![](../assets/GlobalEquityPanel.png) 

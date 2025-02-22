@@ -61,7 +61,8 @@ y     = ftrue + u
 
 histogram(u,title="errors",label="")
 ```
-<img src="../assets/skewed errors.png" width="400" height="250">
+
+![](../assets/skewederrors.png) 
 
 Specify parameters for HTBoost and LightGBM, for a L2 and Huber regression.   
 No cv is performed on either since it would not change the conclusions we are interestd in.

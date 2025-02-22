@@ -231,17 +231,14 @@ Partial plots for n = 1k,10k,100k, with modality = :fastest and nfold = 1.
 Notice how plots are smooth only for some features. 
 
 ### n = 1_000
-<img src="../assets/Minimal1k.png" width="600" height="400">
 
 ![](../assets/Minimal1k.png) 
 
 ### n = 10_000
-<img src="../assets/Minimal10k.png" width="600" height="400">
 
 ![](../assets/Minimal10k.png) 
 
 
 ### n = 100_000
-<img src="../assets/Minimal100k.png" width="600" height="400">
 
 ![](../assets/Minimal100k.png) 

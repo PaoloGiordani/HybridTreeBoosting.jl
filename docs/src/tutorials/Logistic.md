@@ -204,7 +204,8 @@ plot(x_plot,g_plot,title="smoothness of splits",xlabel="standardized x",label=:n
 
 The plot gives an idea of the average (importance weighted) smoothness across all splits. In this case, the average across features is 3.6, which is substantial smoothness. 
 
-<img src="../assets/avgtau_logistic.png" width="400" height="250">
+![](../assets/avgtau_logistic.png) 
+
 
 The function *HTBweightedtau( )* with verbose=true produces the following table, from which we can see that f(x) is quite smooth with respect to all features.
 This explains why HTBoost outperforms LightGBM so strongly.  

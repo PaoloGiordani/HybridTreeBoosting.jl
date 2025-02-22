@@ -148,7 +148,7 @@ display(plot(pl[1],pl[2],pl[3],pl[4],layout=(2,2), size=(1200,800)))
 
 While the actual function will typically be more nonlinear than implied by these plots, we do get a useful estimate of whether HTBoost is using smooth or quasi-hard (or hard) splits, and therefore of the efficiency gains that can be expected. 
 
-<img src="../assets/tau values.png" width="600" height="350">
+![](../assets/tauvalues.png) 
 
 
 Printing a more detailed break-down for a specific function (here Threshold Friedman)

@@ -1,7 +1,7 @@
 
 ## Strategies for zero-inflated data
 
-<img src="../assets/ZeroInflated.png" width="400" height="250">
+![](../assets/ZeroInflated.png) 
 
 We distinguish three cases of zero-inflated data:  
 1) A discrete distribution whose support includes 0 (e.g. Poisson) has excess probability mass at *y*=0. 
