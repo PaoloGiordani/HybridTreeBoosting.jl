@@ -1,9 +1,9 @@
-# HTBoost
+# Hybrid Tree Boosting (HTBoost)
 
 
 ## Data efficient boosting with hybrid trees 
 
-A Julia implementation of Hybrid Trees Boosting as described in [HTBoost][! LINK TO HTBoost paper!] 
+A Julia implementation of Hybrid Trees Boosting as described in [HTBoost paper][provide link!] 
 
 HTBoost is slower than other boosting packages, but the use of hybrid trees (an evolution of the smooth trees in [SMARTboost](https://github.com/PaoloGiordani/SMARTboost.jl)) delivers superior accuracy in many situations, making HTBoost a promising tool, particularly when data is limited or very noisy. 
 
@@ -11,7 +11,7 @@ HTBoost is slower than other boosting packages, but the use of hybrid trees (an 
 Latest:
 
 ```markdown
-pkg> add "https://github.com/PaoloGiordani/HTBoost.jl"    
+pkg> add "https://github.com/PaoloGiordani/HybridTreeBoosting.jl"    
 ```
 
 ## For R and Python 
@@ -64,7 +64,7 @@ yf     = HTBpredict(x_test,output)
 ```
 
 ### Minimal example with n = 1_000
-<img src="./assets/Minimal1k.png" width="600" height="400">
+<img src="/assets/Minimal1k.png" width="600" height="400">
 
 ### Minimal example with n = 10_000
 <img src="./assets/Minimal10k.png" width="600" height="400">

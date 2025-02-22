@@ -8,7 +8,7 @@
 Documentation:
 https://paologiordani.github.io/HybridTreeBoosting.jl 
 
-## HTBoost: data efficient boosting with hybrid trees 
+## Data efficient boosting with hybrid trees 
 
 A Julia implementation of Hybrid Trees Boosting (HTBoost) as described in [HTBoost paper](provide link!!), with  
 bindings for R and Python. 
