@@ -35,7 +35,7 @@ makedocs(
 # logo = "assets/logo.png"       # if you have a logo in the assets directory
  
 deploydocs(
-    repo="PaoloGiordani/HybridTreeBoosting.jl.git", 
+    repo="github.com/PaoloGiordani/HybridTreeBoosting.jl.git", 
     target="build",
     branch = "gh-pages",  # 
     devbranch="main",
