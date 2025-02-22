@@ -64,13 +64,13 @@ yf     = HTBpredict(x_test,output)
 ```
 
 ### Minimal example with n = 1_000
-<img src="/assets/Minimal1k.png" width="600" height="400">
+<img src="assets/Minimal1k.png" width="600" height="400">
 
 ### Minimal example with n = 10_000
-<img src="./assets/Minimal10k.png" width="600" height="400">
+<img src="assets/Minimal10k.png" width="600" height="400">
 
 ### Minimal example with n = 100_000
-<img src="./assets/Minimal100k.png" width="600" height="400">
+<img src="assets/Minimal100k.png" width="600" height="400">
 
 ## Main features and advantages of HTBoost 
 
