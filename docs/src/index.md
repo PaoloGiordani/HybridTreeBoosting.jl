@@ -7,16 +7,35 @@ A Julia implementation of Hybrid Trees Boosting as described in [HTBoost paper][
 
 HTBoost is slower than other boosting packages, but the use of hybrid trees (an evolution of the smooth trees in [SMARTboost](https://github.com/PaoloGiordani/SMARTboost.jl)) delivers superior accuracy in many situations, making HTBoost a promising tool, particularly when data is limited or very noisy. 
 
-## Installation
+## For R 
+
+For R installation and tutorials
+
+- [Installation and use in R](tutorials_R/Installation_and_use_in_R.md)
+- [Tutorials](Tutorials_R.md) 
+
+
+## For Python 
+
+I am working on a solution for Python that will not require julia and juliacall and will not incur compilation costs each time the program is run. Meanwhile, Python users can run HTBoost via juliacall, as explained here:
+
+- [Installation and use in Python](tutorials_py/Installation_and_use_in_Python.md)
+- [Tutorials](Tutorials_py.md) 
+
+
+## Installation in Julia 
+
 Latest:
 
-```markdown
+```julia
 pkg> add "https://github.com/PaoloGiordani/HybridTreeBoosting.jl"    
 ```
 
-## For R and Python 
+From General Registry
 
-I am working on solutions for R and Python users. Coming soon ... 
+```julia
+pkg> add HybridTreeBoosting    
+```
 
 ## Documentation 
 

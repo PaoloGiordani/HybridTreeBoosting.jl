@@ -33,10 +33,17 @@ I am working on a solution for Python that will not require julia and juliacall 
 
 
 ## Installation in Julia 
+
 Latest:
 
-```markdown
+```julia
 pkg> add "https://github.com/PaoloGiordani/HybridTreeBoosting.jl"    
+```
+
+From General Registry
+
+```julia
+pkg> add HybridTreeBoosting    
 ```
 
 ## Documentation 
