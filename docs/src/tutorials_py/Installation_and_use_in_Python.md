@@ -22,15 +22,8 @@ Installation is needed only once, and can be done from Julia or in Python as fol
 jl.seval("using Pkg")
 jl.seval("Pkg.add('Distributed')")
 jl.seval("Pkg.add('HybridTreeBoosting')")
-```
-
-To install HTBoost from the registry, use the following command.
-```py
-jl.seval('using Pkg; Pkg.add("HybridTreeBoosting")')
-```
-Alternatively, this will work even if the package is not in the registry.
-```py
-jl.seval('using Pkg; Pkg.add("https://github.com/PaoloGiordani/HybridTreeBoosting.jl")')
+#Alternatively, the following will work even if the package is not in the registry.
+#jl.seval('using Pkg; Pkg.add("https://github.com/PaoloGiordani/HybridTreeBoosting.jl")')
 ```
 
 Load the packages in Julia

@@ -195,7 +195,7 @@ Note: Variable (feature) importance is computed as in Hastie et al., "The Elemen
 
 Some examples of smoothness corresponding to a few values of tau (for a single split) help to interpret values of avgtau
 
-<img src="../assets/Sigmoids.png" width="600" height="400">
+![](../assets/Sigmoids.png)
 
 On simulated data, we can evaluate the RMSE from the True f(x), exluding noise:
 
@@ -239,11 +239,14 @@ Partial plots for n = 1k,10k,100k, with modality = :fastest and nfold = 1.
 Notice how plots are smooth only for some features. 
 
 ### n = 1_000
-<img src="../assets/Minimal1k.png" width="600" height="400">
+
+![](../assets/Minimal1k.png) 
 
 ### n = 10_000
-<img src="../assets/Minimal10k.png" width="600" height="400">
+
+![](../assets/Minimal10k.png) 
+
 
 ### n = 100_000
-<img src="../assets/Minimal100k.png" width="600" height="400">
 
+![](../assets/Minimal100k.png) 
