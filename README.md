@@ -10,8 +10,7 @@ https://paologiordani.github.io/HybridTreeBoosting.jl
 
 ## Data efficient boosting with hybrid trees 
 
-A Julia implementation of Hybrid Trees Boosting (HTBoost) as described in [HTBoost paper](provide link!!), with  
-bindings for R and Python. 
+A Julia implementation of Hybrid Trees Boosting (HTBoost) as described in the paper [HTBoost: Data Efficient Learning via Hybrid Tree Boosting.](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=5143093), with bindings for R and Python. 
 
 HTBoost attempts to eliminate or mitigate some limitations of standard boosted trees in dealing with smooth and partially smooth functions. It also differs from other packages in the estimation of fixed parameters and in its ability to find sparse structures (i.e. situations in which few features are relevant). 
 HTBoost is much slower than other boosting packages, but the use of hybrid trees (an evolution of the smooth trees in [SMARTboost](https://github.com/PaoloGiordani/SMARTboost.jl)) delivers superior accuracy in many situations, making HTBoost a promising tool when data is limited or very noisy.
@@ -138,4 +137,4 @@ See [speeding up HTBoost](docs/src/tutorials/Faster_large_n.md) for suggestions 
 
 ## References
 
-[Paolo Giordani, 2025, "HTBoost: Data Efficient Learning via Hybrid Tree Boosting"]()
+[Paolo Giordani, 2025, "HTBoost: Data Efficient Learning via Hybrid Tree Boosting"](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=5143093)
