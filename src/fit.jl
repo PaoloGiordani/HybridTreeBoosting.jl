@@ -849,7 +849,7 @@ function loopfeatures_spawn(outputarray,n,p,ps,y,w,gammafit_ensemble,gammafit,r,
 
     if param.subsampleshare_columns < 1
         psmall = convert(Int64,round(p*param.subsampleshare_columns))
-        ps     = ps[randperm(Random.MersenneTwister(param.seed_subsampling+2*ntree),p)[1:psmall]]                  # subs-sample, no reimmission
+        ps     = sort(ps[randperm(Random.MersenneTwister(param.seed_subsampling+2*ntree),p)[1:psmall]])       # subs-sample, no reimmission. sorting may improve cache performance
     end
 
     # skip variable selection if there is only one feature in the 1st phase. 
@@ -881,7 +881,7 @@ function loopfeatures_distributed(outputarray,n,p,ps,y,w,gammafit_ensemble,gamma
 
     if param.subsampleshare_columns < 1
         psmall = convert(Int64,round(p*param.subsampleshare_columns))
-        ps     = ps[randperm(Random.MersenneTwister(param.seed_subsampling+2*ntree),p)[1:psmall]]                  # subs-sample, no reimmission
+        ps     = sort(ps[randperm(Random.MersenneTwister(param.seed_subsampling+2*ntree),p)[1:psmall]])  # sorting may improve cache performance                  # subs-sample, no reimmission
     end
 
     # skip variable selection if there is only one feature in the 1st phase. 
@@ -1146,7 +1146,7 @@ function fit_one_tree_inner(y::AbstractVector{T},w,HTBtrees::HTBoostTrees,r::Abs
     if n_vs ≥ n
         ssi         = collect(1:n)
     else
-        ssi         = randperm(Random.MersenneTwister(param.seed_subsampling+ntree),n)[1:n_vs]  # subs-sample, no reimmission
+        ssi         = sort(randperm(Random.MersenneTwister(param.seed_subsampling+ntree),n)[1:n_vs])  # sorting may improve cache access. subs-sample, no reimmission
     end
 
     if length(ssi)<n
