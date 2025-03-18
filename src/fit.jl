@@ -1194,7 +1194,7 @@ function fit_one_tree_inner(y::AbstractVector{T},w,HTBtrees::HTBoostTrees,r::Abs
                 loss,τ,μ,m = refineOptim(y,w,gammafit_ensemble,r,h,G0,x[:,i],infeatures,fi,Info_x[i],μ0,τ0,m0,param,τgrid)
             end    
         else           
-            ssi2 = randperm(Random.MersenneTwister(param.seed_subsampling+ntree),n)[1:param.n_refineOptim]  # subs-sample, no reimmission
+            ssi2 = sort(randperm(Random.MersenneTwister(param.seed_subsampling+ntree),n)[1:param.n_refineOptim])  # subs-sample, no reimmission
             length(h)==1 ? hs2=h : hs2=h[ssi2]
             loss,τ,μ,m = refineOptim(y[ssi2],w[ssi2],gammafit_ensemble[ssi2],r[ssi2],hs2,G0[ssi2,:],x[ssi2,i],infeatures,fi,Info_x[i],μ0,τ0,m0,param,τgrid)
         end
