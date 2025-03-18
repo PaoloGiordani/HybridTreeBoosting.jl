@@ -28,11 +28,11 @@
 #  HTBrelevance          computes feature importance (Breiman et al 1984 relevance)
 #  HTBpartialplot        partial dependence plots (keeping all other features fixed, not integrating out)
 #  HTBmarginaleffect     provisional! Numerical computation of marginal effects.
-#  HTBoutput             collects fitted parameters in matrices
-#  tight_sparsevs          warns if sparsevs seems to compromise fit 
+#  HTBoutput             collects fitted Parameters
 #  HTBweightedtau        computes weighted smoothing parameter
 #  HTBplot_tau           plotting a sigmoid for a given tau 
 #  HTBplot_ppr           provides tau and plot for projection pursuit for a single tree
+#  tight_sparsevs        warns if sparsevs seems to compromise fit 
 #  
 #
 # AUXILIARY FUNCTIONS (not for export)
@@ -722,10 +722,10 @@ Unless modality=:accurate, this stacking will typically be equivalent to the bes
 - `loglikdivide:Float`            loglikdivide. effective sample size = n/loglikvide. Roughly accounts for cross-correlation and serial correlation 
 - `HTBtrees::HTBoostTrees`        for the best cv value of param and ntrees
 - `HTBtrees_a`                    length(cv_grid) vector of HTBtrees
-- `i`                             (ntrees,depth) matrix of threshold features for best model
-- `mu`                            (ntrees,depth) matrix of threshold points  for best model
-- `tau`                           (ntrees,depth) matrix of sigmoid parameters for best model
-- `fi2`                           (ntrees,depth) matrix of feature importance, increase in R2 at each split, for best model
+- `i`                             vector (ntrees) of vectors (depth of each tree) of threshold features for best model
+- `mu`                            vector (ntrees) of vectors (depth of each tree) of threshold points  for best model
+- `tau`                           vector (ntrees) of vectors (depth of each tree) of sigmoid parameters for best model
+- `fi2`                           vector (ntrees) of vectors (depth of each tree) of feature importance, increase in R2 at each split, for best model
 - `w`                             length(cv_grid) vector of stacked weights
 - `ratio_actual_max`              ratio of actual number of candidate features over potential maximum. Relevant if sparsevs=:On: indicates sparsevs should be switched off if too high (e.g. higher than 0.5).
 - `problems`                      true if there were computational problems in any of the models: NaN loss or loss jumping up
@@ -1379,7 +1379,6 @@ function HTBfit_single(data::HTBdata,param::HTBparam;cv_grid=[],cv_different_los
 
     # provide some additional output
     i,μ,τ,fi2=HTBoutput(HTBtrees)  # on the best value
-    avglntau,varlntau,mselntau,postprob2 = tau_info(HTBtrees)
     ratio_actual_max = tight_sparsevs(ntrees,HTBtrees.param) # ratio of actual vs max number of candidate features
 
     for i in eachindex(lossgrid)   # done to trigger warning if sparsevs seems too tight in ANY of the model
@@ -1391,7 +1390,7 @@ function HTBfit_single(data::HTBdata,param::HTBparam;cv_grid=[],cv_different_los
     additional_info = [[T(NaN)]]
 
     return ( indtest=indtest_a,bestvalue=bestvalue,bestparam=HTBtrees.param,ntrees=ntrees,loss=loss,meanloss=meanloss,stdeloss=stdeloss,lossgrid=lossgrid,loglikdivide=HTBtrees.param.loglikdivide,HTBtrees=HTBtrees,
-    i=i,mu=μ,tau=τ,fi2=fi2,avglntau=avglntau,HTBtrees_a=HTBtrees_a,w=w,lossw=lossw,problems=(problems_somewhere>0),ratio_actual_max=ratio_actual_max,additional_info=additional_info)
+    i=i,mu=μ,tau=τ,fi2=fi2,HTBtrees_a=HTBtrees_a,w=w,lossw=lossw,problems=(problems_somewhere>0),ratio_actual_max=ratio_actual_max,additional_info=additional_info)
 
 end
 
@@ -1791,12 +1790,12 @@ Output fitted parameters estimated from each tree, collected in matrices. Exclud
 - The default exclude_pp does not give μ and τ for projection pursuit regression. 
 
 # Output
-- `i`         (ntrees,depth) matrix of threshold features
-- `μ`         (ntrees,depth) matrix of threshold points
-- `τ`         (ntrees,depth) matrix of sigmoid parameters
-- `fi2`       (ntrees,depth) matrix of feature importance, increase in R2 at each split
-- `m`         (ntrees,depth) matrix of threshold points for missing values 
-- `β`         (ntrees,2^depth) matrix of leaf coefficients (1st phase, excluding ppr)
+- `i`         vector (ntrees) of vectors (depth of tree i) of threshold features
+- `μ`         vector (ntrees) of vectors (depth of tree i) of threshold points
+- `τ`         vector (ntrees) of vectors (depth of tree i) of smoothing parameters
+- `fi2`       vector (ntrees) of vectors (depth of tree i) of feature importance, increase in R2 at each split
+- `m`         vector (ntrees) of vectors (depth of tree i) of threshold points for missing values 
+- `β`         vector (ntrees) of vectors (2^depth of tree i) of leaf coefficients (1st phase, excluding ppr)
 
 # Example of use
     output = HTBfit(data,param)
@@ -1811,29 +1810,27 @@ function HTBoutput(HTBtrees::HTBoostTrees;exclude_pp = true)
     ntrees = length(HTBtrees.trees)
     d = length(HTBtrees.trees[1].τ)
 
-    i   = Matrix{I}(undef,ntrees,d)
-    μ   = Matrix{T}(undef,ntrees,d)
-    τ   = Matrix{T}(undef,ntrees,d)
-    fi2 = Matrix{T}(undef,ntrees,d)
-    m   = Matrix{T}(undef,ntrees,d)
-    β   = Matrix{T}(undef,ntrees,2^HTBtrees.param.depth)  # only the first phase
+    i   = Vector{Vector{I}}(undef,ntrees)
+    μ   = Vector{Vector{T}}(undef,ntrees)
+    τ   = Vector{Vector{T}}(undef,ntrees)
+    fi2 = Vector{Vector{T}}(undef,ntrees)
+    m   = Vector{Vector{T}}(undef,ntrees)
+    β   = Vector{Vector{T}}(undef,ntrees)  # only the first phase
+
+    depthppr = HTBtrees.param.depthppr
 
     for j in 1:ntrees
         tree = HTBtrees.trees[j]
-        i[j,:],μ[j,:],τ[j,:],fi2[j,:],m[j,:] = tree.i,tree.μ,tree.τ,tree.fi2,tree.m
-        β[j,:] = tree.β[1]   # β[1] excludes the projection pursuit regression parameters    
+
+        if depthppr>0 && exclude_pp
+            d = length(tree.τ) - depthppr
+            i[j],μ[j],τ[j],fi2[j],m[j] = tree.i[1:d],tree.μ[1:d],tree.τ[1:d],tree.fi2[1:d],tree.m[1:d]
+        else
+            i[j],μ[j],τ[j],fi2[j],m[j] = tree.i,tree.μ,tree.τ,tree.fi2,tree.m
+        end
+
+        β[j] = tree.β[1]   # β[1] excludes the projection pursuit regression parameters    
     end
-
-    # delete the columns that refer to projection pursuit regression
-    depthppr = HTBtrees.param.depthppr 
-    depth   = HTBtrees.param.depth
-
-    if depthppr>0 && exclude_pp
-        i = i[:,1:depth]
-        μ = μ[:,1:depth]
-        τ = τ[:,1:depth]
-        fi2 = fi2[:,1:depth]
-    end  
 
     return (i=i,μ=μ,τ=τ,fi2=fi2,m=m,β=β)
 end

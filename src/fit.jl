@@ -22,6 +22,7 @@
 #  lnpM               sparsity prior
 #  lnpMTE             prior (minus) penalization for mean target encoding
 #  lnpSamei           minus penalization for same feature appearing multiple times in one tree        
+#  lnp_leaves          penalization on number of leaves 
 #  Δβ                 called in Newton optimization
 #  Gfitβ
 #  Gfitβ2
@@ -427,6 +428,8 @@ function logpdfpriors(β,μ,τ,m,d,p,pb,param,info_i,infeatures,fi,T,n_i)
     return T(logpdfτ+logpdfM+logpdfMTE+logpdfSamei)
 
 end
+
+
 
 # log prior (minus penalization) for the same feature appearing multiple times in one tree.
 # Does not penalize the first same_feature_penalization_start appearances. 
@@ -1122,7 +1125,17 @@ end
 
 
 
+function effective_max_depth(iter,param)
 
+    half_life_depth,max_depth,min_depth_ratio = param.half_life_depth,param.depth,param.min_depth_ratio
+  
+    log_theta = log(0.5)/half_life_depth
+  
+    d = exp( log(max_depth) + iter*log_theta )
+    d = Int(ceil(d))
+    d = max(d,Int(ceil(min_depth_ratio*max_depth)))
+  end
+  
 
 # param.best_features updated here
 function fit_one_tree_inner(y::AbstractVector{T},w,HTBtrees::HTBoostTrees,r::AbstractVector{T},h::AbstractVector{T},x::AbstractArray{T},μgrid,Info_x,τgrid,param::HTBparam,iter;
@@ -1155,7 +1168,8 @@ function fit_one_tree_inner(y::AbstractVector{T},w,HTBtrees::HTBoostTrees,r::Abs
         length(h)==1 ? hs=h : hs=h[ssi]
     end
 
-    maxdepth=param.depth
+    #maxdepth=param.depth
+    maxdepth = effective_max_depth(iter,param)
 
     for depth in 1:maxdepth
 
@@ -1206,7 +1220,7 @@ function fit_one_tree_inner(y::AbstractVector{T},w,HTBtrees::HTBoostTrees,r::Abs
 
         # store values and update matrices and param.best_features
         ifit, μfit, τfit, mfit, βfit  = vcat(ifit,i),vcat(μfit,μ),vcat(τfit,τ),vcat(mfit,m),β
-        fi2 = vcat(fi2,( sum(gammafit.^2) - sum(gammafit0.^2) )/n)  # compute feature importance: decrease in mse
+        fi2 = vcat(fi2,( sum(gammafit.^2) - sum(gammafit0.^2) )/n)  # compute feature importance: decrease in mse        
         G0, loss0, gammafit0 = G, loss, gammafit
 
     end
@@ -1442,24 +1456,27 @@ end
 # weighted_mean_tau = mean_weighted_tau(output.HTBtrees)   # output is (p,1), vector of median weighted values of tau
 function mean_weighted_tau(HTBtrees)
 
-    i,μ,τ,fi2 = HTBoutput(HTBtrees)
+    i,μ,τ,fi2 = HTBoutput(HTBtrees)   # i,... are vectors of vectors, one for each tree (tree may have different depths)
     
-    T = eltype(τ)
+    T,I = eltype(τ[1]),eltype(i[1])
     p = length(HTBtrees.meanx)  
     avgtau = fill(T(0),p)
     Info_x = HTBtrees.Info_x
-    depth  = HTBtrees.param.depth
 
-    # ? Why is this producing an error ? Is it only with 1 tree? 
-    #fi2 = fi2[:,1:depth]   # don't count pp
-    #τ   = τ[:,1:depth]
+    # vectorize vector of vectors into a single vector for each of i,fi2,τ 
+    i_v,fi2_v,τ_v = I[],T[],T[]
 
-    @. fi2 = fi2*(fi2>0) + T(0)*(fi2<0)  # there can be some tiny negative values
-    
+    for tree in eachindex(i)                 
+       @. fi2[tree] = fi2[tree]*(fi2[tree]>0) + T(0)*(fi2[tree]<0)  # there can be some tiny negative values
+       i_v = vcat(i_v,i[tree])
+       fi2_v = vcat(fi2_v,fi2[tree])
+       τ_v = vcat(τ_v,τ[tree])
+    end    
+        
     for j in 1:p
 
-      τj = τ[i.==j]
-      wj = sqrt.(fi2[i.==j])
+      τj = τ_v[i_v.==j]
+      wj = sqrt.(fi2_v[i_v.==j])
 
       if length(τj)>0 && Info_x[j].dichotomous==false
         @. τj = τj*(τj<=40) + T(40)*(τj>40)    # bound Inf at 40
@@ -1475,47 +1492,6 @@ function mean_weighted_tau(HTBtrees)
 end
 
 
-
-
-#=
-    tau_info(HTBtrees::HTBoostTrees,warnings)
-
-Provides info on posterior distribution of parameters, particularly mean and variance of log(tau) (with individual values weighted by their variance contribution).
-variance is computed from posterior mean, mse from prior mean
-
-# Example of use
-output = HTBfit(data,param)
-avglntau,varlntau,mselntau,postprob2 = tau_info(output.HTBtrees,warnings=:On)
-
-Note: this computes a variance, while varlntau is a precision (the distribution is tau).
-=#
-# mean and variance of log(τ), weighted by feature importance for each tree
-function tau_info(HTBtrees::HTBoostTrees)
-
-    i,μ,τ,fi2 = HTBoutput(HTBtrees)
-
-    lnτ   = log.(τ)
-    mw    = sum(lnτ.*fi2)/sum(fi2)
-    varw  = sum(fi2.*(lnτ .- mw).^2)/sum(fi2)
-    mse   = sum(fi2.*(lnτ .- HTBtrees.param.meanlntau).^2)/sum(fi2)
-
-    # ex-post probability of second (sharp) component
-
-    param=HTBtrees.param
-    s   = sqrt(param.varlntau/param.depth)                 # to intrepret varlntau as dispersion
-
-    T  = typeof(param.varlntau)
-    dm2 = T(2)
-    k2  = T(4)
-
-    p1  = exp.( logpdft.(lnτ,param.meanlntau,s,param.doflntau) )
-    p2  = exp.( logpdft.(lnτ,T(param.meanlntau+dm2/sqrt(param.depth)),s*k2,param.doflntau) )
-    postprob2 = mean(p2./(p1+p2))
-
-    return mw,varw,mse,postprob2
-
-    return 0,0,0,0    
-end
 
 
 # Augments mugrid with quantiles from previously fitted model.
