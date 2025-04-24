@@ -3,9 +3,8 @@
 
 
 
-<!--
 [![Build Status](https://github.com/PaoloGiordani/HybridTreeBoosting.jl/workflows/CI/badge.svg)](https://github.com/PaoloGiordani/HybridTreeBoosting.jl/actions)
--->
+
 
 ### Documentation:
 https://paologiordani.github.io/HybridTreeBoosting.jl 
