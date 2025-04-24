@@ -966,7 +966,7 @@ function optimize_m(y,w,gammafit_ensemble,r,h,G0,xi0,param,infeatures,fi,info_i,
         end
 
     else
-        res  = Optim.optimize( m -> Gfitβm(y,w,gammafit_ensemble,r,h,G0,xi0,param,infeatures,fi,info_i,μ,τ,m,G,Gh,llik0),[m0],Optim.BFGS(linesearch = LineSearches.BackTracking()), Optim.Options(iterations = 100,x_tol = T(0.01) ))
+        res  = Optim.optimize( m -> Gfitβm(y,w,gammafit_ensemble,r,h,G0,xi0,param,infeatures,fi,info_i,μ,τ,m,G,Gh,llik0),[m0],Optim.BFGS(linesearch = LineSearches.BackTracking()), Optim.Options(iterations = 100,x_abstol = T(0.01) ))
         m,loss =  res.minimizer[1],res.minimum
     end
 
@@ -1096,8 +1096,8 @@ function optimize_μτ(y,w,gammafit_ensemble,r,h,G0,xi,param,infeatures,fi,info_
     G   = Matrix{T}(undef,n,p*2)
     Gh  = similar(G)
 
-    x_tol = param.xtolOptim/T(1+(τ>=5)+2*(τ>=10)+4*(τ>50))
-    res  = Optim.optimize( μ -> Gfitβ2(y,w,gammafit_ensemble,r,h,G0,xi,param,infeatures,fi,info_i,μ,τ,T(0),G,Gh,llik0),[μ0],Optim.BFGS(linesearch = LineSearches.BackTracking()), Optim.Options(iterations = 100,x_tol = x_tol  ))
+    x_abstol = param.xtolOptim/T(1+(τ>=5)+2*(τ>=10)+4*(τ>50))
+    res  = Optim.optimize( μ -> Gfitβ2(y,w,gammafit_ensemble,r,h,G0,xi,param,infeatures,fi,info_i,μ,τ,T(0),G,Gh,llik0),[μ0],Optim.BFGS(linesearch = LineSearches.BackTracking()), Optim.Options(iterations = 100,x_abstol = x_abstol  ))
 
     return res
 
