@@ -49,7 +49,7 @@ mutable struct HTBparam{T<:AbstractFloat, I<:Int,R<:Real}
     depthppr::I        # projection pursuit depth. 0 to disactivate.
     ppr_in_vs::Symbol  # :On for projection pursuit included in feature selection stage. Can occasionally go wrong. :Off is a safer default, and :On could be used for stacking. 
     sigmoid::Symbol  # which simoid function. From sharper to smoother separation: :smoothstep (a softer version of truncated linear), :sigmoidlogistic, :sigmoidsqrt, :smoothsigmoid                 
-                     # running times are: smoothstep 0.3, sigmoidsqrt 0.4, sigmoidlogistic 1.6, smoothsigmoid 3.0 (slowest).
+                     # running times are: smoothstep 0.3, :sigmoidsqrt 0.4, :sigmoidlogistic 1.6, :smoothsigmoid 3.0 (slowest).
     meanlntau::T              # Assume a mixture of two student-t for log(tau).
     varlntau::T               #
     doflntau::T
