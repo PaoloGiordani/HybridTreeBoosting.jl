@@ -48,7 +48,8 @@ mutable struct HTBparam{T<:AbstractFloat, I<:Int,R<:Real}
     depth1::I
     depthppr::I        # projection pursuit depth. 0 to disactivate.
     ppr_in_vs::Symbol  # :On for projection pursuit included in feature selection stage. Can occasionally go wrong. :Off is a safer default, and :On could be used for stacking. 
-    sigmoid::Symbol  # which simoid function. :sigmoidsqrt or :sigmoidlogistic or :TReLu. sqrt x/sqrt(1+x^2) 10 times faster than exp.
+    sigmoid::Symbol  # which simoid function. From sharper to smoother separation: :smoothstep (a softer version of truncated linear), :sigmoidlogistic, :sigmoidsqrt, :smoothsigmoid                 
+                     # running times are: smoothstep 0.3, sigmoidsqrt 0.4, sigmoidlogistic 1.6, smoothsigmoid 3.0 (slowest).
     meanlntau::T              # Assume a mixture of two student-t for log(tau).
     varlntau::T               #
     doflntau::T
@@ -256,7 +257,7 @@ Note: all Julia symbols can be replaced by strings. e.g. :L2 can be replaced by 
 - `sparsity_penalization`   [0.3] positive numbers encourage sparsity. The range [0.0-1.5] should cover most scenarios. 
                             Automatically cv in modality=:compromise and :accurate. Increase to obtain a more parsimonious model, set to 0 for standard boosting.
 
-- `ntrees`             [2000] Maximum number of trees. HTBfit will automatically stop when cv loss stops decreasing.
+- `ntrees`             [3000] Maximum number of trees. HTBfit will automatically stop when cv loss stops decreasing.
 
 - `sharevs`                 [1.0] row subsampling in variable selection phase (only to choose feature on which to split.) Default is no subsampling.
                             sharevs = :Auto sets the subsample size to min(n,50k*sqrt(n/50k)).
@@ -327,7 +328,7 @@ function HTBparam(;
     depth1 = 10,
     depthppr = 2,      # projection pursuit depth. 0 to disactive. 
     ppr_in_vs = :Off,    # :On for projection pursuit included in variable selection phase. Can occasionally go wrong. :Off is a safer default, and :On could be used for stacking. 
-    sigmoid = :sigmoidsqrt,  # :sigmoidsqrt or :sigmoidlogistic or :TReLu
+    sigmoid = :sigmoidsqrt, # In order from more to less smooth: :smoothsigmoid, :sigmoidsqrt, :sigmoidlogistic, :smoothstep      
     meanlntau= 1.0,    # Assume a Gaussian for log(tau).
     varlntau = 0.5^2,  # [0.5^2]. Set to Inf to disactivate (log(p(τ)=0)).  See loss.jl/multiplier_stdlogtau_y().  This is the dispersion of the student-t distribution (not the variance unless dof is high).
     doflntau = 5.0,
@@ -387,7 +388,7 @@ function HTBparam(;
     method_refineOptim = :distributed, #  :pmap, :distributed 
     points_refineOptim = 12,    # number of values of tau for refineOptim. Default 12. Other values allowed are 4,7.
     # miscel                    # becomes 7 once coarse_grid kicks in, unless ncores>12.
-    ntrees = 4000,    # number of trees. 1000 is CatBoost default (with maxdepth = 6). May need more if trees are shallower or can become shallower due to penalizations.
+    ntrees = 3000,    # number of trees. 1000 is CatBoost default (with maxdepth = 6). May need more if trees are shallower or can become shallower due to penalizations.
     theta = 1.0,   # numbers larger than 1 imply tighter penalization on β compared to default.                     
     loglikdivide = :Auto,   # the log-likelhood is divided by this scalar. Used to improve inference when observations are correlated.
     overlap = 0,

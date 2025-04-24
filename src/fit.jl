@@ -174,36 +174,107 @@ function computeGβ(G,β)
 end
 
 
+# a softer verion of TL
+function smoothstep(x::AbstractVector{T},mu::T,tau::T) where {T<:AbstractFloat}
+    scale = T(0.15)*tau  # Adjust scale for comparability
+    g = similar(x)
+    for i in eachindex(g, x)
+        val = clamp(scale * (x[i] - mu) + 0.5, 0, 1)
+        g[i] = val*val*(3-2*val)  # Smoothstep formula
+    end
+    return g
+end
+
+
+# A sigmoid-like function bounded between 0 and 1 with smoother transitions.
+# Outputs rarely approach 0 or 1, even for extreme values of `x`.
+function fast_smooth_sigmoid(x::AbstractVector{T}, mu::T, tau::T) where {T<:AbstractFloat}
+    scale = T(0.75)*tau  # Adjust scale for comparability
+    g = similar(x)
+    for i in eachindex(g, x)
+        g[i] = (atan.(scale*(x[i] - mu))/π) + 0.5
+    end
+    return g
+end
+
+# slightly faster than g = @. T(0.5) + T(0.5)*( T(0.5)*τ*(x-μ)/sqrt(( T(1.0) + ( T(0.5)*τ*(x-μ) )^2  )) )
+function fast_sigmoid_sqrt(x::AbstractVector{T},μ::T,τ::T) where {T<:AbstractFloat}
+
+    half = T(0.5)
+    scale = half*τ
+    g = similar(x)
+    
+    for i in eachindex(g,x)
+        scaled_diff = scale*(x[i] - μ)
+        g[i] = half + half*(scaled_diff/sqrt(1 + scaled_diff^2))
+    end
+    
+    return g
+end
+
+
+# faster than         g = @. T(1) - T(1)/(T(1) + (exp(τ * (x - μ))))
+function fast_sigmoid_logistic(x::AbstractVector{T}, μ::T, τ::T) where {T<:AbstractFloat}
+    one = T(1)
+    g = similar(x)
+    
+    for i in eachindex(g, x)
+        z = τ * (x[i] - μ)
+        ez = exp(z)
+        g[i] = ez / (one + ez)
+    end
+    
+    return g
+end
+
+
+function fast_heaviside(x::AbstractVector{T}) where {T<:AbstractFloat}
+    zero = T(0)
+    one = T(1)
+    g = similar(x)
+    
+    for i in eachindex(g, x)
+        g[i] = x[i] > zero ? one : zero
+    end
+    
+    return g
+end
+
+
+
+function fast_step(x::AbstractVector{T}, μ::T) where {T<:AbstractFloat}
+    zero = T(0)
+    one = T(1)
+    g = similar(x)
+    
+    for i in eachindex(g, x)
+        g[i] = x[i] > μ ? one : zero
+    end
+    
+    return g
+end
 
 # If τ==Inf, becomes a sharp threshold.
 function sigmoidf(x::AbstractVector{T},μ::T,τ::T,sigmoid::Symbol;dichotomous::Bool = false) where T<:AbstractFloat
 
     if dichotomous   # return 0 if x<=0 and x>1 otherwise. x is assumed de-meaned
-        g = @. T(0) + T(1)*(x>0)
+        g = fast_heaviside(x)
         return g
     end
 
     if τ==T(Inf)
-        g = @. T(0)*(x<=μ) + T(1)*(x>μ)
+        g = fast_step(x,μ)
         return g
     end
 
     if sigmoid == :sigmoidsqrt
-         g = @. T(0.5) + T(0.5)*( T(0.5)*τ*(x-μ)/sqrt(( T(1.0) + ( T(0.5)*τ*(x-μ) )^2  )) )
+        g = fast_sigmoid_sqrt(x,μ,τ)
     elseif sigmoid == :sigmoidlogistic
-        g = @. T(1) - T(1)/(T(1) + (exp(τ * (x - μ))))
-    elseif sigmoid == :TReLu
-        # The straightforward implementation would not be able to extrapolate for low values of xi
-        g = @. T(0.2)*τ*(x - μ)*(x > μ)
-        @. g = g*(g<1) + T(1)*(g≥1)
-       #=        
-        if μ ≥ 0
-            g = @. T(0.2)*τ*(x - μ)*(x > μ)     # positive slope 
-        else  
-            g = @. -T(0.2)*τ*(x - μ)*(x < μ)    # negative slope 
-        end
-        =#    
-        @. g = g*(g<1) + T(1)*(g≥1)        # truncate at 1
+        g = fast_sigmoid_logistic(x,μ,τ)
+    elseif sigmoid == :smoothstep    
+        g = smoothstep(x,μ,τ)
+    elseif sigmoid == :smoothsigmoid
+        g = fast_smooth_sigmoid(x,μ,τ)    
     else 
         @error "param.sigmoid is misspelled"     
     end
@@ -211,29 +282,6 @@ function sigmoidf(x::AbstractVector{T},μ::T,τ::T,sigmoid::Symbol;dichotomous::
     return g
 end
 
-
-
-# Paolo: currently not used (minimal speed gains and code needs updating in several places).
-#=
-function sigmoidf!(g::AbstractVector{T},x::AbstractVector{T}, μ::T, τ::T,sigmoid::Symbol;dichotomous::Bool = false) where T<:AbstractFloat
-
-    if dichotomous   # return 0 if x<=0 and x>1 otherwise. x is assumed de-meaned
-        @. g = T(0) + T(1)*(x>0)
-    else
-        if τ==T(Inf)
-            @. g = T(0)*(x<=μ) + T(1)*(x>μ)
-        else
-
-            if sigmoid==:sigmoidsqrt
-                @. g = T(0.5) + T(0.5)*( T(0.5)*τ*(x-μ)/sqrt(( T(1.0) + ( T(0.5)*τ*(x-μ) )^2  )) )
-            elseif sigmoid==:sigmoidlogistic
-                @. g =  T(1.0) - T(1.0)/(T(1.0) + (exp(τ * (x - μ))))
-            end
-
-        end
-    end
-end
-=#
 
 
 # Constant terms omitted (e.g. not suitable for Bayes Factors)
@@ -790,7 +838,6 @@ function loopfeatures(y,w,gammafit_ensemble,gammafit,r::AbstractVector{T},h::Abs
 
     # If sparsevs, loop only through a) the features in best_features b) dichotomous features (which are very fast)
     # unless it's a scheduled update (then loop through all) 
-    # if param.sparsevs==:On && (ntree in fibonacci(20,param.lambda,param.frequency_update) || isempty(param.best_features) )
 
     if param.sparsevs==:On && ( ntree in fibonacci(20,param.lambda,param.frequency_update) || isempty(param.best_features) )
         update_best_features = true
@@ -798,7 +845,7 @@ function loopfeatures(y,w,gammafit_ensemble,gammafit,r::AbstractVector{T},h::Abs
         update_best_features = false
     end     
 
-    if update_best_features==false && param.sparsevs==:On && param.subsampleshare_columns==1
+    if update_best_features==false && param.sparsevs==:On # Not obvious whether to add the condition && param.subsampleshare_columns==1
   
         ps = Vector{Int64}(undef,0)
   
@@ -895,7 +942,7 @@ function loopfeatures_distributed(outputarray,n,p,ps,y,w,gammafit_ensemble,gamma
     # (second stage) variable selection.
     @sync @distributed for i in ps
 
-        if Info_x[i].exclude==false  && Info_x[i].n_unique>1            
+        if Info_x[i].exclude==false  && Info_x[i].n_unique>1    # ? why did I need Info_xi.exclude rather than param.exclude_features[i] directly ?         
             t   = (n_i=sum(i.==ifit),y=y,w=w,gammafit_ensemble=gammafit_ensemble,r=r,h=h,G0=G0,xi=x[:,i],infeatures=infeatures,fi=fi,info_i=Info_x[i],info_x_ppr=Info_x[end],μgridi=μgrid[i],τgrid=τgrid,param=param)
             outputarray[i,:] = add_depth(t)     # [loss, τ, μ, m ]
         end
@@ -966,7 +1013,7 @@ function optimize_m(y,w,gammafit_ensemble,r,h,G0,xi0,param,infeatures,fi,info_i,
         end
 
     else
-        res  = Optim.optimize( m -> Gfitβm(y,w,gammafit_ensemble,r,h,G0,xi0,param,infeatures,fi,info_i,μ,τ,m,G,Gh,llik0),[m0],Optim.BFGS(linesearch = LineSearches.BackTracking()), Optim.Options(iterations = 100,x_tol = T(0.01) ))
+        res  = Optim.optimize( m -> Gfitβm(y,w,gammafit_ensemble,r,h,G0,xi0,param,infeatures,fi,info_i,μ,τ,m,G,Gh,llik0),[m0],Optim.BFGS(linesearch = LineSearches.BackTracking()), Optim.Options(iterations = 100,x_abstol = T(0.01) ))
         m,loss =  res.minimizer[1],res.minimum
     end
 
@@ -1096,8 +1143,8 @@ function optimize_μτ(y,w,gammafit_ensemble,r,h,G0,xi,param,infeatures,fi,info_
     G   = Matrix{T}(undef,n,p*2)
     Gh  = similar(G)
 
-    x_tol = param.xtolOptim/T(1+(τ>=5)+2*(τ>=10)+4*(τ>50))
-    res  = Optim.optimize( μ -> Gfitβ2(y,w,gammafit_ensemble,r,h,G0,xi,param,infeatures,fi,info_i,μ,τ,T(0),G,Gh,llik0),[μ0],Optim.BFGS(linesearch = LineSearches.BackTracking()), Optim.Options(iterations = 100,x_tol = x_tol  ))
+    x_abstol = param.xtolOptim/T(1+(τ>=5)+2*(τ>=10)+4*(τ>50))
+    res  = Optim.optimize( μ -> Gfitβ2(y,w,gammafit_ensemble,r,h,G0,xi,param,infeatures,fi,info_i,μ,τ,T(0),G,Gh,llik0),[μ0],Optim.BFGS(linesearch = LineSearches.BackTracking()), Optim.Options(iterations = 100,x_abstol = x_abstol  ))
 
     return res
 
