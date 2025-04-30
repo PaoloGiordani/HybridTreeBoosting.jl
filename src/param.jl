@@ -96,7 +96,7 @@ mutable struct HTBparam{T<:AbstractFloat, I<:Int,R<:Real}
     finalβ_obs_from_vs::Bool
     n_refineOptim::Union{Symbol,I}      # Maximum number of observations for refineOptim, to compute (μ,τ). β is then computed on all obs.
     subsampleshare_columns::T  # if <1.0, only a random share of features is used at each split (re-drawn at each split)
-    sparsevs::Symbol           # :On, :Off, :Auto 
+    sparsevs::Symbol           # :On, :Off
     frequency_update::T 
     number_best_features::I 
     best_features::Vector{I}
@@ -374,7 +374,7 @@ function HTBparam(;
     finalβ_obs_from_vs  = false,  # true to add randomization to final β
     n_refineOptim = 10_000_000,   # Subsample size for refineOptim. beta is always computed on the full sample.
     subsampleshare_columns = 1.0,  # if <1.0, only a random share of features is used at each split (re-drawn at each split)
-    sparsevs = :Auto,           # 
+    sparsevs = :On,           # 
     frequency_update = 1.0,       # when sparsevs, 1 for Fibonacci, 2 to update at 2*Fibonacci etc...               
     number_best_features = 10,    # number of best feature in each node (level) to store into best_features    
     best_features = Vector{I}(undef,0),
