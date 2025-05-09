@@ -49,7 +49,7 @@
 # speedup_preliminaryvs() 
 # calibrate_n_preliminaryvs!()
 # augment_mugrid_from_mu()
-
+# count_most_common_feature()
 
 
 
@@ -1216,7 +1216,7 @@ function fit_one_tree_inner(y::AbstractVector{T},w,HTBtrees::HTBoostTrees,r::Abs
     end
 
     #maxdepth=param.depth
-    maxdepth = effective_max_depth(iter,param)
+    maxdepth = effective_max_depth(iter,param) 
 
     for depth in 1:maxdepth
 
@@ -1269,6 +1269,11 @@ function fit_one_tree_inner(y::AbstractVector{T},w,HTBtrees::HTBoostTrees,r::Abs
         ifit, μfit, τfit, mfit, βfit  = vcat(ifit,i),vcat(μfit,μ),vcat(τfit,τ),vcat(mfit,m),β
         fi2 = vcat(fi2,( sum(gammafit.^2) - sum(gammafit0.^2) )/n)  # compute feature importance: decrease in mse        
         G0, loss0, gammafit0 = G, loss, gammafit
+
+        # if the same feature appears more than max_repeats times, stop the tree
+        if count_most_common_feature(ifit) > param.max_repeats
+            break
+        end
 
     end
 
@@ -1573,4 +1578,18 @@ function augment_mugrid_from_mu(output,data;npoints=10)   # number of points
     return augment_mugrid
   
   end 
+  
+# count the frequency of the most common feature in the tree 
+function count_most_common_feature(vec::AbstractVector{<:Integer})
+ 
+    sorted_vec = sort(vec) # Sort the vector to group identical elements
+    current_frequency,max_frequency = 1,1
+    
+    for i in 2:length(vec)
+        sorted_vec[i] == sorted_vec[i-1] ? current_frequency += 1 : current_frequency = 1      
+        current_frequency > max_frequency ? max_frequency = current_frequency : nothing       
+    end
+    
+    return max_frequency
+  end
   

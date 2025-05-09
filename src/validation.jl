@@ -234,8 +234,8 @@ function HTBsequentialcv( data::HTBdata, param::HTBparam; indices=Vector(1:lengt
         end
         =#
 
-        # break the loop if CV loss is either increasing or decreasing too slowly in last 10% of iterations
-        J = maximum([20,I(floor(i/10))])
+        # break the loop if CV loss is either increasing or decreasing too slowly in last 10% of iterations (but no less than 20 and no more than 100)
+        J = I(min(100,max(20,floor(i/10))))
         J2 = I(floor(J/2))
         if i>=J
             sdiff = (mean(meanloss[i-J2+1:i]) - mean( meanloss[i-J+1:i-J2]))/(stdeloss[i]/sqrt(J2))                 

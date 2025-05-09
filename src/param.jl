@@ -42,7 +42,7 @@ mutable struct HTBparam{T<:AbstractFloat, I<:Int,R<:Real}
 
     # learning rate
     lambda::T
-
+ 
     # Tree structure, priors, categorical data, missing
     depth::I
     depth1::I
@@ -67,6 +67,7 @@ mutable struct HTBparam{T<:AbstractFloat, I<:Int,R<:Real}
     tau_threshold::T       # threshold for imposing sharp splits
     half_life_depth::I     # half-life of max_depth expressed in number of trees.  
     min_depth_ratio::T     # minimum depth is ceil(min_depth_ratio*depth)
+    max_repeats::I         # If the same feature appears more than max_repeats times in the same tree, the tree is closed (loop over depth stops)
     force_sharp_splits::Vector{Bool}
     force_smooth_splits::Vector{Bool}
     exclude_features::Vector{Bool}
@@ -346,6 +347,7 @@ function HTBparam(;
     tau_threshold = 10,         # threshold for imposing sharp splits
     half_life_depth = 100_000,   # half-life of max_depth expressed in number of trees. 100_000 to disactivate.  
     min_depth_ratio = 0.5,       # minimum depth is ceil(min_depth_ratio*depth)
+    max_repeats = 100,          # Set high to disengage. If the same feature appears more than max_repeats times in the same tree, the tree is closed (loop over depth stops)
     force_sharp_splits = Vector{Bool}(undef,0),  # typically hidden to user: optionally, a p vector of Bool, with j-th value set to true if the j-th feature is forced to enter with a sharp split.
     force_smooth_splits = Vector{Bool}(undef,0),  # typically hidden to user: optionally, a p vector of Bool, with j-th value set to true if the j-th feature is forced to enter with a smooth split (high values of λ not allowed)
     exclude_features = Vector{Bool}(undef,0),    # typically hidden to user optionally, a p vector of Bool, with j-th value set to true if the j-th feature should not be considered as a candidate for a split
@@ -480,7 +482,7 @@ function HTBparam(;
         Symbol(ppr_in_vs),Symbol(sigmoid),
         T(meanlntau),T(varlntau),T(doflntau),T(multiplier_stdtau),T(d_meanlntau_cat),T(varmu),T(dofmu),
         T(meanlntau_ppr),T(varlntau_ppr),T(doflntau_ppr),Symbol(priortype),T(max_tau_smooth),I(min_unique),mixed_dc_sharp,T(tau_threshold),I(half_life_depth),
-        T(min_depth_ratio),force_sharp_splits,force_smooth_splits,exclude_features,augment_mugrid,cat_features,cat_features_extended,cat_dictionary,cat_values,cat_globalstats,I(cat_representation_dimension),T(n0_cat),T(mean_encoding_penalization),
+        T(min_depth_ratio),I(max_repeats),force_sharp_splits,force_smooth_splits,exclude_features,augment_mugrid,cat_features,cat_features_extended,cat_dictionary,cat_values,cat_globalstats,I(cat_representation_dimension),T(n0_cat),T(mean_encoding_penalization),
         Symbol(cv_categoricals),
         class_values,Bool(delete_missing),mask_missing,missing_features,info_date,T(sparsity_penalization),T(same_feature_penalization),
         I(same_feature_penalization_start),p0,sharevs,refine_obs_from_vs,finalβ_obs_from_vs,
@@ -815,3 +817,5 @@ function effective_lambda(param::HTBparam,iter::Int)
 
     return T(min(1,lambda))
 end     
+
+

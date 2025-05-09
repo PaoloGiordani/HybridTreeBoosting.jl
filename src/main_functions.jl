@@ -676,8 +676,9 @@ may then cross-validate the following hyperparamters:
 3) A penalization to encourage sparsity (fewer relevant features). Whether this is performed or not depends on the effective sample size (n and signal-to-noise ratio).
 4) A model without projection pursuit nonlinear expansion of trees (only if modality=:accurate). 
 5) One or two models with column subsampling and slightly lower learning rate. One in :compromise, two in :accurate if the first reduced the cv loss. 
+6) In :compromise and :accurate, a model with a different sigmoid function (smoother, less likely to assign values close to 0 or 1) 
 
-A maximum of 10 models are fitted in modality = :accurate, and of 7 in :compromise.
+A maximum of 11 models are fitted in modality = :accurate, and of 7 in :compromise.
 
 The default range for depth can be replaced by providing a vector cv_grid, e.g. 
   
@@ -707,6 +708,8 @@ Unless modality=:accurate, this stacking will typically be equivalent to the bes
 - `cv_depthppr`             true to cv whether to remove projection pursuit regression. Default is true for modality in [:compromise,:accurate], else false.
 
 - `cv_col_subsample`        Default:Auto. If true, fits one or two models with column subsampling. 
+
+- `cv_sigmoid`              Default:Auto. If true, fits a model with a different sigmoid function. 
 
 # Output (named tuple, or vector of named tuple for hurdle models)
 
@@ -746,17 +749,17 @@ Unless modality=:accurate, this stacking will typically be equivalent to the bes
 
 """
 function HTBfit(data::HTBdata, param::HTBparam; cv_grid=[],cv_different_loss::Bool=false,cv_sharp::Bool=false,cv_col_subsample=:Auto,
-    cv_sparsity=:Auto,cv_hybrid=true,cv_depthppr=:Auto,skip_full_sample=false)   # skip_full_sample enforces nofullsample even if nfold=1 (used in other functions, not by user)
+    cv_sparsity=:Auto,cv_sigmoid=:Auto,cv_hybrid=true,cv_depthppr=:Auto,skip_full_sample=false)   # skip_full_sample enforces nofullsample even if nfold=1 (used in other functions, not by user)
 
     if param.loss in [:hurdleGamma,:hurdleL2loglink,:hurdleL2]
         output = HTBfit_hurdle(data,param,cv_grid=cv_grid,cv_different_loss=cv_different_loss,cv_sharp=cv_sharp,cv_sparsity=cv_sparsity,
-                                cv_hybrid=cv_hybrid,cv_depthppr=cv_depthppr,skip_full_sample=skip_full_sample,cv_col_subsample=cv_col_subsample)
+                                cv_hybrid=cv_hybrid,cv_depthppr=cv_depthppr,skip_full_sample=skip_full_sample,cv_col_subsample=cv_col_subsample,cv_sigmoid=cv_sigmoid)
     elseif param.loss == :multiclass
         output = HTBfit_multiclass(data,param,cv_grid=cv_grid,cv_different_loss=cv_different_loss,cv_sharp=cv_sharp,cv_sparsity=cv_sparsity,
-                                cv_hybrid=cv_hybrid,cv_depthppr=cv_depthppr,skip_full_sample=skip_full_sample,cv_col_subsample=cv_col_subsample)
+                                cv_hybrid=cv_hybrid,cv_depthppr=cv_depthppr,skip_full_sample=skip_full_sample,cv_col_subsample=cv_col_subsample,cv_sigmoid=cv_sigmoid)
     else 
         output = HTBfit_single(data,param,cv_grid=cv_grid,cv_different_loss=cv_different_loss,cv_sharp=cv_sharp,cv_sparsity=cv_sparsity,
-                       cv_hybrid=cv_hybrid,cv_depthppr=cv_depthppr,skip_full_sample=skip_full_sample,cv_col_subsample=cv_col_subsample)
+                       cv_hybrid=cv_hybrid,cv_depthppr=cv_depthppr,skip_full_sample=skip_full_sample,cv_col_subsample=cv_col_subsample,cv_sigmoid=cv_sigmoid)
     end 
 
     return output 
@@ -923,14 +926,17 @@ end
 
 # HTBfit for a single model.  
 function HTBfit_single(data::HTBdata,param::HTBparam;cv_grid=[],cv_different_loss::Bool=false,cv_sharp::Bool=false,
-        cv_sparsity=:Auto,cv_col_subsample=:Auto,cv_hybrid=true,cv_depthppr=:Auto,skip_full_sample=false)   # skip_full_sample enforces nofullsample even if nfold=1 (used in other functions, not by user)
+        cv_sparsity=:Auto,cv_col_subsample=:Auto,cv_hybrid=true,cv_depthppr=:Auto,cv_sigmoid=:Auto,skip_full_sample=false)   # skip_full_sample enforces nofullsample even if nfold=1 (used in other functions, not by user)
     
+    # Number of additional models (after going through cv_grid, which is depth in default) to be fitted.
+    # Excluding hybrid with force_sharp_splits. After going through cv_grid, possibly twice(cv_hybrid), selects best value
+    # and potentially fits: sparse (2), depthppr=0, sharp, column_subsampling 1, column_subsampling 2, different sigmoid (up to 2),  different distribution
+    # Note: setting this to a large number would not be a problem: it's mainly for PG to keep track of the number of models fitted.
+    n_additional_models  = 9   
+
     T,I = param.T,param.I
-
-    n_additional_models  = 8   # Excluding hybrid with force_sharp_splits. After going through cv_grid, possibly twice(cv_hybrid), selects best value and potentially fits: depthppr=0, sparse (up to 3), sharp, column_subsampling 1, column_subsampling 2, different distribution
-
-    modality              = param.modality
-    param0                = deepcopy(param)
+    modality = param.modality
+    param0   = deepcopy(param)
 
     if !isa(cv_grid,AbstractVector)  
         cv_grid = [cv_grid]
@@ -938,7 +944,7 @@ function HTBfit_single(data::HTBdata,param::HTBparam;cv_grid=[],cv_different_los
 
     if isempty(cv_grid)
         user_provided_grid = false
-        cv_grid = collect(1:8)      
+        cv_grid = collect(1:8)        # default grid for depth is 1:8.
     else     
         user_provided_grid = true
         if maximum(cv_grid)>8 && param0.warnings==:On
@@ -1092,7 +1098,8 @@ function HTBfit_single(data::HTBdata,param::HTBparam;cv_grid=[],cv_different_los
     param       = deepcopy(HTBtrees_a[best_i].param)
     n,p         = size(data.x)   # not quite the correct #var if, as for categoricals, more are created by HTBdata, but good enough 
 
-    sparsity_grid = T.([0.7,1.1,1.5])           
+    #sparsity_grid = T.([0.7,1.1,1.5])           
+    sparsity_grid = T.([0.9,1.5])           
 
     if cv_sparsity == :Auto      
 
@@ -1138,8 +1145,8 @@ function HTBfit_single(data::HTBdata,param::HTBparam;cv_grid=[],cv_different_los
             HTBtrees_a[i],gammafit_test_a[i]                      = HTBtrees1st, gammafit_test
             problems_somewhere = problems_somewhere + problems
 
-            #If either 0.7 or 1.1 is better than 0.3, continue to 1.5. If neither is better, try 0.0 
-            if j>1 && min(lossgrid[i],lossgrid[i-1]) > lossgrid[best_i] # break (no need for more sparsity)
+            #if j>1 && min(lossgrid[i],lossgrid[i-1]) > lossgrid[best_i]  # If either 0.7 or 1.1 is better than 0.3, continue to 1.5. If neither is better, try 0.0 
+            if lossgrid[i] > lossgrid[best_i]  # If 0.9 is better than 0.3, continue to 1.5, else try 0.0 
  
                 param.sparsity_penalization = T(0)
                 param.exclude_features = Vector{Bool}(undef,0)
@@ -1246,6 +1253,49 @@ function HTBfit_single(data::HTBdata,param::HTBparam;cv_grid=[],cv_different_los
        
     end 
 
+    # Additional model(s): try a different sigmoid function (loss), at previous best values of depth, sparsity, and column and row subsampling  
+    
+    if param0.sigmoid in [:sigmoidsqrt,:sigmoidlogistic]
+        #sigmoid_grid = [:smoothsigmoid,:smoothstep]   # :smoothsigmoid is even less likely to set sharp 0 and 1 than default, while :smoothstep is more likely (and also closer to linear for small tau) 
+        sigmoid_grid = [:smoothsigmoid]   # :smoothsigmoid is even less likely to set sharp 0 and 1 than default, while :smoothstep is more likely (and also closer to linear for small tau) 
+    elseif param0.sigmoid == :smoothsigmoid 
+        sigmoid_grid = [:sigmoidsqrt] 
+    elseif param0.sigmoid == :smoothstep 
+        sigmoid_grid = [:sigmoidsqrt] 
+    end
+
+    if cv_sigmoid==:Auto
+        modality in [:compromise,:accurate] ? cv_sigmoid = true : cv_sigmoid = false
+    end
+
+    if cv_sigmoid 
+
+        best_i = argmin(lossgrid)
+        param  = deepcopy(HTBtrees_a[best_i].param)
+
+        for (j,sigmoid) in enumerate(sigmoid_grid)
+
+            i = 2*length(cvgrid0)+length(sparsity_grid) + 4 + j
+            cvgrid[i] = cvgrid[best_i]          
+    
+            param.sigmoid = sigmoid
+
+            param_given_data!(param,data)
+            param_constraints!(param)
+
+            ntrees,loss,meanloss,stdeloss,HTBtrees1st,indtest,gammafit_test,y_test,problems = HTBsequentialcv(data,param,indices=indices)
+            treesize[i],lossgrid[i],meanloss_a[i],stdeloss_a[i]   = ntrees,loss,meanloss,stdeloss
+            HTBtrees_a[i],gammafit_test_a[i]                    = HTBtrees1st,gammafit_test
+            problems_somewhere = problems_somewhere + problems
+
+            if modality == :compromise      # Try the first sigmoid in sigmoid_grid for :compromise, and all for :accurate 
+                break
+            end 
+        end 
+
+    end
+
+
     # Before trying a different distribution, store param from the best solution. This will be used in 
     # HTBmodelweights, which for some loss functions involving additional coefficients (:t,:gamma,...)
     # needs values of these coefficients, which param0 does not have.
@@ -1276,7 +1326,7 @@ function HTBfit_single(data::HTBdata,param::HTBparam;cv_grid=[],cv_different_los
 
         ntrees,loss,meanloss,stdeloss,HTBtrees1st,indtest,gammafit_test,y_test,problems = HTBsequentialcv(data,param,indices=indices)
 
-        i = 2*length(cvgrid0)+length(sparsity_grid) + 5
+        i = 2*length(cvgrid0)+length(sparsity_grid) + length(sigmoid_grid) + 5
         cvgrid[i]   = cvgrid[best_i]
         lossgrid[i],meanloss_a[i], stdeloss_a[i] = loss,meanloss,stdeloss  # The loss is NOT comparable. 
         treesize[i]     = ntrees
@@ -1400,7 +1450,7 @@ end
 # The two models can be fit separately with no loss since the continuous distribution has zero mass at 0. 
 # The cv is completely independent for the two models. 
 function HTBfit_hurdle(data::HTBdata, param::HTBparam; cv_grid=[],cv_different_loss::Bool=false,cv_sharp::Bool=false,
-    cv_sparsity=true,cv_hybrid=true,cv_col_subsample=:Auto,cv_depthppr=false,skip_full_sample=false)   # skip_full_sample enforces nofullsample even if nfold=1 (used in other functions, not by user)
+    cv_sparsity=true,cv_hybrid=true,cv_col_subsample=:Auto,cv_depthppr=false,skip_full_sample=false,cv_sigmoid=:Auto)   # skip_full_sample enforces nofullsample even if nfold=1 (used in other functions, not by user)
 
     if param.loss == :hurdleGamma
         loss_not0 = :gamma
@@ -1419,7 +1469,7 @@ function HTBfit_hurdle(data::HTBdata, param::HTBparam; cv_grid=[],cv_different_l
     param_0      = deepcopy(param)
     param_0.loss = :logistic
     output_0 = HTBfit_single(data_0,param_0,cv_grid=cv_grid,cv_different_loss=cv_different_loss,cv_sharp=cv_sharp,cv_sparsity=cv_sparsity,
-                            cv_hybrid=cv_hybrid,skip_full_sample=skip_full_sample,cv_col_subsample=cv_col_subsample) 
+                            cv_hybrid=cv_hybrid,skip_full_sample=skip_full_sample,cv_col_subsample=cv_col_subsample,cv_sigmoid=cv_sigmoid) 
     data_0 = 0  # free memory 
 
     # y /=0  
@@ -1427,7 +1477,7 @@ function HTBfit_hurdle(data::HTBdata, param::HTBparam; cv_grid=[],cv_different_l
     param_not0 = deepcopy(param)
     param_not0.loss = loss_not0 
     output_not0 = HTBfit_single(data_not0,param_not0,cv_grid=cv_grid,cv_different_loss=cv_different_loss,cv_sharp=cv_sharp,cv_sparsity=cv_sparsity,
-                       cv_hybrid=cv_hybrid,cv_depthppr=cv_depthppr,skip_full_sample=skip_full_sample) 
+                       cv_hybrid=cv_hybrid,cv_depthppr=cv_depthppr,skip_full_sample=skip_full_sample,cv_sigmoid=cv_sigmoid) 
 
                         
     output = [output_0,output_not0]
@@ -1437,7 +1487,7 @@ end
 
 
 function HTBfit_multiclass(data::HTBdata, param::HTBparam; cv_grid=[],cv_different_loss::Bool=false,cv_sharp::Bool=false,cv_col_subsample=:Auto,
-    cv_sparsity=true,cv_hybrid=true,cv_depthppr=false,skip_full_sample=false)   # skip_full_sample enforces nofullsample even if nfold=1 (used in other functions, not by user)
+    cv_sparsity=true,cv_hybrid=true,cv_depthppr=false,skip_full_sample=false,cv_sigmoid=:Auto)   # skip_full_sample enforces nofullsample even if nfold=1 (used in other functions, not by user)
 
     num_classes  = length(param.class_values)
 
@@ -1452,7 +1502,7 @@ function HTBfit_multiclass(data::HTBdata, param::HTBparam; cv_grid=[],cv_differe
         new_class_value = T(i-1)          # original class values converted to 0,1,2...
         @. data.y = y0 == new_class_value    
         output[i] = HTBfit_single(data,param_i,cv_grid=cv_grid,cv_different_loss=cv_different_loss,cv_sharp=cv_sharp,cv_sparsity=cv_sparsity,
-                         cv_hybrid=cv_hybrid,cv_depthppr=cv_depthppr,skip_full_sample=skip_full_sample,cv_col_subsample=cv_col_subsample)      
+                         cv_hybrid=cv_hybrid,cv_depthppr=cv_depthppr,skip_full_sample=skip_full_sample,cv_col_subsample=cv_col_subsample,cv_sigmoid=cv_sigmoid)      
     end 
  
     @. data.y = y0  
