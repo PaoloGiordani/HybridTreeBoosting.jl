@@ -1431,6 +1431,8 @@ function updateHTBtrees!(HTBtrees,Gβ,tree,ntree,param)
 
   HTBtrees.param = param
 
+  HTBtrees.infeatures = updateinfeatures(HTBtrees.infeatures,tree.i[1:depth])    
+
   for d in 1:depth
     HTBtrees.fi2[tree.i[d]]  += tree.fi2[d]   # update feature importance
     HTBtrees.fr[tree.i[d]]  += 1              # update frequency of inclusion
@@ -1591,5 +1593,5 @@ function count_most_common_feature(vec::AbstractVector{<:Integer})
     end
     
     return max_frequency
-  end
+end
   
