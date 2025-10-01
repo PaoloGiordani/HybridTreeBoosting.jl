@@ -89,7 +89,7 @@ mutable struct HTBparam{T<:AbstractFloat, I<:Int,R<:Real}
     sparsity_penalization::T  # AIC penalization on (number of features - depth)
     same_feature_penalization::T  # penalization multiplies the number of times the feature appears in different splits of the same tree. Think of it as log(prob_split_different feature/prob_split_same_feature), e.g. [0 2]
     same_feature_penalization_start::I # the first same_feature_penalization_start appearances are not penalized. 
-    p0::Union{Symbol,I}       # :Auto (then set to p) or p0 
+    p0::Union{Symbol,I}       # :Auto (then set to p) or p0. Only needs setting if a slice of x is used instead of exclude_features 
 
     # row and column sub-sampling and two schemes to deal with large p: sparsevs and pvs
     sharevs::Union{Symbol,T}  # if <1, adds noise to vs, in vs phase takes a random subset of observations
@@ -295,7 +295,7 @@ Note: all Julia symbols can be replaced by strings. e.g. :L2 can be replaced by 
 
 - `tau_threshold`         [10.0] lowest threshold for imposing sharp splits. Lower numbers give more sharp splits.
 
-- `multiplier_stdtau`    [5.0] The default priors suggest smoother splits on features whose unconditional distribution (appropriately transformed according to the link function) is closer to the unconditional distribution of *y* or, when not applicable, to a Gaussian. To disengage this feature, set *multiplier_stdtau* = 0
+- `multiplier_stdtau`    [1.0] The default priors suggest smoother splits on features whose unconditional distribution is closer to to a Gaussian. To disengage this feature, set *multiplier_stdtau* = 0
 
 # Additional parameters to control the cross-validation process can be set in HTBfit(), but keeping the defaults is generally encouraged.
 
@@ -333,8 +333,8 @@ function HTBparam(;
     meanlntau= 1.0,    # Assume a Gaussian for log(tau).
     varlntau = 0.5^2,  # [0.5^2]. Set to Inf to disactivate (log(p(τ)=0)).  See loss.jl/multiplier_stdlogtau_y().  This is the dispersion of the student-t distribution (not the variance unless dof is high).
     doflntau = 5.0,
-    multiplier_stdtau = 5.0,
-    d_meanlntau_cat = 1.0,  # difference in intercept of meanlntau for categorical features (prior that they are less smooth)
+    multiplier_stdtau = 1.0,
+    d_meanlntau_cat = 0.5,  # difference in intercept of meanlntau for categorical features (prior that they are less smooth)
     varmu   = Inf,    # default Inf to disactivate (then lnpμ sets p(μ)=1.) Otherwise 1-3. Smaller number make it increasingly unlikely to have nonlinear behavior in the tails. DISPERSION, not variance
     dofmu   = 10.0,
     meanlntau_ppr = log(0.2),  # for projection pursuit regression. Center on quasi-linearity. log(0.2) ≈ -1.6.  
@@ -370,7 +370,7 @@ function HTBparam(;
     sparsity_penalization = 0.3,
     same_feature_penalization = 0.0,  # penalization multiplies the number of times the feature appears in different splits of the same tree. Think of it as log(prob_split_different feature/prob_split_same_feature), e.g. [0 2]
     same_feature_penalization_start = 0, # the first same_feature_penalization_start appearances are not penalized.
-    p0       = :Auto,
+    p0       = :Auto,            # :Auto (then set to p) or p0. Only needs setting if a slice of x is used instead of exclude_features
     sharevs  = 1.0,              # if <1, adds noise to vs, in vs phase takes a random subset. :Auto is 0.5 if n>=250k. ? Speed gains are surprisingly small, maybe because of the need to slices large matrices ?      
     refine_obs_from_vs = false,  # true to add randomization to (μ,τ), assuming sharevs<1
     finalβ_obs_from_vs  = false,  # true to add randomization to final β

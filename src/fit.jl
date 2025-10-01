@@ -330,7 +330,7 @@ end
 
 
 # Computes log t-density of the prior on log(τ). The mean of this density is a function of the Kantorovic distance of feature i.
-# τ is trucated at τmax=50 to allow for Inf (sharp threshold) to have finite density. d is tree dimension as in size(G,2)= 2^d 
+# τ is truncated at τmax=log(50) to allow for Inf (sharp threshold) to have finite density. d is tree dimension as in size(G,2)= 2^d 
 # function lnpτ(τ0::Union{T,Vector{T}},param::HTBparam,info_i,d;τmax=T(50) )::T where T<:AbstractFloat     # NOTE: modifications required for τ0 a vector.
 function lnpτ(τ0::T,param::HTBparam,info_i,d;τmax=T(50) )::T where T<:AbstractFloat
 
@@ -352,22 +352,14 @@ function lnpτ(τ0::T,param::HTBparam,info_i,d;τmax=T(50) )::T where T<:Abstrac
         return T(lnp)
     end      
 
-    if param.loss in [:L2,:gamma,:Huber,:quantile,:t,:lognormal,:L2loglink,:Poisson,:gammaPoisson]    
-        α=1
-    elseif param.loss==:logistic
-        α=0.5
-    else
-        @error "loss function misspelled or not implemented"
-    end
-
-    # prior on meanlntau has a higher intercept for categorical features (more likely to be non-smooth)
-    β₁ = 0.3
+    # prior on meanlntau has a higher intercept for categorical features (more likely to be non-smooth), and for features 
+    # with larger distance from a Gaussian (more likely to be non-smooth)
     dm = param.d_meanlntau_cat*(info_i.i in param.cat_features )
 
-    m        =  dm + param.meanlntau + α*param.multiplier_stdtau*( -β₁ + info_i.kd  )
+    m   =  dm + param.meanlntau + param.multiplier_stdtau*log( 1 + info_i.kd )  
     lnp = sum(logpdft.(log.(τ),T(m),T(stdlntau),param.doflntau ))
 
-    # If mixture of two student-t
+    # Mixture of two student-t
     # k2,prob2 = T(3),T(0.2)
     # lnp2 = sum(logpdft.(log.(τ),T(m*k2),T(stdlntau),param.doflntau))
     # lnpmax  = maximum([lnp,lnp2])        # numerically more robust alternative to  lnp = log( (1-prob2)*exp.(lnp) + prob2*exp.(lnp) ), should work well even with Float32

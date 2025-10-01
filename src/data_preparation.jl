@@ -521,8 +521,9 @@ end
 # NOTE: distance(xi,y) rather than (xi,N) is appropriate for :L2, :t, :Huber, :quantile, not for :logistic
 # sqrtw=sqrt.(data.weights). y and w are weighted, so the quantiles are computed on ys*sqrt(w), xs*sqrt(w) (multiplied by n/sum(sqrtw) to make the distance a pure number.),
 # where ys and xs are (robust) standardized.
-# NOTE: if y is discrete with few outcomes, the distance is inflated by a factor m.   
-function kantorovic_distance(xi::AbstractVector{T},sqrtw::AbstractVector{T};p=1,y::AbstractVector{T}=T[],n_unique_y=1000)::T  where T<:AbstractFloat
+# If distance_from_gaussian = true (default) or y is empty, the distance is computed from a standardized Gaussian, rather than from y.
+function kantorovic_distance(xi::AbstractVector{T},sqrtw::AbstractVector{T};p=1,y::AbstractVector{T}=T[],n_unique_y=1000,
+        distance_from_gaussian::Bool=true)::T  where T<:AbstractFloat
 
     if length(xi)>=40
         qu = T.([i for i in 0.025:0.025:0.975])
@@ -538,7 +539,7 @@ function kantorovic_distance(xi::AbstractVector{T},sqrtw::AbstractVector{T};p=1,
 
     q_xi = quantile(xi.*sqrtw*(length(xi)/sum(sqrtw)),qu)
 
-    if isempty(y)  # distance from a Gaussian
+    if isempty(y) || distance_from_gaussian  # distance from a Gaussian
         d = (mean( (abs.(q_N - q_xi)).^p ) )^(1/p)
     else             # distance between xi and y
         ys  = sqrtw.*y*(length(xi)/sum(sqrtw))
@@ -548,12 +549,6 @@ function kantorovic_distance(xi::AbstractVector{T},sqrtw::AbstractVector{T};p=1,
         d2 = (mean( (abs.(q_y - q_xi)).^p ) )^(1/p)
         d = minimum([d1,d2])
     end
-
-    # increase d if y has few unique values (n_unique_y) outside of a :logistic loss (y empty)
-    if !isempty(y)
-        m = max(1,10/n_unique_y)
-        d = T(m)*d
-    end     
 
     return T(d)
 end
@@ -733,7 +728,7 @@ function fill_vectors_mugridmatrix!(x,ssi,i,ys,w,mugrid0,sharp_split_i,npoints,n
     n_unique  = length(unique_xi)
     n_unique_a[i] = n_unique
     dichotomous[i] = (n_unique==2)
-    kd[i] = kantorovic_distance(xi,sqrt.(wi);y=yi,n_unique_y=length(unique(ys)))  
+    kd[i] = kantorovic_distance(xi,sqrt.(wi);distance_from_gaussian=true,y=yi,n_unique_y=length(unique(ys)))   
     #if n_unique==1; @warn "feature $i has only one unique value in either the full sample or in a cross-validated sample. Setting randomizecv=true may solve the problem.";
 
     if dichotomous[i] == false
