@@ -1570,8 +1570,8 @@ function HTBrelevance(output,data::HTBdata;verbose=true,best_model=false )
         for i in eachindex(w)
 
             if w[i]>0
-                fi2 = deepcopy(output.HTBtrees_a[i].fi2)
-                fi2 += w[i]*(abs.(fi2.*(fi2 .>=0) ))    
+                fi2_i = deepcopy(output.HTBtrees_a[i].fi2)
+                fi2 += w[i]*(abs.(fi2_i.*(fi2_i .>=0) ))    
             end 
         end
 
