@@ -69,6 +69,10 @@ function preliminary_cv_categoricals!(param,data,indices)
     loss0 = T(Inf)
     loss_a = fill(T(Inf),length(n0_multiplier_a),length(mep_a))
 
+    # set param constraints for preliminary cv
+    param_given_data!(param,data)
+    param_constraints!(param)
+
     for (i,n0) in enumerate(n0_multiplier_a)    # n0 here is a multiplier (not the actual n0, which cannot be 1 for, say, :quantile)
 
         for (j,mep) in enumerate(mep_a)
