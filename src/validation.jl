@@ -195,8 +195,6 @@ function HTBsequentialcv( data::HTBdata, param::HTBparam; indices=Vector(1:lengt
     
             x_test  = preparedataHTB_test(data.x[indtest,:],param_a[nf],meanx,stdx)
             Gβ,ij,μj,τj,mj,βj,fi2j,σᵧ = fit_one_tree(data_nf.y,data_nf.weights,HTBtrees_a[nf],rh_a[nf].r,rh_a[nf].h,data_nf.x,μgrid,info_x,τgrid,param_a[nf],i)
-
-            lossM[i,nf],losses  = losscv(param_a[nf],data.y[indtest],gammafit_test_a[nf],data.weights[indtest] )  # losscv computed before updating parameters, using same parameters as for lik. losscv is a (ntest) vector of losses.  
          
             param_a[nf] = updatecoeff(param_a[nf],data_nf.y,HTBtrees_a[nf].gammafit+Gβ,data_nf.weights,i) # +Gβ, NOT +λGβ
             updateHTBtrees!(HTBtrees_a[nf],Gβ,HTBtree(ij,μj,τj,mj,βj,fi2j,σᵧ),i,param_a[nf])
@@ -204,9 +202,10 @@ function HTBsequentialcv( data::HTBdata, param::HTBparam; indices=Vector(1:lengt
 
             λᵢ = effective_lambda(param_a[nf],i)
             gammafit_test_a[nf] = gammafit_test_a[nf] + λᵢ*HTBtreebuild(x_test,ij,μj,τj,mj,βj,σᵧ,param_a[nf],i)
-            
+
             bias,gammafit_test_ba_a[nf] = bias_correct(gammafit_test_a[nf],data_nf.y,HTBtrees_a[nf].gammafit+Gβ,param)
- 
+
+            lossM[i,nf],losses  = losscv(param_a[nf],data.y[indtest],gammafit_test_a[nf],data.weights[indtest] )  # losscv computed before updating parameters, using same parameters as for lik. losscv is a (ntest) vector of losses.  
             lossv = vcat(lossv,losses)
             gammafit_test = vcat(gammafit_test,gammafit_test_ba_a[nf])  # bias-adjusted (used in stacking), while loss is computed on original fit
 
