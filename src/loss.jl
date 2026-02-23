@@ -234,7 +234,7 @@ function updatecoeff(param0,y,gammafit,weights,iter)
             if isnan(param0.coeff[1])   # user has not provided a coeff: estimate it  
                 μ   = @. exp(gammafit)    # Newton was brittle: grid search instead. 
                 α0  = max( T(log(0.01)),(var(y) - mean(y))/mean(y)^2 )   # gammaPoisson not defined for α = 0. α-->0 can give numerical problems.
-                res  = Optim.optimize( logα -> loss_gammaPoisson(logα,y,μ),[log(α0)],Optim.BFGS(linesearch = LineSearches.BackTracking()), Optim.Options(iterations = 100,x_tol = 0.01 ))
+                res  = Optim.optimize( logα -> loss_gammaPoisson(logα,y,μ),[log(α0)],Optim.BFGS(linesearch = LineSearches.BackTracking()), Optim.Options(iterations = 100,x_abstol = 0.01 ))
                 param.coeff_updated[1] = [max(log(T(0.01)),res.minimizer[1])]     # gammaPoisson not defined for α = 0. α-->0 can give numerical problems.
             elseif iter<=1 
                 param.coeff_updated[1] = [log(param.coeff[1])]
