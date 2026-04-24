@@ -487,7 +487,7 @@ function lnpMTE(param,info_i,T)
     if n_cat <= 2
         return T(0)
     else
-        pe = 0.5*(n_cat - 2)*((1 - param.lambda)^2)^(param.iter - 1)    
+        pe = 0.5*(n_cat - 2) # constant penalization (do not multiply by *((1 - param.lambda)^2)^(param.iter - 1))    
         return -T( param.mean_encoding_penalization*pe )
     end
 
